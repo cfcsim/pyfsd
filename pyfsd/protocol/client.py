@@ -1,4 +1,3 @@
-from enum import FlagBoundary
 from typing import TYPE_CHECKING, List, Optional
 from weakref import ReferenceType, ref
 
