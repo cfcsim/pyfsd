@@ -325,6 +325,7 @@ class FSDClientProtocol(LineReceiver):
                 flags,
             ),
             check_func=broadcastPositionChecker,
+            from_client=this_client,
         )
 
     def handleATCPositionUpdate(self, packet: List[str]) -> None:
@@ -370,6 +371,7 @@ class FSDClientProtocol(LineReceiver):
                 altitdue,
             ),
             check_func=broadcastPositionChecker,
+            from_client=this_client
         )
 
     def handlePing(self, packet: List[str], is_ping: bool = True) -> None:

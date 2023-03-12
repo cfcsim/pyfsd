@@ -85,6 +85,7 @@ class FSDClientPacket:
         ATC_POSITION,
         PING,
         PONG,
+        MESSAGE,
         AC_HANDOFF,
         PLAN,
         SB,
