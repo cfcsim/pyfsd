@@ -1,0 +1,55 @@
+--- pyfsd/pyfsd/protocol/client.py	2023-03-12 13:58:33.000000000 +0800
++++ pyfsd/pyfsd/protocol/client.py	2023-03-12 14:12:14.352610920 +0800
+@@ -53,6 +53,16 @@ class FSDClientProtocol(LineReceiver):
+         tail = "\r\n" if auto_newline else ""
+         for line in lines:
+             buffer += f"{line}{tail}"
++        host: str = self.transport.getPeer().host
++        print(
++            time(),
++            lines,
++            "=>",
++            self.this_client().callsign
++            if self.this_client() is not None
++            else "unknown",
++            host,
++        )
+         self.transport.write(buffer.encode())  # type: ignore
+ 
+     def sendError(self, errno: int, env: str = "", fatal: bool = False) -> None:
+@@ -68,6 +78,18 @@ class FSDClientProtocol(LineReceiver):
+                 err_str,
+             )
+         )
++        host: str = self.transport.getPeer().host
++        print(
++            time(),
++            errno,
++            err_str,
++            env,
++            "<ERR=",
++            self.this_client().callsign
++            if self.this_client() is not None
++            else "unknown",
++            host,
++        )
+         if fatal:
+             self.transport.loseConnection()
+ 
+@@ -480,6 +502,16 @@ class FSDClientProtocol(LineReceiver):
+         if not line:
+             return
+         command, packet = FSDClientPacket.breakPacket(line)
++        host: str = self.transport.getPeer().host
++        print(
++            time(),
++            line,
++            "<===",
++            self.this_client().callsign
++            if self.this_client() is not None
++            else "unknown",
++            host,
++        )
+         if command == FSDClientPacket.ADD_ATC or command == FSDClientPacket.ADD_PILOT:
+             self.handleAddClient(
+                 packet, "ATC" if command == FSDClientPacket.ADD_ATC else "PILOT"
