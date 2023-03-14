@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 from constantly import ValueConstant, Values
 

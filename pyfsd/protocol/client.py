@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, List, Optional
-from weakref import ReferenceType, ref
 
 from twisted.internet.interfaces import ITransport
 from twisted.internet.task import LoopingCall
@@ -7,16 +6,18 @@ from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
 
 from ..config import config
+from ..define.broadcast import (
+    BroadcastChecker,
+    allATCChecker,
+    allPilotChecker,
+    atChecker,
+    broadcastMessageChecker,
+    broadcastPositionChecker,
+    isMulticast,
+)
 from ..define.errors import FSDErrors
 from ..define.packet import FSDClientPacket
-from ..define.utils import (
-    broadcastCheckerFrom,
-    broadcastPositionChecker,
-    createBroadcastClientTypeChecker,
-    isCallsignVaild,
-    strToFloat,
-    strToInt,
-)
+from ..define.utils import isCallsignVaild, strToFloat, strToInt
 from ..object.client import Client, ClientType
 
 if TYPE_CHECKING:
@@ -33,7 +34,7 @@ class FSDClientProtocol(LineReceiver):
     transport: ITransport
     timeoutKiller: LoopingCall
     logger: Logger = Logger()
-    this_client: ReferenceType[Client] = lambda _: None  # type: ignore
+    client: Optional[Client] = None
 
     def __init__(self, factory: "FSDClientFactory") -> None:
         self.factory = factory
@@ -56,12 +57,11 @@ class FSDClientProtocol(LineReceiver):
 
     def sendError(self, errno: int, env: str = "", fatal: bool = False) -> None:
         assert not (errno < 0 and errno <= 13)
-        this_client = self.this_client()
         err_str = FSDErrors.error_names[errno]
         self.send(
             FSDClientPacket.makePacket(
                 FSDClientPacket.ERROR + "server",
-                this_client.callsign if this_client is not None else "unknown",
+                self.client.callsign if self.client is not None else "unknown",
                 str(errno).rjust(3, "0"),
                 env,
                 err_str,
@@ -71,36 +71,61 @@ class FSDClientProtocol(LineReceiver):
             self.transport.loseConnection()
 
     #    def isThisClient(self, callsign: str) -> bool:
-    #        if (this_client := self.this_client()) is None:
+    #        if (self.client := self.this_client()) is None:
     #            return False
-    #        if this_client.callsign != callsign:
+    #        if self.client.callsign != callsign:
     #            self.sendError(FSDErrors.ERR_SRCINVALID, env=callsign)
     #            return False
     #        return True
 
     def timeout(self) -> None:
         self.send("# Timeout")
-        self.logger.info(
-            f"{self.transport.getPeer().host} disconnected because timeout."
-        )
         self.transport.loseConnection()
 
     def sendMotd(self) -> None:
-        assert (this_client := self.this_client()) is not None
-        motd_lines: List[str] = [f"#TMserver:{this_client.callsign}:PyFSD Development"]
+        assert self.client is not None
+        motd_lines: List[str] = [f"#TMserver:{self.client.callsign}:PyFSD Development"]
         for line in _motd:
             motd_lines.append(
                 FSDClientPacket.makePacket(
-                    FSDClientPacket.MESSAGE + "server", this_client.callsign, line
+                    FSDClientPacket.MESSAGE + "server", self.client.callsign, line
                 )
             )
         self.send(*motd_lines)
+
+    def multicast(
+        self,
+        to_limit: str,
+        *lines: str,
+        custom_at_checker: Optional[BroadcastChecker] = None,
+    ) -> None:
+        assert self.client is not None
+        if to_limit == "*":
+            self.factory.broadcast(*lines, from_client=self.client)
+        elif to_limit == "*A":
+            self.factory.broadcast(
+                *lines, check_func=allATCChecker, from_client=self.client
+            )
+        elif to_limit == "*P":
+            self.factory.broadcast(
+                *lines, check_func=allPilotChecker, from_client=self.client
+            )
+        elif to_limit.startswith("@"):
+            self.factory.broadcast(
+                *lines,
+                from_client=self.client,
+                check_func=custom_at_checker
+                if custom_at_checker is not None
+                else atChecker,
+            )
+        else:
+            raise NotImplementedError
 
     def handleAddClient(self, packet: List[str], client_type: ClientType) -> None:
         req_rating: int
         protocol: int
         sim_type: Optional[int]
-        if self.this_client() is not None:
+        if self.client is not None:
             self.sendError(FSDErrors.ERR_REGISTERED)
             return
         if client_type == "PILOT":
@@ -158,7 +183,7 @@ class FSDClientProtocol(LineReceiver):
             self.transport,
         )
         self.factory.clients[callsign] = client
-        self.this_client = ref(self.factory.clients[callsign])
+        self.client = client
         if client_type == "PILOT":
             self.factory.broadcast(
                 # two times of req_rating --- not a typo
@@ -196,9 +221,9 @@ class FSDClientProtocol(LineReceiver):
         if len(packet) == 0:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
-        if (this_client := self.this_client()) is None:
+        if self.client is None:
             return
-        if this_client.callsign != packet[0]:
+        if self.client.callsign != packet[0]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         self.transport.loseConnection()
@@ -207,9 +232,9 @@ class FSDClientProtocol(LineReceiver):
         if len(packet) < 17:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
-        if (this_client := self.this_client()) is None:
+        if self.client is None:
             return
-        if this_client.callsign != packet[0]:
+        if self.client.callsign != packet[0]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         (
@@ -229,6 +254,7 @@ class FSDClientProtocol(LineReceiver):
             remarks,
             route,
         ) = packet[2:17]
+        plan_type = plan_type[0] if len(plan_type) > 0 else None
         tascruise = strToInt(tascruise_str, default_value=0)
         dep_time = strToInt(dep_time_str, default_value=0)
         act_dep_time = strToInt(act_dep_time_str, default_value=0)
@@ -236,7 +262,7 @@ class FSDClientProtocol(LineReceiver):
         min_enroute = strToInt(min_enroute_str, default_value=0)
         hrs_fuel = strToInt(hrs_fuel_str, default_value=0)
         min_fuel = strToInt(min_fuel_str, default_value=0)
-        this_client.updatePlan(
+        self.client.updatePlan(
             plan_type,  # type: ignore
             aircraft,
             tascruise,
@@ -255,7 +281,13 @@ class FSDClientProtocol(LineReceiver):
         )
         self.factory.broadcast(
             FSDClientPacket.makePacket(
-                FSDClientPacket.PLAN + this_client.callsign,
+                FSDClientPacket.PLAN + self.client.callsign,
+                "*A",
+                "",
+            )
+            if plan_type is None
+            else FSDClientPacket.makePacket(
+                FSDClientPacket.PLAN + self.client.callsign,
                 "*A",
                 plan_type,
                 aircraft,
@@ -273,16 +305,17 @@ class FSDClientProtocol(LineReceiver):
                 remarks,
                 route,
             ),
-            check_func=createBroadcastClientTypeChecker(to_type="ATC"),
+            check_func=allATCChecker,
+            from_client=self.client,
         )
 
     def handlePilotPositionUpdate(self, packet: List[str]) -> None:
         if len(packet) < 10:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
-        if (this_client := self.this_client()) is None:
+        if self.client is None:
             return
-        if this_client.callsign != packet[1]:
+        if self.client.callsign != packet[1]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         (
@@ -306,17 +339,17 @@ class FSDClientProtocol(LineReceiver):
         flags = strToInt(flags_str, default_value=0)
         if lat > 90.0 or lat < -90.0 or lon > 180.0 or lon < -180.0:
             self.logger.debug(
-                f"Invaild position: {this_client.callsign} with {lat}, {lon}"
+                f"Invaild position: {self.client.callsign} with {lat}, {lon}"
             )
-        this_client.updatePilotPosition(
+        self.client.updatePilotPosition(
             mode, transponder, lat, lon, altitdue, groundspeed, pbh, flags
         )
         self.factory.broadcast(
             FSDClientPacket.makePacket(
                 FSDClientPacket.PILOT_POSITION + mode,
-                this_client.callsign,
+                self.client.callsign,
                 transponder,
-                this_client.rating,
+                self.client.rating,
                 "%.5f" % lat,
                 "%.5f" % lon,
                 altitdue,
@@ -325,16 +358,16 @@ class FSDClientProtocol(LineReceiver):
                 flags,
             ),
             check_func=broadcastPositionChecker,
-            from_client=this_client,
+            from_client=self.client,
         )
 
     def handleATCPositionUpdate(self, packet: List[str]) -> None:
         if len(packet) < 8:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
-        if (this_client := self.this_client()) is None:
+        if self.client is None:
             return
-        if this_client.callsign != packet[0]:
+        if self.client.callsign != packet[0]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         (
@@ -354,24 +387,24 @@ class FSDClientProtocol(LineReceiver):
         altitdue = strToInt(altitdue_str, default_value=0)
         if lat > 90.0 or lat < -90.0 or lon > 180.0 or lon < -180.0:
             self.logger.debug(
-                f"Invaild position: {this_client.callsign} with {lat}, {lon}"
+                f"Invaild position: {self.client.callsign} with {lat}, {lon}"
             )
-        this_client.updateATCPosition(
+        self.client.updateATCPosition(
             frequency, facility_type, visual_range, lat, lon, altitdue
         )
         self.factory.broadcast(
             FSDClientPacket.makePacket(
-                FSDClientPacket.ATC_POSITION + this_client.callsign,
+                FSDClientPacket.ATC_POSITION + self.client.callsign,
                 frequency,
                 facility_type,
                 visual_range,
-                this_client.rating,
+                self.client.rating,
                 "%.5f" % lat,
                 "%.5f" % lon,
                 altitdue,
             ),
             check_func=broadcastPositionChecker,
-            from_client=this_client
+            from_client=self.client,
         )
 
     def handlePing(self, packet: List[str], is_ping: bool = True) -> None:
@@ -379,9 +412,9 @@ class FSDClientProtocol(LineReceiver):
         if packet_len < 2:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
-        if (this_client := self.this_client()) is None:
+        if self.client is None:
             return
-        if this_client.callsign != packet[0]:
+        if self.client.callsign != packet[0]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         to_callsign = packet[1]
@@ -389,70 +422,65 @@ class FSDClientProtocol(LineReceiver):
             self.send(
                 FSDClientPacket.makePacket(
                     FSDClientPacket.PONG + "server",
-                    this_client.callsign,
+                    self.client.callsign,
                     *packet[2:] if packet_len > 2 else [""],
                 )
             )
             return
-        to_checker = broadcastCheckerFrom(to_callsign)
         to_packet = FSDClientPacket.makePacket(
-            FSDClientPacket.PING + this_client.callsign
+            FSDClientPacket.PING + self.client.callsign
             if is_ping
-            else FSDClientPacket.PONG + this_client.callsign,
+            else FSDClientPacket.PONG + self.client.callsign,
             to_callsign,
             *packet[2:] if packet_len > 2 else [""],
         )
-        if to_checker is not None:
-            self.factory.broadcast(
-                to_packet, check_func=to_checker, from_client=this_client
-            )
+        if isMulticast(to_callsign):
+            self.multicast(to_callsign, to_packet)
         else:
             try:
                 self.factory.sendTo(to_callsign, to_packet)
             except KeyError:
-                ...
+                pass
 
     def handleMessage(self, packet: List[str]) -> None:
-        packet_len: int = len(packet)
-        if packet_len < 3:
+        if len(packet) < 3:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
-        if (this_client := self.this_client()) is None:
+        if self.client is None:
             return
-        if this_client.callsign != packet[0]:
+        if self.client.callsign != packet[0]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         to_callsign = packet[1]
-        to_checker = broadcastCheckerFrom(to_callsign)
         to_packet = FSDClientPacket.makePacket(
-            FSDClientPacket.MESSAGE + this_client.callsign,
+            FSDClientPacket.MESSAGE + self.client.callsign,
             to_callsign,
             *packet[2:],
         )
-        if to_checker is not None:
-            self.factory.broadcast(
-                to_packet, check_func=to_checker, from_client=this_client
+        if isMulticast(to_callsign):
+            self.multicast(
+                to_callsign, to_packet, custom_at_checker=broadcastMessageChecker
             )
         else:
             try:
                 self.factory.sendTo(to_callsign, to_packet)
             except KeyError:
-                ...
+                pass
 
     def handleKill(self, packet: List[str]) -> None:
         if len(packet) < 3:
             self.sendError(FSDErrors.ERR_SYNTAX)
-        if (this_client := self.this_client()) is None:
+        if self.client is None:
             return
         _, callsign_kill, reason = packet[:3]
         if callsign_kill not in self.factory.clients:
             self.sendError(FSDErrors.ERR_NOSUCHCS, env=callsign_kill)
             return
-        if this_client.rating < 11:
+        if self.client.rating < 11:
             self.send(
                 FSDClientPacket.makePacket(
                     FSDClientPacket.MESSAGE + "server",
-                    this_client.callsign,
+                    self.client.callsign,
                     "You are not allowed to kill users!",
                 )
             )
@@ -460,7 +488,7 @@ class FSDClientProtocol(LineReceiver):
             self.send(
                 FSDClientPacket.makePacket(
                     FSDClientPacket.MESSAGE + "server",
-                    this_client.callsign,
+                    self.client.callsign,
                     f"Attempting to kill {callsign_kill}",
                 )
             )
@@ -530,17 +558,18 @@ class FSDClientProtocol(LineReceiver):
     def connectionLost(self, _) -> None:
         self._cancelTimeoutLoop(None)
         host: str = self.transport.getPeer().host
-        if (this_client := self.this_client()) is not None:
-            self.logger.info(f"{host} ({this_client.callsign}) disconnected.")
+        if self.client is not None:
+            self.logger.info(f"{host} ({self.client.callsign}) disconnected.")
             self.factory.broadcast(
                 FSDClientPacket.makePacket(
-                    FSDClientPacket.REMOVE_ATC + this_client.callsign
-                    if this_client.type == "ATC"
-                    else FSDClientPacket.REMOVE_PILOT + this_client.callsign,
-                    this_client.cid,
-                )
+                    FSDClientPacket.REMOVE_ATC + self.client.callsign
+                    if self.client.type == "ATC"
+                    else FSDClientPacket.REMOVE_PILOT + self.client.callsign,
+                    self.client.cid,
+                ),
+                from_client=self.client,
             )
-            del self.factory.clients[this_client.callsign]
+            del self.client
         else:
             self.logger.info(f"{host} disconnected.")
 

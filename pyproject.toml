@@ -1,5 +1,3 @@
-[tool.pdm]
-
 [tool.isort]
 profile = "black"
 
