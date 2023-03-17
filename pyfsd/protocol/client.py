@@ -121,6 +121,40 @@ class FSDClientProtocol(LineReceiver):
         else:
             raise NotImplementedError
 
+    def unicast(self, callsign: str, *lines: str) -> None:
+        self.factory.sendTo(callsign, *lines)
+
+    def handleCast(
+        self,
+        packet: List[str],
+        command: str,
+        require_param: int = 2,
+        multicast_able: bool = True,
+        custom_at_checker: Optional[BroadcastChecker] = None,
+    ) -> None:
+        packet_len: int = len(packet)
+        if packet_len < require_param:
+            self.sendError(FSDErrors.ERR_SYNTAX)
+            return
+        if self.client is None:
+            return
+        if self.client.callsign != packet[0]:
+            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
+            return
+        to_callsign = packet[1]
+        to_packet = FSDClientPacket.makePacket(
+            command + self.client.callsign,
+            to_callsign,
+            *packet[2:] if packet_len > 2 else [""],
+        )
+        if isMulticast(to_callsign):
+            if multicast_able:
+                self.multicast(
+                    to_callsign, to_packet, custom_at_checker=custom_at_checker
+                )
+        else:
+            self.factory.sendTo(to_callsign, to_packet)
+
     def handleAddClient(self, packet: List[str], client_type: ClientType) -> None:
         req_rating: int
         protocol: int
@@ -407,7 +441,7 @@ class FSDClientProtocol(LineReceiver):
             from_client=self.client,
         )
 
-    def handlePing(self, packet: List[str], is_ping: bool = True) -> None:
+    def handleServerPing(self, packet: List[str]) -> None:
         packet_len: int = len(packet)
         if packet_len < 2:
             self.sendError(FSDErrors.ERR_SYNTAX)
@@ -417,55 +451,13 @@ class FSDClientProtocol(LineReceiver):
         if self.client.callsign != packet[0]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
-        to_callsign = packet[1]
-        if to_callsign.lower() == "server" and is_ping:
-            self.send(
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.PONG + "server",
-                    self.client.callsign,
-                    *packet[2:] if packet_len > 2 else [""],
-                )
+        self.send(
+            FSDClientPacket.makePacket(
+                FSDClientPacket.PONG + "server",
+                self.client.callsign,
+                *packet[2:] if packet_len > 2 else [""],
             )
-            return
-        to_packet = FSDClientPacket.makePacket(
-            FSDClientPacket.PING + self.client.callsign
-            if is_ping
-            else FSDClientPacket.PONG + self.client.callsign,
-            to_callsign,
-            *packet[2:] if packet_len > 2 else [""],
         )
-        if isMulticast(to_callsign):
-            self.multicast(to_callsign, to_packet)
-        else:
-            try:
-                self.factory.sendTo(to_callsign, to_packet)
-            except KeyError:
-                pass
-
-    def handleMessage(self, packet: List[str]) -> None:
-        if len(packet) < 3:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-            return
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
-        to_callsign = packet[1]
-        to_packet = FSDClientPacket.makePacket(
-            FSDClientPacket.MESSAGE + self.client.callsign,
-            to_callsign,
-            *packet[2:],
-        )
-        if isMulticast(to_callsign):
-            self.multicast(
-                to_callsign, to_packet, custom_at_checker=broadcastMessageChecker
-            )
-        else:
-            try:
-                self.factory.sendTo(to_callsign, to_packet)
-            except KeyError:
-                pass
 
     def handleKill(self, packet: List[str]) -> None:
         if len(packet) < 3:
@@ -526,28 +518,40 @@ class FSDClientProtocol(LineReceiver):
             self.handlePilotPositionUpdate(packet)
         elif command == FSDClientPacket.ATC_POSITION:
             self.handleATCPositionUpdate(packet)
-        elif command == FSDClientPacket.PONG or command == FSDClientPacket.PING:
-            self.handlePing(packet, is_ping=command == FSDClientPacket.PING)
+        elif command == FSDClientPacket.PONG:
+            self.handleCast(packet, command, require_param=2, multicast_able=True)
+        elif command == FSDClientPacket.PING:
+            if len(packet) > 1 and packet[1].lower() == "server":
+                self.handleServerPing(packet)
+            else:
+                self.handleCast(
+                    packet, command, require_param=2, multicast_able=True
+                )
         elif command == FSDClientPacket.MESSAGE:
-            self.handleMessage(packet)
-        elif command == FSDClientPacket.REQUEST_HANDOFF:
-            ...
-        elif command == FSDClientPacket.AC_HANDOFF:
-            ...
-        elif command == FSDClientPacket.SB:
-            ...
-        elif command == FSDClientPacket.PC:
-            ...
+            self.handleCast(
+                packet,
+                command=command,
+                require_param=3,
+                multicast_able=True,
+                custom_at_checker=broadcastMessageChecker,
+            )
+        elif (
+            command == FSDClientPacket.REQUEST_HANDOFF
+            or command == FSDClientPacket.AC_HANDOFF
+        ):
+            self.handleCast(packet, command, require_param=3, multicast_able=False)
+        elif command == FSDClientPacket.SB or command == FSDClientPacket.PC:
+            self.handleCast(packet, command, require_param=2, multicast_able=False)
         elif command == FSDClientPacket.WEATHER:
             ...
         elif command == FSDClientPacket.REQUEST_COMM:
-            ...
+            self.handleCast(packet, command, require_param=2, multicast_able=False)
         elif command == FSDClientPacket.REPLY_COMM:
-            ...
+            self.handleCast(packet, command, require_param=3, multicast_able=False)
         elif command == FSDClientPacket.REQUEST_ACARS:
             ...
         elif command == FSDClientPacket.CR:
-            ...
+            self.handleCast(packet, command, require_param=4, multicast_able=False)
         elif command == FSDClientPacket.CQ:
             ...
         elif command == FSDClientPacket.KILL:

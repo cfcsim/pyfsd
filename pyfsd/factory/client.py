@@ -61,17 +61,18 @@ class FSDClientFactory(Factory):
         auto_newline: bool = True,
         from_client: Optional["Client"] = None,
     ) -> None:
-        buffer: str = ""
-        for line in lines:
-            buffer += line
-            if auto_newline:
-                buffer += "\r\n"
+        data = "\r\n".join(lines) if auto_newline else "".join(lines)
         for client in self.clients.values():
             if client == from_client:
                 continue
             if not check_func(from_client, client):
                 continue
-            client.transport.write(buffer.encode())  # type: ignore
+            client.transport.write(data.encode())  # type: ignore
 
-    def sendTo(self, callsign: str, data: str) -> None:
-        self.clients[callsign].transport.write(data)  # type: ignore
+    def sendTo(self, callsign: str, *lines: str, auto_newline: bool = True) -> bool:
+        try:
+            data = "\r\n".join(lines) if auto_newline else "".join(lines)
+            self.clients[callsign].transport.write(data)  # type: ignore
+            return True
+        except KeyError:
+            return False
