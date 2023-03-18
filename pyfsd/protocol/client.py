@@ -459,6 +459,11 @@ class FSDClientProtocol(LineReceiver):
             )
         )
 
+    def handleCq(self, packet: List[str]) -> None:
+        self.handleCast(
+            packet, FSDClientPacket.CQ, require_param=3, multicast_able=True
+        )
+
     def handleKill(self, packet: List[str]) -> None:
         if len(packet) < 3:
             self.sendError(FSDErrors.ERR_SYNTAX)
@@ -524,9 +529,7 @@ class FSDClientProtocol(LineReceiver):
             if len(packet) > 1 and packet[1].lower() == "server":
                 self.handleServerPing(packet)
             else:
-                self.handleCast(
-                    packet, command, require_param=2, multicast_able=True
-                )
+                self.handleCast(packet, command, require_param=2, multicast_able=True)
         elif command == FSDClientPacket.MESSAGE:
             self.handleCast(
                 packet,
@@ -553,7 +556,7 @@ class FSDClientProtocol(LineReceiver):
         elif command == FSDClientPacket.CR:
             self.handleCast(packet, command, require_param=4, multicast_able=False)
         elif command == FSDClientPacket.CQ:
-            ...
+            self.handleCq(packet)
         elif command == FSDClientPacket.KILL:
             self.handleKill(packet)
         else:
