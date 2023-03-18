@@ -165,3 +165,7 @@ cython_debug/
 # Debug files
 debug.py
 test.py
+
+# Vim
+*.swp
+*.swo
