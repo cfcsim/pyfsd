@@ -4,6 +4,13 @@
 基于Twisted的[FSD](https://github.com/kuroneko/fsd)协议9的实现。  
 ⚠️警告⚠️：代码质量低下
 
+## 逝用
+请确保已安装pdm. (`pip install pdm`)
+```
+pdm install # 安装依赖
+python -m pyfsd # 运行
+```
+
 ## Todo
 ### 协议(9)
 - METAR(`#WX`,`$AX`)
@@ -14,5 +21,5 @@
 
 ## 开源协议
 MIT License
-Copyright (c) 2023 gamecss
+Copyright (c) 2023 gamecss  
 无附加条款。
