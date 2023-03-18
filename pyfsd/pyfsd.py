@@ -24,5 +24,5 @@ class PyFSD:
         )
 
     def run(self) -> None:
-        TCP4ServerEndpoint(reactor, 6810).listen(self.client_factory)
+        TCP4ServerEndpoint(reactor, 6809).listen(self.client_factory)
         reactor.run()  # type: ignore
