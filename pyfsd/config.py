@@ -1,6 +1,11 @@
-import configparser
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 __all__ = ["config"]
 
-config = configparser.ConfigParser()
-config.read("pyfsd.ini")
+with open("pyfsd.toml", "rb") as file:
+    config = tomllib.load(file)
+
+print(config)

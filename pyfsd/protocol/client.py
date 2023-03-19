@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 __all__ = ["FSDClientProtocol"]
 
 
-_motd: List[str] = config.get("pyfsd", "motd").splitlines()
+_motd: List[str] = config["pyfsd"]["motd"].splitlines()
 
 
 class FSDClientProtocol(LineReceiver):

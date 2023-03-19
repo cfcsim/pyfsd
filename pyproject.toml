@@ -9,6 +9,7 @@ dependencies = [
     "twisted>=22.10.0",
     "loguru>=0.6.0",
     "haversine>=2.8.0",
+    "tomli>=1.1.0; python_version<'3.11'",
 ]
 requires-python = ">=3.8.1"
 readme = "README.md"

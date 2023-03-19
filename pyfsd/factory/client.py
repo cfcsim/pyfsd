@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from ..object.client import Client
 
 __all__ = ["FSDClientFactory"]
-client_blacklist = config.get("pyfsd", "client_blacklist").split()
+client_blacklist = config["pyfsd"]["client_blacklist"]
 
 
 class FSDClientFactory(Factory):

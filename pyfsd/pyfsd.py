@@ -14,7 +14,7 @@ class PyFSD:
 
     def __init__(self) -> None:
         self.db_pool = ConnectionPool(
-            "sqlite3", config.get("pyfsd", "database_name"), check_same_thread=False
+            "sqlite3", config["pyfsd"]["database_name"], check_same_thread=False
         )
         self.client_factory = FSDClientFactory(
             Portal(Realm(), checkers=[CredentialsChecker(self.db_pool.runQuery)])
