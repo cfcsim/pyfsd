@@ -444,9 +444,63 @@ class FSDClientProtocol(LineReceiver):
         )
 
     def handleCq(self, packet: List[str]) -> None:
-        self.handleCast(
-            packet, FSDClientPacket.CQ, require_param=3, multicast_able=True
-        )
+        # Behavior may differ from FSD.
+        if len(packet) < 3:
+            self.sendError(FSDErrors.ERR_SYNTAX)
+        if self.client is None:
+            return
+        if packet[2].lower() == "fp":
+            if len(packet) < 4:
+                self.sendError(FSDErrors.ERR_SYNTAX)
+            callsign = packet[3]
+            if (client := self.factory.clients.get(callsign)) is None:
+                self.sendError(FSDErrors.ERR_NOSUCHCS, env=callsign)
+                return
+            if (plan := client.flight_plan) is None:
+                self.sendError(FSDErrors.ERR_NOFP)
+                return
+            if not self.client.type == "ATC":
+                return
+            self.send(
+                FSDClientPacket.makePacket(
+                    FSDClientPacket.PLAN,
+                    callsign,
+                    self.client.callsign,
+                    plan.type,
+                    plan.aircraft,
+                    plan.tascruise,
+                    plan.dep_airport,
+                    plan.dep_time,
+                    plan.act_dep_time,
+                    plan.alt,
+                    plan.dest_airport,
+                    plan.hrs_enroute,
+                    plan.min_enroute,
+                    plan.hrs_fuel,
+                    plan.min_fuel,
+                    plan.alt_airport,
+                    plan.remarks,
+                    plan.route,
+                )
+            )
+        elif packet[2].upper() == "RN":
+            callsign = packet[1]
+            if (client := self.factory.clients.get(callsign)) is not None:
+                self.send(
+                    FSDClientPacket.makePacket(
+                        FSDClientPacket.CR,
+                        callsign,
+                        self.client.callsign,
+                        "RN",
+                        client.realname,
+                        "USER",
+                        client.rating,
+                    )
+                )
+        else:
+            self.handleCast(
+                packet, FSDClientPacket.CQ, require_param=3, multicast_able=True
+            )
 
     def handleKill(self, packet: List[str]) -> None:
         if len(packet) < 3:
