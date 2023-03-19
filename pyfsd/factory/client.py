@@ -7,11 +7,13 @@ from twisted.internet.task import LoopingCall
 
 from ..config import config
 from ..define.packet import FSDClientPacket
+from ..define.utils import joinLines
 from ..protocol.client import FSDClientProtocol
 
 if TYPE_CHECKING:
     from twisted.cred.portal import Portal
     from twisted.internet.interfaces import IAddress
+    from twisted.internet.protocol import Protocol
 
     from ..define.broadcast import BroadcastChecker
     from ..object.client import Client
@@ -24,19 +26,21 @@ class FSDClientFactory(Factory):
     clients: WeakValueDictionary[str, "Client"] = WeakValueDictionary()
     portal: "Portal"
     heartbeater: LoopingCall
+    protocol = FSDClientProtocol
 
     def __init__(self, portal: "Portal") -> None:
-        self.heartbeater = LoopingCall(self.heartbeat)
-        self.heartbeater.start(70, now=False)
         self.portal = portal
 
-    #        self.portal.login(UsernameMD5Password("1012", "test"), None)
+    def startFactory(self) -> None:
+        self.heartbeater = LoopingCall(self.heartbeat)
+        self.heartbeater.start(70, now=False)
 
-    def __del__(self) -> None:
+    def stopFactory(self):
         if self.heartbeater.running:
             self.heartbeater.stop()
-        for client in self.clients.values():
-            client.transport.loseConnection()
+
+    #   for client in self.clients.values():
+    #       client.transport.loseConnection()
 
     def heartbeat(self) -> None:
         random_int: int = randint(-214743648, 2147483647)
@@ -49,10 +53,10 @@ class FSDClientFactory(Factory):
             )
         )
 
-    def buildProtocol(self, addr: "IAddress") -> Optional[FSDClientProtocol]:
+    def buildProtocol(self, addr: "IAddress") -> Optional["Protocol"]:
         if addr.host in client_blacklist:
             return None
-        return FSDClientProtocol(self)
+        return super().buildProtocol(addr)
 
     def broadcast(
         self,
@@ -61,7 +65,7 @@ class FSDClientFactory(Factory):
         auto_newline: bool = True,
         from_client: Optional["Client"] = None,
     ) -> None:
-        data = "\r\n".join(lines) if auto_newline else "".join(lines)
+        data = joinLines(*lines, newline=auto_newline)
         for client in self.clients.values():
             if client == from_client:
                 continue
@@ -70,8 +74,8 @@ class FSDClientFactory(Factory):
             client.transport.write(data.encode())  # type: ignore
 
     def sendTo(self, callsign: str, *lines: str, auto_newline: bool = True) -> bool:
+        data = joinLines(*lines, newline=auto_newline)
         try:
-            data = "\r\n".join(lines) if auto_newline else "".join(lines)
             self.clients[callsign].transport.write(data)  # type: ignore
             return True
         except KeyError:

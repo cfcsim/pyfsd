@@ -6,9 +6,6 @@ from twisted.internet.endpoints import TCP4ServerEndpoint
 from .auth import CredentialsChecker, Realm
 from .config import config
 from .factory.client import FSDClientFactory
-from .setup_loguru import setup_loguru
-
-setup_loguru()
 
 
 class PyFSD:

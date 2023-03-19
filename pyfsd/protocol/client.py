@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, List, Optional
 
+from twisted.internet import reactor
 from twisted.internet.interfaces import ITransport
-from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
 
@@ -17,10 +17,12 @@ from ..define.broadcast import (
 )
 from ..define.errors import FSDErrors
 from ..define.packet import FSDClientPacket
-from ..define.utils import isCallsignVaild, strToFloat, strToInt
+from ..define.utils import isCallsignVaild, joinLines, strToFloat, strToInt
 from ..object.client import Client, ClientType
 
 if TYPE_CHECKING:
+    from twisted.internet.base import DelayedCall
+
     from ..factory.client import FSDClientFactory
 
 __all__ = ["FSDClientProtocol"]
@@ -32,28 +34,18 @@ _motd: List[str] = config.get("pyfsd", "motd").splitlines()
 class FSDClientProtocol(LineReceiver):
     factory: "FSDClientFactory"
     transport: ITransport
-    timeoutKiller: LoopingCall
+    timeoutKiller: "DelayedCall"
     logger: Logger = Logger()
     client: Optional[Client] = None
 
-    def __init__(self, factory: "FSDClientFactory") -> None:
-        self.factory = factory
-
     def connectionMade(self):
-        self.timeoutKiller = LoopingCall(self.timeout)
-        self.timeoutKiller.start(800, now=False).addCallback(self._cancelTimeoutLoop)
+        self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
         self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
 
-    def _cancelTimeoutLoop(self, _) -> None:
-        if self.timeoutKiller.running:
-            self.timeoutKiller.stop()
-
     def send(self, *lines: str, auto_newline: bool = True) -> None:
-        buffer: str = ""
-        tail = "\r\n" if auto_newline else ""
-        for line in lines:
-            buffer += f"{line}{tail}"
-        self.transport.write(buffer.encode())  # type: ignore
+        self.transport.write(
+            joinLines(*lines, newline=auto_newline).encode()  # type: ignore
+        )
 
     def sendError(self, errno: int, env: str = "", fatal: bool = False) -> None:
         assert not (errno < 0 and errno <= 13)
@@ -69,14 +61,6 @@ class FSDClientProtocol(LineReceiver):
         )
         if fatal:
             self.transport.loseConnection()
-
-    #    def isThisClient(self, callsign: str) -> bool:
-    #        if (self.client := self.this_client()) is None:
-    #            return False
-    #        if self.client.callsign != callsign:
-    #            self.sendError(FSDErrors.ERR_SRCINVALID, env=callsign)
-    #            return False
-    #        return True
 
     def timeout(self) -> None:
         self.send("# Timeout")
@@ -563,7 +547,8 @@ class FSDClientProtocol(LineReceiver):
             self.sendError(FSDErrors.ERR_SYNTAX)
 
     def connectionLost(self, _) -> None:
-        self._cancelTimeoutLoop(None)
+        if self.timeoutKiller.active():
+            self.timeoutKiller.cancel()
         host: str = self.transport.getPeer().host
         if self.client is not None:
             self.logger.info(f"{host} ({self.client.callsign}) disconnected.")
@@ -581,5 +566,5 @@ class FSDClientProtocol(LineReceiver):
             self.logger.info(f"{host} disconnected.")
 
     def dataReceived(self, data) -> None:
-        self.timeoutKiller.reset()
+        self.timeoutKiller.reset(800)
         super().dataReceived(data)

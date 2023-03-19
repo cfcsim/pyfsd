@@ -11,6 +11,7 @@ __all__ = [
     "strToFloat",
     "isCallsignVaild",
     "calcDistance",
+    "joinLines",
 ]
 __invaild_char_regex = compile("[!@#$%*:& \t]")
 
@@ -42,3 +43,10 @@ def isCallsignVaild(callsign: str) -> bool:
     if __invaild_char_regex.search(callsign) is not None:
         return False
     return True
+
+
+def joinLines(*lines: str, newline: bool = True) -> str:
+    if newline:
+        return "\r\n".join(lines) + "\r\n"
+    else:
+        return "".join(lines)
