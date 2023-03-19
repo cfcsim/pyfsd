@@ -17,7 +17,6 @@ python -m pyfsd # 运行
 ## Todo
 ### 客户端协议(9)
 - METAR(`#WX`,`$AX`)
-- CQ (信息广播/查询用户信息/查询机组飞行计划)
 ## 多服务器协议
 一点还没做啊!谁会需要多服务器啊???
 ### 其他
@@ -25,6 +24,6 @@ python -m pyfsd # 运行
 - 插件机制
 
 ## 开源协议
-MIT License
+MIT License  
 Copyright (c) 2023 gamecss  
 无附加条款。
