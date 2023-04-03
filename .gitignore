@@ -169,3 +169,6 @@ test.py
 # Vim
 *.swp
 *.swo
+
+# Twisted plugin cache
+dropin.cache

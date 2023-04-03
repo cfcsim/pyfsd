@@ -1,25 +1,36 @@
-from twisted.cred.portal import Portal  # noqa: E402
-from twisted.enterprise.adbapi import ConnectionPool
-from twisted.internet import reactor
-from twisted.internet.endpoints import TCP4ServerEndpoint
+from typing import TYPE_CHECKING, Optional
 
-from .auth import CredentialsChecker, Realm
-from .config import config
+from twisted.application.service import Application, IServiceCollection, Service
+from twisted.application.strports import service
+
+# from .auth import CredentialsChecker, Realm
 from .factory.client import FSDClientFactory
 
+# from twisted.cred.portal import Portal
+# from twisted.internet import reactor
+# from twisted.internet.endpoints import TCP4ServerEndpoint
 
-class PyFSD:
-    client_factory: FSDClientFactory
-    db_pool: ConnectionPool
 
-    def __init__(self) -> None:
-        self.db_pool = ConnectionPool(
-            "sqlite3", config["pyfsd"]["database_name"], check_same_thread=False
-        )
-        self.client_factory = FSDClientFactory(
-            Portal(Realm(), checkers=[CredentialsChecker(self.db_pool.runQuery)])
-        )
+if TYPE_CHECKING:
+    from twisted.python.components import Componentized
 
-    def run(self) -> None:
-        TCP4ServerEndpoint(reactor, 6809).listen(self.client_factory)
-        reactor.run()  # type: ignore
+
+class PyFSDService(Service):
+    client_factory: Optional[FSDClientFactory] = None
+
+    def makeClientFactory(self) -> FSDClientFactory:
+        self.client_factory = FSDClientFactory(None)
+        return self.client_factory
+
+
+def makeApplication(
+    client_strport: str, uid: Optional[int] = None, gid: Optional[int] = None
+) -> "Componentized":
+    app = Application("PyFSD", uid=uid, gid=gid)
+    pyfsd = PyFSDService()
+    serviceCollection = IServiceCollection(app)
+    pyfsd.setServiceParent(serviceCollection)
+    service(client_strport, pyfsd.makeClientFactory()).setServiceParent(
+        serviceCollection
+    )
+    return app

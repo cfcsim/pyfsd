@@ -111,6 +111,11 @@ requires_python = ">=3.6"
 summary = "McCabe checker, plugin for flake8"
 
 [[package]]
+name = "metar"
+version = "1.9.0"
+summary = "Metar - a package to parse METAR-coded weather reports"
+
+[[package]]
 name = "mypy-extensions"
 version = "1.0.0"
 requires_python = ">=3.5"
@@ -208,7 +213,7 @@ dependencies = [
 
 [metadata]
 lock_version = "4.1"
-content_hash = "sha256:8f68920cfffc2dba24a6415b8f79d4e3f870a691723c3fee8810715a96f8fe4c"
+content_hash = "sha256:098514181b77753b79be61f7d08403b5c1bb5b2ab54b56421958f663ccfceb69"
 
 [metadata.files]
 "attrs 22.2.0" = [
@@ -289,6 +294,10 @@ content_hash = "sha256:8f68920cfffc2dba24a6415b8f79d4e3f870a691723c3fee8810715a9
 "mccabe 0.7.0" = [
     {url = "https://pypi.tuna.tsinghua.edu.cn/packages/27/1a/1f68f9ba0c207934b35b86a8ca3aad8395a3d6dd7921c0686e23853ff5a9/mccabe-0.7.0-py2.py3-none-any.whl", hash = "sha256:6c2d30ab6be0e4a46919781807b4f0d834ebdd6c6e3dca0bda5a15f863427b6e"},
     {url = "https://pypi.tuna.tsinghua.edu.cn/packages/e7/ff/0ffefdcac38932a54d2b5eed4e0ba8a408f215002cd178ad1df0f2806ff8/mccabe-0.7.0.tar.gz", hash = "sha256:348e0240c33b60bbdf4e523192ef919f28cb2c3d7d5c7794f74009290f236325"},
+]
+"metar 1.9.0" = [
+    {url = "https://pypi.tuna.tsinghua.edu.cn/packages/70/e7/fba81a245852ca91cbeb105a1bf9f8228dbbeb8b6bc8679b8efc44a0a2ac/metar-1.9.0.tar.gz", hash = "sha256:ef58a29e1ef8fed034ed493dc874aa4fbd40313e578640287dbf5c55d89886c5"},
+    {url = "https://pypi.tuna.tsinghua.edu.cn/packages/76/7c/000867aa27d896860b1153a79a480f45433d5b68a0e1e87deaef9aa17c09/metar-1.9.0-py3-none-any.whl", hash = "sha256:093e497487388eacf05841a80436e92824001c7e57d3c34787278cfd9ccded9a"},
 ]
 "mypy-extensions 1.0.0" = [
     {url = "https://pypi.tuna.tsinghua.edu.cn/packages/2a/e2/5d3f6ada4297caebe1a2add3b126fe800c96f56dbe5d1988a2cbe0b267aa/mypy_extensions-1.0.0-py3-none-any.whl", hash = "sha256:4392f6c0eb8a5668a69e23d168ffa70f0be9ccfd32b5cc2d26a34ae5b844552d"},

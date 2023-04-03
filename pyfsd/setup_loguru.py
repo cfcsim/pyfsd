@@ -1,4 +1,5 @@
 import sys
+import warnings
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -9,6 +10,8 @@ from zope.interface import implementer
 if TYPE_CHECKING:
     from twisted.logger import LogEvent
     from twisted.python.failure import Failure
+
+_warnings_showwarning = warnings.showwarning
 
 
 def getDepth() -> int:
@@ -34,7 +37,16 @@ def getDepth() -> int:
         return depth
 
 
-def setup_loguru() -> None:
+def warningCapturer(message, category, filename, lineno, file=None, line=None):
+    if file is None:
+        logger.opt(depth=2).warning(
+            str(warnings.formatwarning(message, category, filename, lineno, line))
+        )
+    else:
+        _warnings_showwarning(message, category, filename, lineno, file, line)
+
+
+def setupLoguru() -> None:
     # Avoid stderr lost
     logger.remove()
     logger.add(sys.__stderr__)
@@ -46,30 +58,39 @@ def setup_loguru() -> None:
     )
     # Avoid adding other observers
     globalLogBeginner.beginLoggingTo = lambda *_, **__: None
+    warnings.showwarning = warningCapturer
 
 
 def extractException(failure: "Failure"):
+    """
     if failure.type is None:
         return None
-    elif not issubclass(failure.type, Exception):
+    elif not issubclass(failure.type, BaseException):
         return None
+    """
     return failure.type, failure.value, failure.tb
 
 
 @logger.catch(message="Loguru observer failure")
 @implementer(ILogObserver)
 def loguruLogObserver(event: "LogEvent") -> None:
+    # sys.__stdout__.write(repr(event) + "\n")
+    level_name = event["log_level"].name.upper()
+    if level_name == "WARN":
+        level_name = "WARNING"
     if "failure" in event:
         logger.opt(
             exception=extractException(event["failure"]),  # type: ignore
             depth=4,
-        ).error("Unhandled Error")
+        ).log(level_name, "Unhandled Error")
+    elif "log_failure" in event:
+        logger.opt(
+            exception=extractException(event["log_failure"]),  # type: ignore
+            depth=4,
+        ).log(level_name, "Error info:")
     else:
         event_text = _formatEvent(event)
         if event_text is not None:
             # namespace = event["log_namespace"].rsplit(".", 1)[0]
             depth = getDepth()
-            level_name = event["log_level"].name.upper()
-            if level_name == "WARN":
-                level_name = "WARNING"
             logger.opt(depth=depth).log(level_name, event_text)

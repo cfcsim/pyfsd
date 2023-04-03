@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 __all__ = ["FSDClientProtocol"]
 
 
-_motd: List[str] = config["pyfsd"]["motd"].splitlines()
+_motd: List[str] = config["pyfsd"]["client"]["motd"].splitlines()
 
 
 class FSDClientProtocol(LineReceiver):
@@ -54,7 +54,7 @@ class FSDClientProtocol(LineReceiver):
             FSDClientPacket.makePacket(
                 FSDClientPacket.ERROR + "server",
                 self.client.callsign if self.client is not None else "unknown",
-                str(errno).rjust(3, "0"),
+                f"{errno:03d}",  # = str(errno).rjust(3, "0")
                 env,
                 err_str,
             )
@@ -449,7 +449,12 @@ class FSDClientProtocol(LineReceiver):
             self.sendError(FSDErrors.ERR_SYNTAX)
         if self.client is None:
             return
-        if packet[2].lower() == "fp":
+        if packet[1].upper() != "SERVER":
+            self.handleCast(
+                packet, FSDClientPacket.CQ, require_param=3, multicast_able=True
+            )
+            return
+        elif packet[2].lower() == "fp":
             if len(packet) < 4:
                 self.sendError(FSDErrors.ERR_SYNTAX)
             callsign = packet[3]
@@ -484,6 +489,7 @@ class FSDClientProtocol(LineReceiver):
                 )
             )
         elif packet[2].upper() == "RN":
+            # This part won't execute except a client named 'server'
             callsign = packet[1]
             if (client := self.factory.clients.get(callsign)) is not None:
                 self.send(
@@ -497,10 +503,6 @@ class FSDClientProtocol(LineReceiver):
                         client.rating,
                     )
                 )
-        else:
-            self.handleCast(
-                packet, FSDClientPacket.CQ, require_param=3, multicast_able=True
-            )
 
     def handleKill(self, packet: List[str]) -> None:
         if len(packet) < 3:

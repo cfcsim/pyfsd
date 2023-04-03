@@ -1,12 +1,6 @@
-from twisted.application import service, strports
-from twisted.internet import reactor
+from pyfsd.pyfsd import makeApplication
+from pyfsd.setup_loguru import setupLoguru
 
-from pyfsd.factory.client import FSDClientFactory
+setupLoguru()
 
-# from pyfsd.setup_loguru import setup_loguru
-# setup_loguru()
-
-application = service.Application("PyFSD")
-strports.service("tcp:6809", FSDClientFactory(None), reactor=reactor).setServiceParent(
-    service.IServiceCollection(application)
-)
+application = makeApplication("tcp:6810")

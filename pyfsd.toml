@@ -1,5 +1,13 @@
 [pyfsd]
+database_name = "pyfsd.db"
+
+[pyfsd.client]
+port = 6810
 motd = """Shhh... Let's not leak out hard work
 Developer: Telegram @gamecss"""
-client_blacklist = ["10.0.0.1", "11.4.5.14"]
-database_name = "pyfsd.db"
+blacklist = []
+
+[pyfsd.metar]
+mode = "cron"
+cron_time = 3600
+fetchers = ["NOAA"]

@@ -50,3 +50,29 @@ def joinLines(*lines: str, newline: bool = True) -> str:
         return "\r\n".join(lines) + "\r\n"
     else:
         return "".join(lines)
+
+
+def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
+    def getName(obj) -> str:
+        if isinstance(obj, type):
+            return obj.__name__
+        else:
+            return type(obj).__name__
+
+    for key, type_ in structure.items():
+        if not (isinstance(type_, dict) or isinstance(type_, type)):
+            raise TypeError(f"Invaild type '{type_!r}'")
+        if key not in config:
+            raise KeyError(f"{prefix}{key}")
+        if isinstance(type_, dict):
+            if not isinstance(config[key], dict):
+                raise TypeError(
+                    f"'{prefix}{key}' must be section, not {getName(config[key])}"
+                )
+            verifyConfigStruct(config[key], type_, prefix=f"{prefix}{key}.")
+        elif isinstance(type_, type):
+            if not isinstance(config[key], type_):
+                raise TypeError(
+                    f"'{prefix}{key}' must be {getName(type_)}"
+                    f", not {getName(config[key])}"
+                )
