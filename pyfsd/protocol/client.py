@@ -5,7 +5,7 @@ from twisted.internet.interfaces import ITransport
 from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
 
-from ..config import config
+# from ..config import config
 from ..define.broadcast import (
     BroadcastChecker,
     allATCChecker,
@@ -26,9 +26,6 @@ if TYPE_CHECKING:
     from ..factory.client import FSDClientFactory
 
 __all__ = ["FSDClientProtocol"]
-
-
-_motd: List[str] = config["pyfsd"]["client"]["motd"].splitlines()
 
 
 class FSDClientProtocol(LineReceiver):
@@ -69,7 +66,7 @@ class FSDClientProtocol(LineReceiver):
     def sendMotd(self) -> None:
         assert self.client is not None
         motd_lines: List[str] = [f"#TMserver:{self.client.callsign}:PyFSD Development"]
-        for line in _motd:
+        for line in self.factory.motd:
             motd_lines.append(
                 FSDClientPacket.makePacket(
                     FSDClientPacket.MESSAGE + "server", self.client.callsign, line

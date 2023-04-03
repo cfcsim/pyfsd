@@ -1,11 +1,10 @@
 from random import randint
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 from weakref import WeakValueDictionary
 
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
 
-from ..config import config
 from ..define.packet import FSDClientPacket
 from ..define.utils import joinLines
 from ..protocol.client import FSDClientProtocol
@@ -19,17 +18,20 @@ if TYPE_CHECKING:
     from ..object.client import Client
 
 __all__ = ["FSDClientFactory"]
-client_blacklist = config["pyfsd"]["client"]["blacklist"]
 
 
 class FSDClientFactory(Factory):
     clients: WeakValueDictionary[str, "Client"] = WeakValueDictionary()
     portal: "Portal"
     heartbeater: LoopingCall
+    blacklist: list
+    motd: List[str]
     protocol = FSDClientProtocol
 
-    def __init__(self, portal: "Portal") -> None:
+    def __init__(self, portal: "Portal", blacklist: list, motd: List[str]) -> None:
         self.portal = portal
+        self.blacklist = blacklist
+        self.motd = motd
 
     def startFactory(self) -> None:
         self.heartbeater = LoopingCall(self.heartbeat)
@@ -54,7 +56,7 @@ class FSDClientFactory(Factory):
         )
 
     def buildProtocol(self, addr: "IAddress") -> Optional["Protocol"]:
-        if addr.host in client_blacklist:
+        if addr.host in self.blacklist:
             return None
         return super().buildProtocol(addr)
 
