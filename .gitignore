@@ -172,3 +172,7 @@ test.py
 
 # Twisted plugin cache
 dropin.cache
+
+# Twistd log & pid
+twistd.log
+twistd.pid

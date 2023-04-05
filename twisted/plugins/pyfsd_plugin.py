@@ -8,9 +8,9 @@ from twisted.plugin import IPlugin
 from twisted.python.usage import Options
 from zope.interface import implementer
 
+from pyfsd.define.utils import verifyConfigStruct
 from pyfsd.service import PyFSDService
 from pyfsd.setup_loguru import setupLoguru
-from pyfsd.define.utils import verifyConfigStruct
 
 
 class PyFSDOptions(Options):
@@ -51,6 +51,7 @@ class PyFSDServiceMaker:
         pyfsd_service = PyFSDService(config)
         pyfsd_service.setServiceParent(service)
         pyfsd_service.getClientService().setServiceParent(service)
+        pyfsd_service.getMetarService().setServiceParent(service)
         return service
 
 

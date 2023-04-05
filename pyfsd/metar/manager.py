@@ -1,5 +1,4 @@
 from typing import TYPE_CHECKING, Iterable, List, Optional
-from warnings import catch_warnings
 
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
@@ -12,6 +11,9 @@ from .fetch import (
     MetarNotAvailableError,
     NOAAMetarFetcher,
 )
+
+# from warnings import catch_warnings  ** not thread safe
+
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -63,12 +65,17 @@ class MetarManager:
             f"Fetched {len(self.metar_cache)} METARs with {len(warn)} warnings."
         )
 
-    def startCache(self) -> None:
+    def startCache(self, in_thread: bool = False) -> None:
         if self.cron_time is None or not self.cron:
             raise RuntimeError("No cron time specified")
         if self.cron_task is not None and self.cron_task.running:
             raise RuntimeError("Metar cache task already running")
-        self.cron_task = LoopingCall(self.cacheMetar)
+        if in_thread:
+            from twisted.internet.threads import deferToThread
+
+            self.cron_task = LoopingCall(lambda: deferToThread(self.cacheMetar))
+        else:
+            self.cron_task = LoopingCall(self.cacheMetar)
         self.cron_task.start(self.cron_time)
 
     def stopCache(self) -> None:
@@ -83,8 +90,7 @@ class MetarManager:
         else:
             for fetcher in self.fetchers:
                 try:
-                    with catch_warnings():
-                        return fetcher.fetch(icao)
+                    return fetcher.fetch(icao)
                 except NotImplementedError or MetarNotAvailableError:
                     pass
         return None
