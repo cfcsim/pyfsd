@@ -1,5 +1,3 @@
-from typing import Iterable, assert_type
-
 try:
     import tomllib
 except ModuleNotFoundError:

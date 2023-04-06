@@ -38,6 +38,9 @@ def getDepth() -> int:
 
 
 def warningCapturer(message, category, filename, lineno, file=None, line=None):
+    if category == RuntimeWarning and filename.endswith("metar/Metar.py"):
+        # ignore metar parse warning
+        return
     if file is None:
         logger.opt(depth=2).warning(
             str(warnings.formatwarning(message, category, filename, lineno, line))

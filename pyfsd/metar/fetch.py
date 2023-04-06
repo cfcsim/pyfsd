@@ -3,7 +3,6 @@ from typing import Dict, List, Optional, cast
 from urllib.error import ContentTooShortError, HTTPError, URLError
 from urllib.request import urlopen
 
-from chardet import detect
 from metar.Metar import Metar
 from zope.interface import Attribute, Interface, implementer
 
@@ -57,10 +56,9 @@ class NOAAMetarFetcher:
                 "https://tgftp.nws.noaa.gov/data/observations/metar/stations/"
                 f"{icao}.TXT"
             ) as metar_file:
-                try:
-                    metar_str = metar_file.read().decode().splitlines()
-                except UnicodeDecodeError:
-                    return None
+                metar_str = (
+                    metar_file.read().decode("ascii", "backslashreplace").splitlines()
+                )
                 return self.parseMetar(metar_str)
         except ContentTooShortError or HTTPError or URLError:
             return None
@@ -74,14 +72,7 @@ class NOAAMetarFetcher:
                 f"{utc_hour:02d}Z.TXT"
             ) as metar_file:
                 content = metar_file.read()
-                try:
-                    metar_blocks = content.decode().split("\n\n")
-                except UnicodeDecodeError as err:
-                    print(UnicodeDecodeError.__name__ + ":", str(err))
-                    print(detect(content))
-                    with open("err_metar.txt", "wb") as ef:
-                        ef.write(content)
-                    raise MetarNotAvailableError
+                metar_blocks = content.decode("ascii", "backslashreplace").split("\n\n")
                 for block in metar_blocks:
                     blocklines = block.splitlines()
                     if len(blocklines) < 2:

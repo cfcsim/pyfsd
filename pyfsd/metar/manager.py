@@ -52,17 +52,16 @@ class MetarManager:
 
     def cacheMetar(self) -> None:
         self.logger.info("Fetching METAR")
-        warn = []
+        # warn = []
         for fetcher in self.fetchers:
             try:
-                with catch_warnings(record=True) as warn:
-                    self.metar_cache = fetcher.fetchAll()
+                # with catch_warnings(record=True) as warn:
+                self.metar_cache = fetcher.fetchAll()
+                break
             except NotImplementedError or MetarNotAvailableError:
                 pass
-            else:
-                break
         self.logger.info(
-            f"Fetched {len(self.metar_cache)} METARs with {len(warn)} warnings."
+            f"Fetched {len(self.metar_cache)} METARs."  # with {len(warn)} warnings."
         )
 
     def startCache(self, in_thread: bool = False) -> None:
