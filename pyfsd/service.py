@@ -10,17 +10,16 @@ from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 
 # from twisted.cred.portal import Portal
-# from twisted.internet import reactor
-# from twisted.internet.endpoints import TCP4ServerEndpoint
 
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
+    from twisted.internet.defer import Deferred
 
 
 class PyFSDService(Service):
     client_factory: Optional[FSDClientFactory] = None
-    fetch_metar: Callable[[str], Optional["Metar"]]
+    fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
     config: dict
 
     def __init__(self, config: dict) -> None:
@@ -42,6 +41,10 @@ class PyFSDService(Service):
             verifyConfigStruct(
                 self.config["pyfsd"]["metar"], {"cron_time": int}, prefix="pyfsd.metar"
             )
+        elif self.config["pyfsd"]["metar"]["mode"] != "once":
+            raise ValueError(
+                f"Invaild metar mode: {self.config['pyfsd']['metar']['mode']}"
+            )
 
     def getClientService(self) -> TCPServer:
         self.client_factory = FSDClientFactory(
@@ -60,5 +63,5 @@ class PyFSDService(Service):
             else None,
             self.config["pyfsd"]["metar"]["fetchers"],
         )
-        self.fetch_metar = metar_service.metar_manager.query
+        self.fetch_metar = metar_service.query
         return metar_service

@@ -4,6 +4,7 @@ from urllib.error import ContentTooShortError, HTTPError, URLError
 from urllib.request import urlopen
 
 from metar.Metar import Metar
+from twisted.plugin import IPlugin
 from zope.interface import implementer
 
 from ..metar.fetch import IMetarFetcher
@@ -17,7 +18,7 @@ class MetarPageParser(HTMLParser):
             self.metar_text = data
 
 
-@implementer(IMetarFetcher)
+@implementer(IPlugin, IMetarFetcher)
 class AWCMetarFetcher:
     name = "aviationweather"
 
@@ -38,3 +39,6 @@ class AWCMetarFetcher:
 
     def fetchAll(self) -> NoReturn:
         raise NotImplementedError
+
+
+fetcher = AWCMetarFetcher()
