@@ -1,16 +1,16 @@
 diff --git a/pyfsd/protocol/client.py b/pyfsd/protocol/client.py
-index f3e3e31..1708ed1 100644
+index 5226c03..87fb046 100644
 --- a/pyfsd/protocol/client.py
 +++ b/pyfsd/protocol/client.py
 @@ -1,3 +1,4 @@
 +from time import time
  from typing import TYPE_CHECKING, List, Optional
  
- from twisted.internet.interfaces import ITransport
-@@ -53,11 +54,26 @@ class FSDClientProtocol(LineReceiver):
-         tail = "\r\n" if auto_newline else ""
-         for line in lines:
-             buffer += f"{line}{tail}"
+ from twisted.internet import reactor
+@@ -41,6 +42,13 @@ class FSDClientProtocol(LineReceiver):
+         self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
+ 
+     def send(self, *lines: str, auto_newline: bool = True) -> None:
 +        host: str = self.transport.getPeer().host
 +        print(
 +            time(),
@@ -18,8 +18,10 @@ index f3e3e31..1708ed1 100644
 +            "===>",
 +            self.client.callsign if self.client is not None else host,
 +        )
-         self.transport.write(buffer.encode())  # type: ignore
- 
+         self.transport.write(
+             joinLines(*lines, newline=auto_newline).encode()  # type: ignore
+         )
+@@ -48,6 +56,14 @@ class FSDClientProtocol(LineReceiver):
      def sendError(self, errno: int, env: str = "", fatal: bool = False) -> None:
          assert not (errno < 0 and errno <= 13)
          err_str = FSDErrors.error_names[errno]
@@ -34,7 +36,7 @@ index f3e3e31..1708ed1 100644
          self.send(
              FSDClientPacket.makePacket(
                  FSDClientPacket.ERROR + "server",
-@@ -502,6 +518,13 @@ class FSDClientProtocol(LineReceiver):
+@@ -571,6 +587,13 @@ class FSDClientProtocol(LineReceiver):
              return
          if not line:
              return
