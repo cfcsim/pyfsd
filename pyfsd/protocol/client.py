@@ -22,6 +22,7 @@ from ..object.client import Client, ClientType
 
 if TYPE_CHECKING:
     from twisted.internet.base import DelayedCall
+    from metar.Metar import Metar
 
     from ..factory.client import FSDClientFactory
 
@@ -440,6 +441,32 @@ class FSDClientProtocol(LineReceiver):
             )
         )
 
+    def handleAcars(self, packet: List[str]) -> None:
+        if len(packet) < 3:
+            self.sendError(FSDErrors.ERR_SYNTAX)
+        if self.client is None:
+            return
+        if self.client.callsign != packet[0]:
+            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
+            return
+        if packet[2].upper() == "METAR" and len(packet) > 3:
+
+            def sendMetar(metar: Optional["Metar"]) -> None:
+                assert self.client is not None
+                if metar is None:
+                    self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
+                else:
+                    self.send(
+                        FSDClientPacket.makePacket(
+                            FSDClientPacket.REPLY_ACARS + "server",
+                            self.client.callsign,
+                            "METAR",
+                            metar.code,
+                        )
+                    )
+
+            self.factory.fetch_metar(packet[3]).addCallback(sendMetar)
+
     def handleCq(self, packet: List[str]) -> None:
         # Behavior may differ from FSD.
         if len(packet) < 3:
@@ -589,7 +616,7 @@ class FSDClientProtocol(LineReceiver):
         elif command == FSDClientPacket.REPLY_COMM:
             self.handleCast(packet, command, require_param=3, multicast_able=False)
         elif command == FSDClientPacket.REQUEST_ACARS:
-            ...
+            self.handleAcars(packet)
         elif command == FSDClientPacket.CR:
             self.handleCast(packet, command, require_param=4, multicast_able=False)
         elif command == FSDClientPacket.CQ:

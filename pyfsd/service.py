@@ -47,8 +47,10 @@ class PyFSDService(Service):
             )
 
     def getClientService(self) -> TCPServer:
+        assert self.fetch_metar is not None
         self.client_factory = FSDClientFactory(
             None,
+            self.fetch_metar,
             self.config["pyfsd"]["client"]["blacklist"],
             self.config["pyfsd"]["client"]["motd"].splitlines(),
         )

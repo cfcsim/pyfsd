@@ -1,5 +1,5 @@
 from random import randint
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Callable, List, Optional
 from weakref import WeakValueDictionary
 
 from twisted.internet.protocol import Factory
@@ -10,7 +10,9 @@ from ..define.utils import joinLines
 from ..protocol.client import FSDClientProtocol
 
 if TYPE_CHECKING:
+    from metar.Metar import Metar
     from twisted.cred.portal import Portal
+    from twisted.internet.defer import Deferred
     from twisted.internet.interfaces import IAddress
     from twisted.internet.protocol import Protocol
 
@@ -27,9 +29,17 @@ class FSDClientFactory(Factory):
     blacklist: list
     motd: List[str]
     protocol = FSDClientProtocol
+    fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
 
-    def __init__(self, portal: "Portal", blacklist: list, motd: List[str]) -> None:
+    def __init__(
+        self,
+        portal: "Portal",
+        fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"],
+        blacklist: list,
+        motd: List[str],
+    ) -> None:
         self.portal = portal
+        self.fetch_metar = fetch_metar
         self.blacklist = blacklist
         self.motd = motd
 

@@ -2,7 +2,7 @@
 database_name = "pyfsd.db"
 
 [pyfsd.client]
-port = 6810
+port = 6809
 motd = """Shhh... Let's not leak out hard work
 Developer: Telegram @gamecss"""
 blacklist = []
