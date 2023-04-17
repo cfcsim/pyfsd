@@ -88,7 +88,7 @@ class FSDClientFactory(Factory):
     def sendTo(self, callsign: str, *lines: str, auto_newline: bool = True) -> bool:
         data = joinLines(*lines, newline=auto_newline)
         try:
-            self.clients[callsign].transport.write(data)  # type: ignore
+            self.clients[callsign].transport.write(data.encode())  # type: ignore
             return True
         except KeyError:
             return False
