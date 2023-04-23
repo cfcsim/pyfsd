@@ -441,23 +441,24 @@ class FSDClientProtocol(LineReceiver):
             )
         )
 
-    def handleWeather(self, packet: List[str]) -> None:
-        if len(packet) < 3:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
-
-        def sendMetar(metar: Optional["Metar"]) -> None:
-            assert self.client is not None
-            if metar is None:
-                self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
-            else:
-                packets = []
-
-        self.factory.fetch_metar(packet[3]).addCallback(sendMetar)
+    # Hard to implement
+    #    def handleWeather(self, packet: List[str]) -> None:
+    #        if len(packet) < 3:
+    #            self.sendError(FSDErrors.ERR_SYNTAX)
+    #        if self.client is None:
+    #            return
+    #        if self.client.callsign != packet[0]:
+    #            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
+    #            return
+    #
+    #        def sendMetar(metar: Optional["Metar"]) -> None:
+    #            assert self.client is not None
+    #            if metar is None:
+    #                self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
+    #            else:
+    #                packets = []
+    #
+    #        self.factory.fetch_metar(packet[3]).addCallback(sendMetar)
 
     def handleAcars(self, packet: List[str]) -> None:
         if len(packet) < 3:

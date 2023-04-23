@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
+
     from ..object.client import Position
 
 
@@ -174,5 +175,5 @@ class WeatherProfile:
 
     def fix(self, position: "Position") -> None:
         a1 = position[0]
-        a2 = fabs(position[1]/18)
+        a2 = fabs(position[1] / 18)
         season = getSeason(self.metar._now.month, a1 < 0)
