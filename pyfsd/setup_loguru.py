@@ -71,7 +71,7 @@ def extractException(failure: "Failure"):
     elif not issubclass(failure.type, BaseException):
         return None
     """
-    return failure.type, failure.value, failure.tb
+    return failure.type, failure.value, failure.getTracebackObject()
 
 
 @logger.catch(message="Loguru observer failure")

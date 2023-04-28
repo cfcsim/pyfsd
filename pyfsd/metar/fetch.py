@@ -21,7 +21,7 @@ class MetarNotAvailableError(Exception):
 
 
 class IMetarFetcher(Interface):
-    name = Attribute("Name of fetcher")
+    metar_source = Attribute("metar_source", "Name of fetcher")
 
     def fetch(icao: str) -> Optional[Metar]:
         """Fetch the METAR of the specified airport."""
@@ -34,7 +34,7 @@ class IMetarFetcher(Interface):
 
 @implementer(IMetarFetcher)
 class NOAAMetarFetcher:
-    name = "NOAA"
+    metar_source = "NOAA"
 
     @staticmethod
     def parseMetar(metar_lines: List[str]) -> Metar:

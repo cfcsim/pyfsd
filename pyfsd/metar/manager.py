@@ -38,10 +38,10 @@ class MetarManager:
         count = 1
         temp_fetchers = {}
         fetchers = []
-        temp_fetchers[NOAAMetarFetcher.name] = NOAAMetarFetcher()
+        temp_fetchers[NOAAMetarFetcher.metar_source] = NOAAMetarFetcher()
         for fetcher in getPlugins(IMetarFetcher, package=plugins):
             count += 1
-            temp_fetchers[fetcher.name] = fetcher
+            temp_fetchers[fetcher.metar_source] = fetcher
         for need_fetcher in enabled_fetchers:
             if need_fetcher not in temp_fetchers:
                 self.logger.error(f"No such METAR fetcher: {need_fetcher}")

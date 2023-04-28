@@ -1,4 +1,5 @@
-from hashlib import md5
+from dataclasses import dataclass
+from hashlib import sha256
 from typing import Callable, List, Tuple
 
 from twisted.cred.checkers import ICredentialsChecker
@@ -6,22 +7,34 @@ from twisted.cred.credentials import IUsernameHashedPassword
 from twisted.cred.error import LoginFailed, UnauthorizedLogin, UnhandledCredentials
 from twisted.cred.portal import IRealm
 from twisted.internet.defer import Deferred
-from zope.interface import implementer
+from zope.interface import Attribute, Interface, implementer
 
 __all__ = ["CredentialsChecker", "Realm"]
 
 
+class IUserInfo(Interface):
+    username = Attribute("username")
+    password = Attribute("password")
+
+
+@implementer(IUserInfo)
+@dataclass
+class UserInfo:
+    name: str
+    rating: int
+
+
 @implementer(IUsernameHashedPassword)
-class UsernameMD5Password:
+class UsernameSHA256Password:
     username: str
     password: str
 
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, username: str, unhashed_password: str) -> None:
         self.username = username
-        self.password = md5(password.encode()).hexdigest()
+        self.password = sha256(unhashed_password.encode()).hexdigest()
 
-    def checkPassword(self, password: str) -> bool:
-        return password == self.password
+    def checkPassword(self, hashed_password: str) -> bool:
+        return hashed_password == self.password
 
 
 @implementer(ICredentialsChecker)
@@ -33,12 +46,12 @@ class CredentialsChecker:
     def __init__(
         self,
         runQuery: Callable[[str, tuple], Deferred],
-        query: str = "SELECT callsign, password FROM user WHERE callsign = ?",
+        query: str = "SELECT callsign, password, rating FROM users WHERE callsign = ?",
     ) -> None:
         self.runQuery = runQuery
         self.sql = query
 
-    def requestAvatarId(self, credentials: UsernameMD5Password) -> Deferred:
+    def requestAvatarId(self, credentials: UsernameSHA256Password) -> Deferred:
         if not IUsernameHashedPassword.providedBy(credentials):
             raise UnhandledCredentials()
         dbDeferred: Deferred = self.runQuery(self.sql, (credentials.username,))
@@ -53,8 +66,8 @@ class CredentialsChecker:
 
     def _cbAuthenticate(
         self,
-        result: List[Tuple[str, str]],
-        credentials: UsernameMD5Password,
+        result: List[Tuple[str, str, int]],
+        credentials: UsernameSHA256Password,
         deferred: Deferred,
     ) -> None:
         if len(result) == 0:
@@ -63,7 +76,7 @@ class CredentialsChecker:
             hashed_password = result[0][1]
             if IUsernameHashedPassword.providedBy(credentials):
                 if credentials.checkPassword(hashed_password):
-                    deferred.callback(credentials.username)
+                    deferred.callback((credentials.username, result[0][2]))
                 else:
                     deferred.errback(UnauthorizedLogin("Password mismatch"))
             else:
@@ -75,5 +88,9 @@ class CredentialsChecker:
 
 @implementer(IRealm)
 class Realm:
-    def requestAvatar(*args):
-        print(args)
+    @staticmethod
+    def requestAvatar(result: Tuple[str, int], _, *interfaces):
+        if IUserInfo in interfaces:
+            return IUserInfo, UserInfo(*result), lambda: None
+        else:
+            raise NotImplementedError("no interface")

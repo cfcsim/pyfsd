@@ -20,7 +20,7 @@ class MetarPageParser(HTMLParser):
 
 @implementer(IPlugin, IMetarFetcher)
 class AWCMetarFetcher:
-    name = "aviationweather"
+    metar_source = "aviationweather"
 
     def fetch(self, icao: str) -> Optional[Metar]:
         try:

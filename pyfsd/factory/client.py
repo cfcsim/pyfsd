@@ -5,6 +5,7 @@ from weakref import WeakValueDictionary
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
 
+from ..auth import IUserInfo, UsernameSHA256Password
 from ..define.packet import FSDClientPacket
 from ..define.utils import joinLines
 from ..protocol.client import FSDClientProtocol
@@ -92,3 +93,8 @@ class FSDClientFactory(Factory):
             return True
         except KeyError:
             return False
+
+    def login(self, username: str, password: str) -> "Deferred":
+        return self.portal.login(
+            UsernameSHA256Password(username, password), None, IUserInfo
+        )

@@ -1,5 +1,6 @@
-[pyfsd]
-database_name = "pyfsd.db"
+[pyfsd.database]
+source = "sqlite3"
+filename = "pyfsd.db"
 
 [pyfsd.client]
 port = 6809
