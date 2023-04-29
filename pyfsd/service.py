@@ -61,9 +61,12 @@ class PyFSDService(Service):
             return
         for source in getPlugins(IDatabaseMaker, plugins):
             if source.db_source == source_name:
-                self.db_pool == source.makeDBPool(self.config["pyfsd"]["database"])
+                self.db_pool = source.makeDBPool(self.config["pyfsd"]["database"])
                 return
-        self.logger.warn("No such database source {source_name}, fallback to sqlite3.")
+        self.logger.warn(
+            "No such database source {source_name}, fallback to sqlite3.",
+            source_name=source_name,
+        )
         self.db_pool = SQLite3DBMaker.makeDBPool(self.config["pyfsd"]["database"])
 
     def checkAndInitDatabase(self) -> None:
