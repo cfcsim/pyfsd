@@ -21,13 +21,15 @@ twistd -n pyfsd # 运行
 
 ## Todo
 ### 客户端协议(9)
-- METAR解析(`#WX`): 难以实现。
+- METAR解析(`#WX`)（难以实现）
 ### 多服务器协议
 一点还没做啊!谁会需要多服务器啊???
 ### 其他
-- 鉴权 (sqliledb, mysql, etc)
-- 插件机制 (1/2)
-    - PyFSD plugin
+- 鉴权
+- 插件机制 (1/3)
+    - [x] Metar fetcher
+    - [x] Database maker
+    - [ ] PyFSD plugin
 
 ## 开源协议
 MIT License  
