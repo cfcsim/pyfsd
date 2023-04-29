@@ -74,7 +74,7 @@ class PyFSDService(Service):
             """CREATE TABLE IF NOT EXISTS users(
                 callsign TEXT NOT NULL,
                 password TEXT NOT NULL,
-                rating INT NOT NULL
+                rating INT UNSIGNED NOT NULL
             );"""
         )
 

@@ -173,7 +173,10 @@ class FSDClientProtocol(LineReceiver):
                 protocol_str,
             ) = packet[:7]
             sim_type = -1
-        req_rating = strToInt(req_rating_str, default_value=0)
+        if len(req_rating_str) == 0:
+            req_rating = 1
+        else:
+            req_rating = strToInt(req_rating_str, default_value=0)
         protocol = strToInt(protocol_str, default_value=-1)
         if not isCallsignVaild(callsign):
             self.sendError(FSDErrors.ERR_CSINVALID, fatal=True)
@@ -184,54 +187,67 @@ class FSDClientProtocol(LineReceiver):
         if not protocol == 9:
             self.sendError(FSDErrors.ERR_REVISION, fatal=True)
             return
-        # TODO: Auth
-        # level < 0 ==> kill
-        # level == 0 ==> raise FSDErrors.ERR_CSSUSPEND
-        # level < req_rating ==> raise FSDErrors.ERR_LEVEL, env=req_rating and kill
-        client = Client(
-            client_type,
-            callsign,
-            req_rating,
-            cid,
-            protocol,
-            realname,
-            sim_type,
-            self.transport,
-        )
-        self.factory.clients[callsign] = client
-        self.client = client
-        if client_type == "PILOT":
-            self.factory.broadcast(
-                # two times of req_rating --- not a typo
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.ADD_PILOT + callsign,
-                    "SERVER",
-                    cid,
-                    "",
-                    req_rating,
-                    req_rating,
-                    sim_type,
-                ),
-                from_client=client,
+
+        def onResult(result):
+            rating: int = result[1].rating
+            if rating == 0:
+                self.sendError(FSDErrors.ERR_CSSUSPEND, fatal=True)
+            else:
+                if rating < req_rating:
+                    self.sendError(FSDErrors.ERR_LEVEL, env=f"{req_rating}", fatal=True)
+                else:
+                    onSuccess()
+
+        def onFail(_):
+            self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
+
+        def onSuccess():
+            client = Client(
+                client_type,
+                callsign,
+                req_rating,
+                cid,
+                protocol,
+                realname,
+                sim_type,
+                self.transport,
             )
-        else:
-            self.factory.broadcast(
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.ADD_ATC + callsign,
-                    "SERVER",
-                    realname,
-                    cid,
-                    "",
-                    req_rating,
-                ),
-                from_client=client,
+            self.factory.clients[callsign] = client
+            self.client = client
+            if client_type == "PILOT":
+                self.factory.broadcast(
+                    # two times of req_rating --- not a typo
+                    FSDClientPacket.makePacket(
+                        FSDClientPacket.ADD_PILOT + callsign,
+                        "SERVER",
+                        cid,
+                        "",
+                        req_rating,
+                        req_rating,
+                        sim_type,
+                    ),
+                    from_client=client,
+                )
+            else:
+                self.factory.broadcast(
+                    FSDClientPacket.makePacket(
+                        FSDClientPacket.ADD_ATC + callsign,
+                        "SERVER",
+                        realname,
+                        cid,
+                        "",
+                        req_rating,
+                    ),
+                    from_client=client,
+                )
+            self.sendMotd()
+            self.logger.info(
+                "New client {callsign} from {ip}.",
+                callsign=callsign,
+                ip=self.transport.getPeer().host,
             )
-        self.sendMotd()
-        self.logger.info(
-            "New client {callsign} from {ip}.",
-            callsign=callsign,
-            ip=self.transport.getPeer().host,
-        )
+
+        self.factory.login(cid, password).addCallback(onResult).addErrback(onFail)
 
     def handleRemoveClient(self, packet: List[str]) -> None:
         if len(packet) == 0:
