@@ -12,8 +12,14 @@
 pdm install # 安装依赖
 twistd -n pyfsd # 运行
 ```
-或如果您只是单纯想试一下，可以用ECHO/Swift(FSD Private/Legacy)连接到`bbs.cfcsim.cn`。
-### 问题排除:
+或如果您只是单纯想试一下，可以用ECHO/Swift(FSD Private/Legacy)连接到`bbs.cfcsim.cn`,  
+可用账户:
+|   | 呼号  | 密码 | 等级 |
+|---|-------|------|------|
+| 1 | test  | test | 1    |
+| 2 | test2 | test | 6    |
+| 3 | test3 | test | 12   |
+### 问题排除
 运行`twistd -n pyfsd`提示`Unknown command: pyfsd`
 : 由于twistd没有加载当前目录的插件。把当前路径写入文件保存为pyfsd.pth并放到site-packages目录或使用`PYTHONPATH=. twistd -n pyfsd`来运行即可。
 
