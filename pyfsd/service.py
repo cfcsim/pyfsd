@@ -1,7 +1,7 @@
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable, Optional, Tuple
 
 from twisted.application.internet import TCPServer
-from twisted.application.service import Service
+from twisted.application.service import IService, Service
 from twisted.cred.portal import Portal
 from twisted.enterprise.adbapi import ConnectionPool
 from twisted.logger import Logger
@@ -13,6 +13,7 @@ from .database import IDatabaseMaker, SQLite3DBMaker
 from .define.utils import verifyConfigStruct
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
+from .plugin import IPyFSDPlugin
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -25,6 +26,7 @@ class PyFSDService(Service):
     db_pool: ConnectionPool
     portal: Portal
     logger: Logger = Logger()
+    plugins: Tuple[IPyFSDPlugin]
     config: dict
 
     def __init__(self, config: dict) -> None:
@@ -33,6 +35,13 @@ class PyFSDService(Service):
         self.connectDatabase()
         self.checkAndInitDatabase()
         self.makePortal()
+        self.pickPlugins()
+
+    def startService(self) -> None:
+        for plugin in self.plugins:
+            self.logger.info("Loading plugin {plugin.plugin_name}", plugin=plugin)
+            plugin.beforeStart(self)
+        super().startService()
 
     def checkConfig(self) -> None:
         verifyConfigStruct(
@@ -102,3 +111,12 @@ class PyFSDService(Service):
         )
         self.fetch_metar = metar_service.query
         return metar_service
+
+    def getServicePlugins(self) -> Tuple[IService]:
+        return tuple(getPlugins(IService, plugins))
+
+    def pickPlugins(self):
+        temp_plugins = []
+        for plugin in getPlugins(IPyFSDPlugin, plugins):
+            temp_plugins.append(plugin)
+        self.plugins = tuple(temp_plugins)

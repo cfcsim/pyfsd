@@ -32,12 +32,14 @@ class PyFSDServiceMaker:
             setupLoguru()
         with open(options["config-path"], "rb") as config_file:
             config = tomllib.load(config_file)
-        service = MultiService()
+        root_service = MultiService()
         pyfsd_service = PyFSDService(config)
-        pyfsd_service.setServiceParent(service)
-        pyfsd_service.getMetarService().setServiceParent(service)
-        pyfsd_service.getClientService().setServiceParent(service)
-        return service
+        pyfsd_service.setServiceParent(root_service)
+        pyfsd_service.getMetarService().setServiceParent(root_service)
+        pyfsd_service.getClientService().setServiceParent(root_service)
+        for service in pyfsd_service.getServicePlugins():
+            service.setServiceParent(root_service)
+        return root_service
 
 
 serviceMaker = PyFSDServiceMaker()
