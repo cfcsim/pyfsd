@@ -39,8 +39,7 @@ class FSDClientProtocol(LineReceiver):
     def connectionMade(self):
         self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
         self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
-        for handler in self.factory.event_handler_finder("newConnectionEstablished"):
-            handler.newConnectionEstablished(self)
+        self.factory.triggerEvent("newConnectionEstablished", self)
 
     def send(self, *lines: str, auto_newline: bool = True) -> None:
         self.transport.write(
@@ -248,8 +247,7 @@ class FSDClientProtocol(LineReceiver):
                 callsign=callsign,
                 ip=self.transport.getPeer().host,
             )
-            for handler in self.factory.event_handler_finder("newClientCreated"):
-                handler.newClientCreated(self)
+            self.factory.triggerEvent("newClientCreated", self)
 
         self.factory.login(cid, password).addCallback(onResult).addErrback(onFail)
 
@@ -603,6 +601,13 @@ class FSDClientProtocol(LineReceiver):
     # def connectionMade(self): ...
 
     def lineReceived(self, byte_line: bytes) -> None:
+        def resultHandler(prevented: bool) -> None:
+            if not prevented:
+                self.lineReceived_impl(byte_line)
+
+        self.factory.triggerEvent("lineReceived", byte_line).addCallback(resultHandler)
+
+    def lineReceived_impl(self, byte_line: bytes) -> None:
         try:
             line: str = byte_line.decode()
         except UnicodeDecodeError:

@@ -4,11 +4,13 @@ from weakref import WeakValueDictionary
 
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
+from twisted.internet.threads import deferToThread
 
 from ..auth import IUserInfo, UsernameSHA256Password
 from ..define.packet import FSDClientPacket
 from ..define.utils import joinLines
 from ..protocol.client import FSDClientProtocol
+from ..plugin import PreventEvent
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -102,3 +104,14 @@ class FSDClientFactory(Factory):
         return self.portal.login(
             UsernameSHA256Password(username, password), None, IUserInfo
         )
+
+    def triggerEvent(self, event_name: str, *args, **kwargs) -> "Deferred[bool]":
+        def trigger() -> bool:
+            for plugin in self.event_handler_finder(event_name):
+                try:
+                    getattr(plugin, event_name)(*args, **kwargs)
+                except PreventEvent:
+                    return True
+            return False
+
+        return deferToThread(trigger)

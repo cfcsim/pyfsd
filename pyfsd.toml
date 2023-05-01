@@ -3,12 +3,11 @@ source = "sqlite3"
 filename = "pyfsd.db"
 
 [pyfsd.client]
-port = 6809
+port = 6810
 motd = """Shhh... Let's not leak out hard work
 Developer: Telegram @gamecss"""
 blacklist = []
 
 [pyfsd.metar]
-mode = "cron"
-cron_time = 3600
+mode = "once"
 fetchers = ["NOAA"]
