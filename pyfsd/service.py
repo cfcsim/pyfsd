@@ -13,7 +13,7 @@ from .database import IDatabaseMaker, SQLite3DBMaker
 from .define.utils import verifyConfigStruct
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
-from .plugin import IPyFSDPlugin
+from .plugin import BasePyFSDPlugin, IPyFSDPlugin
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -42,6 +42,11 @@ class PyFSDService(Service):
             self.logger.info("Loading plugin {plugin.plugin_name}", plugin=plugin)
             plugin.beforeStart(self)
         super().startService()
+
+    def stopService(self) -> None:
+        for plugin in self.plugins:
+            plugin.beforeStop()
+        super().stopService()
 
     def checkConfig(self) -> None:
         verifyConfigStruct(
@@ -120,3 +125,18 @@ class PyFSDService(Service):
         for plugin in getPlugins(IPyFSDPlugin, plugins):
             temp_plugins.append(plugin)
         self.plugins = tuple(temp_plugins)
+
+    def findPluginsByEvent(self, event_name: str):
+        if not isinstance(getattr(BasePyFSDPlugin, event_name, None), Callable):
+            raise ValueError(f"Invaild event {event_name}")
+        for plugin in self.plugins:
+            if not hasattr(plugin, event_name):
+                continue
+            plugin_class = type(plugin)
+            if issubclass(plugin_class, BasePyFSDPlugin):
+                plugin_handler = getattr(plugin_class, event_name, None)
+                if not isinstance(plugin_handler, Callable):
+                    continue
+                if plugin_handler is getattr(BasePyFSDPlugin, event_name):
+                    continue
+            yield plugin

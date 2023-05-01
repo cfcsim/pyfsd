@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 from zope.interface import Attribute, Interface, implementer
 
 if TYPE_CHECKING:
+    from .protocol.client import FSDClientProtocol
     from .service import PyFSDService
 
 
@@ -15,6 +16,12 @@ class IPyFSDPlugin(Interface):
     def beforeStop() -> None:
         ...
 
+    def newConnectionEstablished(protocol: "FSDClientProtocol") -> bool:
+        ...
+
+    def newClientCreated(protocol: "FSDClientProtocol") -> bool:
+        ...
+
 
 @implementer(IPyFSDPlugin)
 class BasePyFSDPlugin:
@@ -25,3 +32,10 @@ class BasePyFSDPlugin:
 
     def beforeStop(self) -> None:
         ...
+
+    def newConnectionEstablished(self, protocol: "FSDClientProtocol") -> bool:
+        ...
+
+    def newClientCreated(self, protocol: "FSDClientProtocol") -> bool:
+        ...
+
