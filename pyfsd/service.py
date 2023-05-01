@@ -22,11 +22,11 @@ if TYPE_CHECKING:
 
 class PyFSDService(Service):
     client_factory: Optional[FSDClientFactory] = None
-    fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
-    db_pool: ConnectionPool
-    portal: Portal
+    fetch_metar: Optional[Callable[[str], "Deferred[Optional[Metar]]"]] = None
+    db_pool: Optional[ConnectionPool] = None
+    portal: Optional[Portal] = None
+    plugins: Optional[Tuple[IPyFSDPlugin]] = None
     logger: Logger = Logger()
-    plugins: Tuple[IPyFSDPlugin]
     config: dict
 
     def __init__(self, config: dict) -> None:
@@ -38,15 +38,17 @@ class PyFSDService(Service):
         self.pickPlugins()
 
     def startService(self) -> None:
-        for plugin in self.plugins:
-            self.logger.info("Loading plugin {plugin.plugin_name}", plugin=plugin)
-            plugin.beforeStart(self)
-        super().startService()
+        if self.plugins is not None:
+            for plugin in self.plugins:
+                self.logger.info("Loading plugin {plugin.plugin_name}", plugin=plugin)
+                plugin.beforeStart(self)
+            super().startService()
 
     def stopService(self) -> None:
-        for plugin in self.plugins:
-            plugin.beforeStop()
-        super().stopService()
+        if self.plugins is not None:
+            for plugin in self.plugins:
+                plugin.beforeStop()
+            super().stopService()
 
     def checkConfig(self) -> None:
         verifyConfigStruct(
@@ -84,6 +86,7 @@ class PyFSDService(Service):
         self.db_pool = SQLite3DBMaker.makeDBPool(self.config["pyfsd"]["database"])
 
     def checkAndInitDatabase(self) -> None:
+        assert self.db_pool is not None, "Must connect database first."
         self.db_pool.runOperation(
             """CREATE TABLE IF NOT EXISTS users(
                 callsign TEXT NOT NULL,
@@ -93,13 +96,16 @@ class PyFSDService(Service):
         )
 
     def makePortal(self) -> None:
+        assert self.db_pool is not None, "Must connect database first."
         self.portal = Portal(Realm, (CredentialsChecker(self.db_pool.runQuery),))
 
     def getClientService(self) -> TCPServer:
         assert self.fetch_metar is not None, "Must start metar service first"
+        assert self.portal is not None, "Must create portal first."
         self.client_factory = FSDClientFactory(
             self.portal,
             self.fetch_metar,
+            self.findPluginsByEvent,
             self.config["pyfsd"]["client"]["blacklist"],
             self.config["pyfsd"]["client"]["motd"].splitlines(),
         )
@@ -127,6 +133,7 @@ class PyFSDService(Service):
         self.plugins = tuple(temp_plugins)
 
     def findPluginsByEvent(self, event_name: str):
+        assert self.plugins is not None, "plugin not loaded"
         if not isinstance(getattr(BasePyFSDPlugin, event_name, None), Callable):
             raise ValueError(f"Invaild event {event_name}")
         for plugin in self.plugins:

@@ -16,10 +16,10 @@ class IPyFSDPlugin(Interface):
     def beforeStop() -> None:
         ...
 
-    def newConnectionEstablished(protocol: "FSDClientProtocol") -> bool:
+    def newConnectionEstablished(protocol: "FSDClientProtocol") -> None:
         ...
 
-    def newClientCreated(protocol: "FSDClientProtocol") -> bool:
+    def newClientCreated(protocol: "FSDClientProtocol") -> None:
         ...
 
 
@@ -38,4 +38,3 @@ class BasePyFSDPlugin:
 
     def newClientCreated(self, protocol: "FSDClientProtocol") -> bool:
         ...
-

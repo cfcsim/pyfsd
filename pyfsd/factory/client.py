@@ -1,5 +1,5 @@
 from random import randint
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional
 from weakref import WeakValueDictionary
 
 from twisted.internet.protocol import Factory
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
     from ..define.broadcast import BroadcastChecker
     from ..object.client import Client
+    from ..plugin import IPyFSDPlugin
 
 __all__ = ["FSDClientFactory"]
 
@@ -31,16 +32,19 @@ class FSDClientFactory(Factory):
     motd: List[str]
     protocol = FSDClientProtocol
     fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
+    handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]]
 
     def __init__(
         self,
         portal: "Portal",
         fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"],
+        handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]],
         blacklist: list,
         motd: List[str],
     ) -> None:
         self.portal = portal
         self.fetch_metar = fetch_metar
+        self.event_handler_finder = handler_finder
         self.blacklist = blacklist
         self.motd = motd
 

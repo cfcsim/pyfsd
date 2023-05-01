@@ -39,6 +39,8 @@ class FSDClientProtocol(LineReceiver):
     def connectionMade(self):
         self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
         self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
+        for handler in self.factory.event_handler_finder("newConnectionEstablished"):
+            handler.newConnectionEstablished(self)
 
     def send(self, *lines: str, auto_newline: bool = True) -> None:
         self.transport.write(
@@ -246,6 +248,8 @@ class FSDClientProtocol(LineReceiver):
                 callsign=callsign,
                 ip=self.transport.getPeer().host,
             )
+            for handler in self.factory.event_handler_finder("newClientCreated"):
+                handler.newClientCreated(self)
 
         self.factory.login(cid, password).addCallback(onResult).addErrback(onFail)
 
