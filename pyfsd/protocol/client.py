@@ -1,3 +1,4 @@
+from pickle import NONE
 from typing import TYPE_CHECKING, List, Optional
 
 from twisted.internet import reactor
@@ -605,9 +606,9 @@ class FSDClientProtocol(LineReceiver):
             if not prevented:
                 self.lineReceived_impl(byte_line)
 
-        self.factory.triggerEvent("lineReceived", self, byte_line).addCallback(
-            resultHandler
-        )
+        self.factory.triggerEvent(
+            "lineReceivedFromClient", self, byte_line
+        ).addCallback(resultHandler)
 
     def lineReceived_impl(self, byte_line: bytes) -> None:
         try:
@@ -687,7 +688,9 @@ class FSDClientProtocol(LineReceiver):
                 ),
                 from_client=self.client,
             )
-            del self.client
+            self.factory.triggerEvent("clientDisconnected", self, self.client)
+            del self.factory.clients[self.client.callsign]
+            self.client = None
         else:
             self.logger.info(f"{host} disconnected.")
 

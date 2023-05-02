@@ -9,8 +9,8 @@ from twisted.internet.threads import deferToThread
 from ..auth import IUserInfo, UsernameSHA256Password
 from ..define.packet import FSDClientPacket
 from ..define.utils import joinLines
-from ..protocol.client import FSDClientProtocol
 from ..plugin import PreventEvent
+from ..protocol.client import FSDClientProtocol
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
