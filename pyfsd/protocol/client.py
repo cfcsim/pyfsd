@@ -605,7 +605,9 @@ class FSDClientProtocol(LineReceiver):
             if not prevented:
                 self.lineReceived_impl(byte_line)
 
-        self.factory.triggerEvent("lineReceived", byte_line).addCallback(resultHandler)
+        self.factory.triggerEvent("lineReceived", self, byte_line).addCallback(
+            resultHandler
+        )
 
     def lineReceived_impl(self, byte_line: bytes) -> None:
         try:

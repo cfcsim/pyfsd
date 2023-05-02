@@ -22,10 +22,11 @@ class IPyFSDPlugin(Interface):
     def newClientCreated(protocol: "FSDClientProtocol") -> None:
         ...
 
-    def lineReceived(byte_line: bytes) -> None:
+    def lineReceived(protocol: "FSDClientProtocol", byte_line: bytes) -> None:
         ...
 
 
+@implementer(IPyFSDPlugin)
 class BasePyFSDPlugin:
     plugin_name = "<plugin name missing>"
 
@@ -41,7 +42,7 @@ class BasePyFSDPlugin:
     def newClientCreated(self, protocol: "FSDClientProtocol") -> bool:
         ...
 
-    def lineReceived(self, byte_line: bytes) -> None:
+    def lineReceived(self, protocol: "FSDClientProtocol", byte_line: bytes) -> None:
         ...
 
 
