@@ -42,18 +42,19 @@ class Client:
     realname: str
     sim_type: Optional[int]
     transport: ITransport
+    position: Position = (0, 0)
+    transponder: int = 0
+    altitude: int = 0
+    ground_speed: int = 0
+    frequency: int = 0
+    facility_type: int = 0
+    visual_range: int = 40
+    position_ok: bool = False
     flags: Optional[int] = None
     flight_plan: Optional[FlightPlan] = None
-    position: Optional[Position] = None
     pbh: Optional[int] = None
     sector: Optional[str] = None
     ident_flag: Optional[str] = None
-    transponder: Optional[int] = None
-    altitude: Optional[int] = None
-    ground_speed: Optional[int] = None
-    frequency: Optional[int] = None
-    facility_type: Optional[int] = None
-    visual_range: Optional[int] = None
     start_time: int = field(default_factory=lambda: int(time()))
 
     def updatePlan(
@@ -116,6 +117,7 @@ class Client:
         self.ground_speed = groundspeed
         self.pbh = pbh
         self.flags = flags
+        self.position_ok = True
 
     def updateATCPosition(
         self,
@@ -131,6 +133,7 @@ class Client:
         self.visual_range = visual_range
         self.position = (lat, lon)
         self.altitude = altitude
+        self.position_ok = True
 
     def getRange(self) -> int:
         if self.type == "PILOT":
