@@ -1,10 +1,10 @@
 from random import randint
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Dict, Mapping
+from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Mapping, Optional
 
+from twisted.internet.defer import succeed
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
 from twisted.internet.threads import deferToThread
-from twisted.internet.defer import succeed
 
 from ..auth import IUserInfo, UsernameSHA256Password
 from ..define.packet import FSDClientPacket
