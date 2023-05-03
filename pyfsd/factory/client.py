@@ -1,10 +1,10 @@
 from random import randint
-from typing import TYPE_CHECKING, Callable, Iterable, List, Optional
-from weakref import WeakValueDictionary
+from typing import TYPE_CHECKING, Callable, Iterable, List, Optional, Dict, Mapping
 
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
 from twisted.internet.threads import deferToThread
+from twisted.internet.defer import succeed
 
 from ..auth import IUserInfo, UsernameSHA256Password
 from ..define.packet import FSDClientPacket
@@ -27,7 +27,7 @@ __all__ = ["FSDClientFactory"]
 
 
 class FSDClientFactory(Factory):
-    clients: WeakValueDictionary[str, "Client"] = WeakValueDictionary()
+    clients: Dict[str, "Client"]
     portal: "Portal"
     heartbeater: LoopingCall
     blacklist: list
@@ -44,6 +44,7 @@ class FSDClientFactory(Factory):
         blacklist: list,
         motd: List[str],
     ) -> None:
+        self.clients = {}
         self.portal = portal
         self.fetch_metar = fetch_metar
         self.event_handler_finder = handler_finder
@@ -105,7 +106,9 @@ class FSDClientFactory(Factory):
             UsernameSHA256Password(username, password), None, IUserInfo
         )
 
-    def triggerEvent(self, event_name: str, *args, **kwargs) -> "Deferred[bool]":
+    def triggerEvent(
+        self, event_name: str, args: Iterable, kwargs: Mapping, in_thread: bool = True
+    ) -> "Deferred[bool]":
         def trigger() -> bool:
             for plugin in self.event_handler_finder(event_name):
                 try:
@@ -114,4 +117,7 @@ class FSDClientFactory(Factory):
                     return True
             return False
 
-        return deferToThread(trigger)
+        if in_thread:
+            return deferToThread(trigger)
+        else:
+            return succeed(trigger())

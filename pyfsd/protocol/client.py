@@ -1,4 +1,3 @@
-from pickle import NONE
 from typing import TYPE_CHECKING, List, Optional
 
 from twisted.internet import reactor
@@ -40,7 +39,7 @@ class FSDClientProtocol(LineReceiver):
     def connectionMade(self):
         self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
         self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
-        self.factory.triggerEvent("newConnectionEstablished", self)
+        self.factory.triggerEvent("newConnectionEstablished", (self,), {})
 
     def send(self, *lines: str, auto_newline: bool = True) -> None:
         self.transport.write(
@@ -248,7 +247,7 @@ class FSDClientProtocol(LineReceiver):
                 callsign=callsign,
                 ip=self.transport.getPeer().host,
             )
-            self.factory.triggerEvent("newClientCreated", self)
+            self.factory.triggerEvent("newClientCreated", (self,), {})
 
         self.factory.login(cid, password).addCallback(onResult).addErrback(onFail)
 
@@ -607,7 +606,7 @@ class FSDClientProtocol(LineReceiver):
                 self.lineReceived_impl(byte_line)
 
         self.factory.triggerEvent(
-            "lineReceivedFromClient", self, byte_line
+            "lineReceivedFromClient", (self, byte_line), {}
         ).addCallback(resultHandler)
 
     def lineReceived_impl(self, byte_line: bytes) -> None:
@@ -688,7 +687,7 @@ class FSDClientProtocol(LineReceiver):
                 ),
                 from_client=self.client,
             )
-            self.factory.triggerEvent("clientDisconnected", self, self.client)
+            self.factory.triggerEvent("clientDisconnected", (self, self.client), {})
             del self.factory.clients[self.client.callsign]
             self.client = None
         else:
