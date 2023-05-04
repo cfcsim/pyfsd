@@ -49,13 +49,20 @@ class Client:
     frequency: int = 0
     facility_type: int = 0
     visual_range: int = 40
-    position_ok: bool = False
     flags: Optional[int] = None
     flight_plan: Optional[FlightPlan] = None
     pbh: Optional[int] = None
     sector: Optional[str] = None
     ident_flag: Optional[str] = None
     start_time: int = field(default_factory=lambda: int(time()))
+
+    @property
+    def position_ok(self) -> bool:
+        return self.position != (0, 0) and self.frequency < 100000
+
+    @property
+    def frequency_ok(self) -> bool:
+        return self.frequency != 0 and self.frequency < 100000
 
     def updatePlan(
         self,
@@ -117,7 +124,6 @@ class Client:
         self.ground_speed = groundspeed
         self.pbh = pbh
         self.flags = flags
-        self.position_ok = True
 
     def updateATCPosition(
         self,
@@ -133,7 +139,6 @@ class Client:
         self.visual_range = visual_range
         self.position = (lat, lon)
         self.altitude = altitude
-        self.position_ok = True
 
     def getRange(self) -> int:
         if self.type == "PILOT":
