@@ -59,7 +59,7 @@ class Client:
 
     @property
     def position_ok(self) -> bool:
-        return self.position != (0, 0) and self.frequency < 100000
+        return self.position != (0, 0) and self.altitude < 100000
 
     @property
     def frequency_ok(self) -> bool:
