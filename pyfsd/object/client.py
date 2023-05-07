@@ -40,7 +40,7 @@ class Client:
     cid: str
     protocol: int
     realname: str
-    sim_type: Optional[int]
+    sim_type: int
     transport: ITransport
     position: Position = (0, 0)
     transponder: int = 0
@@ -49,9 +49,9 @@ class Client:
     frequency: int = 0
     facility_type: int = 0
     visual_range: int = 40
-    flags: Optional[int] = None
+    flags: int = 0
+    pbh: int = 0
     flight_plan: Optional[FlightPlan] = None
-    pbh: Optional[int] = None
     sector: Optional[str] = None
     ident_flag: Optional[str] = None
     start_time: int = field(default_factory=lambda: int(time()))
