@@ -55,6 +55,7 @@ class Client:
     sector: Optional[str] = None
     ident_flag: Optional[str] = None
     start_time: int = field(default_factory=lambda: int(time()))
+    last_updated: int = field(default_factory=lambda: int(time()))
 
     @property
     def position_ok(self) -> bool:
@@ -124,6 +125,7 @@ class Client:
         self.ground_speed = groundspeed
         self.pbh = pbh
         self.flags = flags
+        self.last_updated = int(time())
 
     def updateATCPosition(
         self,
@@ -139,6 +141,7 @@ class Client:
         self.visual_range = visual_range
         self.position = (lat, lon)
         self.altitude = altitude
+        self.last_updated = int(time())
 
     def getRange(self) -> int:
         if self.type == "PILOT":
