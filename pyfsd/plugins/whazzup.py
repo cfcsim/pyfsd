@@ -37,14 +37,19 @@ class WhazzupGenerator(BasePyFSDPlugin):
                 "logon_time": datetime.fromtimestamp(client.start_time).strftime(
                     "%Y-%m-%dT%H:%M:%S.%f0Z"
                 ),
+                "rating": client.rating,
             }
-            # Once a client (atc or pilot) updated position, position & altitude will available
-            if client.position is not None:
+            if client.position_ok:
                 lat, lon = client.position
                 client_info["latitude"] = lat
                 client_info["longitude"] = lon
-            if client.altitude is not None:
-                client_info['altitude'] = client.altitude
+                if client.type == "PILOT":
+                    client_info["altitude"] = client.altitude
+                    client_info["pbh"] = client.pbh
+
+            if client.type == "PILOT":
+                client_info["groundspeed"] = client.ground_speed
+                client_info["transponder"] = f"{client.transponder:04d}"
 
             whazzup["pilot" if client.type == "PILOT" else "controllers"].append(
                 client_info
