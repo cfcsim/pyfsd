@@ -77,7 +77,7 @@ class WhazzupGenerator(BasePyFSDPlugin):
                 if client.frequency_ok:
                     client_info[
                         "frequency"
-                    ] = f"1{client.frequency:02d}.{client.frequency:03d}"
+                    ] = f"1{client.frequency/1000:02d}.{client.frequency*1000:03d}"
                 client_info["facility"] = client.facility_type
                 client_info["visual_range"] = client.visual_range
 
@@ -85,5 +85,6 @@ class WhazzupGenerator(BasePyFSDPlugin):
                 client_info
             )
         return whazzup
+
 
 whazzupGenerator = WhazzupGenerator()
