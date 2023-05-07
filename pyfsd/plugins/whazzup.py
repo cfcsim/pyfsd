@@ -38,6 +38,7 @@ class WhazzupGenerator(BasePyFSDPlugin):
                     "%Y-%m-%dT%H:%M:%S.%f0Z"
                 ),
                 "rating": client.rating,
+                "last_updated": client.last_updated,
             }
             if client.position_ok:
                 lat, lon = client.position
