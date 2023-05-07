@@ -376,6 +376,7 @@ class FSDClientProtocol(LineReceiver):
         self.client.updatePilotPosition(
             mode, transponder, lat, lon, altitdue, groundspeed, pbh, flags
         )
+        self.timeoutKiller.reset(800)
         self.factory.broadcast(
             FSDClientPacket.makePacket(
                 FSDClientPacket.PILOT_POSITION + mode,
@@ -424,6 +425,7 @@ class FSDClientProtocol(LineReceiver):
         self.client.updateATCPosition(
             frequency, facility_type, visual_range, lat, lon, altitdue
         )
+        self.timeoutKiller.reset(800)
         self.factory.broadcast(
             FSDClientPacket.makePacket(
                 FSDClientPacket.ATC_POSITION + self.client.callsign,
@@ -679,7 +681,3 @@ class FSDClientProtocol(LineReceiver):
             del self.client
         else:
             self.logger.info(f"{host} disconnected.")
-
-    def dataReceived(self, data) -> None:
-        self.timeoutKiller.reset(800)
-        super().dataReceived(data)
