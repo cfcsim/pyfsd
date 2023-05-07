@@ -18,7 +18,7 @@ class WhazzupGenerator(BasePyFSDPlugin):
     def beforeStart(self, pyfsd: "PyFSDService") -> None:
         self.pyfsd = pyfsd
 
-    def generateWhazzup(self) -> dict:
+    def generateWhazzup(self, heading_instead_pbh: bool = False) -> dict:
         assert self.pyfsd is not None, "PyFSD not started."
         assert self.pyfsd.client_factory is not None, "Client factory not started."
         whazzup = {"pilot": [], "controllers": []}
@@ -46,12 +46,41 @@ class WhazzupGenerator(BasePyFSDPlugin):
                 client_info["longitude"] = lon
                 if client.type == "PILOT":
                     client_info["altitude"] = client.altitude
-                    client_info["pbh"] = client.pbh
+                    if heading_instead_pbh:
+                        client_info["heading"] = (client.pbh & 4092) >> 2
+                    else:
+                        client_info["pbh"] = client.pbh
 
             if client.type == "PILOT":
                 client_info["groundspeed"] = client.ground_speed
                 client_info["transponder"] = f"{client.transponder:04d}"
+                if client.flight_plan is not None:
+                    client_info["flight_plan"] = {
+                        "flight_rules": client.flight_plan.type,
+                        "aircraft": client.flight_plan.aircraft,
+                        "departure": client.flight_plan.dep_airport,
+                        "arrival": client.flight_plan.dest_airport,
+                        "alternate": client.flight_plan.alt_airport,
+                        "cruise_tas": client.flight_plan.tascruise,
+                        "altitude": client.flight_plan.alt,
+                        "deptime": client.flight_plan.dep_time,
+                        "hrs_enroute_time": client.flight_plan.hrs_enroute,
+                        "min_enroute_time": client.flight_plan.min_enroute,
+                        "hrs_fuel_time": client.flight_plan.hrs_fuel,
+                        "min_fuel_time": client.flight_plan.min_fuel,
+                        "remarks": client.flight_plan.remarks,
+                        "route": client.flight_plan.route,
+                        "revision_id": client.flight_plan.revision,
+                    }
+            else:
+                if client.frequency_ok:
+                    client_info[
+                        "frequency"
+                    ] = "1{client.frequency:02d}.{client.frequency:03d}"
+                client_info["facility"] = client.facility_type
+                client_info["visual_range"] = client.visual_range
 
             whazzup["pilot" if client.type == "PILOT" else "controllers"].append(
                 client_info
             )
+        return whazzup
