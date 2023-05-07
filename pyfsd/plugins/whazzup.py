@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 @implementer(IPlugin)
 class WhazzupGenerator(BasePyFSDPlugin):
     # Most whazzup ver.3 (vatsim)
+    plugin_name = "whazzup"
     pyfsd: Optional["PyFSDService"] = None
 
     def beforeStart(self, pyfsd: "PyFSDService") -> None:
@@ -84,3 +85,5 @@ class WhazzupGenerator(BasePyFSDPlugin):
                 client_info
             )
         return whazzup
+
+whazzupGenerator = WhazzupGenerator()
