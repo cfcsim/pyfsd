@@ -173,7 +173,7 @@ class WeatherProfile:
             self.barometer = 2992
         # Visibility fix: nothing
 
-    def fix(self, position: "Position") -> None:
-        a1 = position[0]
-        a2 = fabs(position[1] / 18)
-        season = getSeason(self.metar._now.month, a1 < 0)
+    # def fix(self, position: "Position") -> None:
+    #    a1 = position[0]
+    #    a2 = fabs(position[1] / 18)
+    #    season = getSeason(self.metar._now.month, a1 < 0)

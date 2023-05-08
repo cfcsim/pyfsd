@@ -39,6 +39,7 @@ class FSDClientProtocol(LineReceiver):
     def connectionMade(self):
         self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
         self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
+        self.factory.triggerEvent("newConnectionEstablished", (self,), {})
 
     def send(self, *lines: str, auto_newline: bool = True) -> None:
         self.transport.write(
@@ -246,6 +247,7 @@ class FSDClientProtocol(LineReceiver):
                 callsign=callsign,
                 ip=self.transport.getPeer().host,
             )
+            self.factory.triggerEvent("newClientCreated", (self,), {})
 
         self.factory.login(cid, password).addCallback(onResult).addErrback(onFail)
 
@@ -601,6 +603,15 @@ class FSDClientProtocol(LineReceiver):
     # def connectionMade(self): ...
 
     def lineReceived(self, byte_line: bytes) -> None:
+        def resultHandler(prevented: bool) -> None:
+            if not prevented:
+                self.lineReceived_impl(byte_line)
+
+        self.factory.triggerEvent(
+            "lineReceivedFromClient", (self, byte_line), {}
+        ).addCallback(resultHandler)
+
+    def lineReceived_impl(self, byte_line: bytes) -> None:
         try:
             line: str = byte_line.decode()
         except UnicodeDecodeError:
@@ -678,6 +689,8 @@ class FSDClientProtocol(LineReceiver):
                 ),
                 from_client=self.client,
             )
-            del self.client
+            self.factory.triggerEvent("clientDisconnected", (self, self.client), {})
+            del self.factory.clients[self.client.callsign]
+            self.client = None
         else:
             self.logger.info(f"{host} disconnected.")

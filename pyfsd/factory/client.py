@@ -1,13 +1,15 @@
 from random import randint
-from typing import TYPE_CHECKING, Callable, List, Optional
-from weakref import WeakValueDictionary
+from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Mapping, Optional
 
+from twisted.internet.defer import succeed
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
+from twisted.internet.threads import deferToThread
 
 from ..auth import IUserInfo, UsernameSHA256Password
 from ..define.packet import FSDClientPacket
 from ..define.utils import joinLines
+from ..plugin import PreventEvent
 from ..protocol.client import FSDClientProtocol
 
 if TYPE_CHECKING:
@@ -19,28 +21,33 @@ if TYPE_CHECKING:
 
     from ..define.broadcast import BroadcastChecker
     from ..object.client import Client
+    from ..plugin import IPyFSDPlugin
 
 __all__ = ["FSDClientFactory"]
 
 
 class FSDClientFactory(Factory):
-    clients: WeakValueDictionary[str, "Client"] = WeakValueDictionary()
+    clients: Dict[str, "Client"]
     portal: "Portal"
     heartbeater: LoopingCall
     blacklist: list
     motd: List[str]
     protocol = FSDClientProtocol
     fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
+    handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]]
 
     def __init__(
         self,
         portal: "Portal",
         fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"],
+        handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]],
         blacklist: list,
         motd: List[str],
     ) -> None:
+        self.clients = {}
         self.portal = portal
         self.fetch_metar = fetch_metar
+        self.event_handler_finder = handler_finder
         self.blacklist = blacklist
         self.motd = motd
 
@@ -98,3 +105,19 @@ class FSDClientFactory(Factory):
         return self.portal.login(
             UsernameSHA256Password(username, password), None, IUserInfo
         )
+
+    def triggerEvent(
+        self, event_name: str, args: Iterable, kwargs: Mapping, in_thread: bool = True
+    ) -> "Deferred[bool]":
+        def trigger() -> bool:
+            for plugin in self.event_handler_finder(event_name):
+                try:
+                    getattr(plugin, event_name)(*args, **kwargs)
+                except PreventEvent:
+                    return True
+            return False
+
+        if in_thread:
+            return deferToThread(trigger)
+        else:
+            return succeed(trigger())
