@@ -1,11 +1,77 @@
-from typing import List, Optional, Tuple, Union
+from typing import AnyStr, List, Optional, Tuple, Union, cast
 
 from constantly import ValueConstant, Values
 
-__all__ = ["FSDClientPacket"]
+from .utils import asciiOnly, assertNoDuplicate
+
+__all__ = ["makePacket", "breakPacket", "FSDCLIENTPACKET"]
 
 
-class CLIENTPACKET(Values):
+def _makePacket(
+    *items: AnyStr, all_str: bool = False, all_bytes: bool = False
+) -> AnyStr:
+    if all(isinstance(item, str) for item in items) or all_str:
+        return ":".join(items)  # type: ignore
+    elif all(isinstance(item, bytes) for item in items) or all_bytes:
+        return b":".join(items)  # type: ignore
+    else:
+        raise ValueError("Cannot mix str and bytes")
+
+
+def makePacket(*_items: Union[AnyStr, ValueConstant]) -> AnyStr:
+    items = []
+    all_str = all(isinstance(item, (str, ValueConstant)) for item in _items)
+    all_bytes = all(isinstance(item, (bytes, ValueConstant)) for item in _items)
+    if not (all_str or all_bytes):
+        raise ValueError("Cannot mix str and bytes")
+    for item in _items:
+        if isinstance(item, ValueConstant):
+            if not (isinstance(item.value, str) or asciiOnly(item.value)):
+                raise ValueError(f"Invaild constant value: {item.value!r}")
+            items.append(item.value if all_str else item.value.encode("ascii"))
+        else:
+            items.append(item)
+    return _makePacket(*items, all_str=all_str, all_bytes=all_bytes)
+
+
+def _breakPacket(
+    packet: AnyStr, *heads: AnyStr
+) -> Tuple[Optional[AnyStr], Tuple[AnyStr]]:
+    assert isinstance(packet, (str, bytes))
+    assertNoDuplicate(heads)
+    head: Optional[AnyStr] = None
+    splited_packet: List[AnyStr]
+    for may_head in heads:
+        if packet.startswith(may_head):
+            head = may_head
+    if isinstance(packet, str):
+        splited_packet = cast(List[AnyStr], packet.split(":"))
+    elif isinstance(packet, bytes):
+        splited_packet = cast(List[AnyStr], packet.split(b":"))
+    if head is not None:
+        splited_packet[0] = splited_packet[0][len(head) :]
+    return (head, tuple(splited_packet))
+
+
+def breakPacket(
+    packet: AnyStr, *_heads: Union[AnyStr, ValueConstant]
+) -> Tuple[Optional[AnyStr], Tuple[AnyStr]]:
+    heads = []
+    all_str = all(isinstance(head, (str, ValueConstant)) for head in _heads)
+    all_bytes = all(isinstance(head, (bytes, ValueConstant)) for head in _heads)
+    if not (all_str or all_bytes):
+        raise ValueError("Cannot mix str and bytes")
+    for head in _heads:
+        if isinstance(head, ValueConstant):
+            if not (isinstance(head.value, str) or asciiOnly(head.value)):
+                raise ValueError(f"Invaild constant value: {head.value!r}")
+            heads.append(head.value if all_str else head.value.encode("ascii"))
+        else:
+            heads.append(head)
+    return _breakPacket(packet, *heads)
+
+
+class FSDCLIENTPACKET(Values):
     ADD_ATC = ValueConstant("#AA")
     REMOVE_ATC = ValueConstant("#DA")
     ADD_PILOT = ValueConstant("#AP")
@@ -34,48 +100,7 @@ class CLIENTPACKET(Values):
     CR = ValueConstant("$CR")
     KILL = ValueConstant("$!!")
     WIND_DELTA = ValueConstant("#DL")
-
-    @staticmethod
-    def makePacket(*parts: Union[ValueConstant, str, int]) -> str:
-        buffer = ""
-        for part in parts:
-            if isinstance(part, ValueConstant):
-                buffer += part.value + ":"
-            else:
-                buffer += str(part) + ":"
-        return buffer[:-1]
-
-
-class FSDClientPacket:
-    ADD_ATC = "#AA"
-    REMOVE_ATC = "#DA"
-    ADD_PILOT = "#AP"
-    REMOVE_PILOT = "#DP"
-    REQUEST_HANDOFF = "$HO"
-    MESSAGE = "#TM"
-    REQUEST_WEATHER = "#RW"
-    PILOT_POSITION = "@"
-    ATC_POSITION = "%"
-    PING = "$PI"
-    PONG = "$PO"
-    AC_HANDOFF = "$HA"
-    PLAN = "$FP"
-    SB = "#SB"
-    PC = "#PC"
-    WEATHER = "#WX"
-    CLOUD_DATA = "#CD"
-    WIND_DATA = "#WD"
-    TEMP_DATA = "#TD"
-    REQUEST_COMM = "$C?"
-    REPLY_COMM = "$CI"
-    REQUEST_ACARS = "$AX"
-    REPLY_ACARS = "$AR"
-    ERROR = "$ER"
-    CQ = "$CQ"
-    CR = "$CR"
-    KILL = "$!!"
-    WIND_DELTA = "#DL"
-    used_command = [
+    client_used_command = [
         ADD_ATC,
         REMOVE_ATC,
         ADD_PILOT,
@@ -98,19 +123,3 @@ class FSDClientPacket:
         CR,
         KILL,
     ]
-
-    @staticmethod
-    def makePacket(*packet: Union[str, int]) -> str:
-        return ":".join([str(item) for item in packet])
-
-    @classmethod
-    def breakPacket(cls, packet: str) -> Tuple[Optional[str], List[str]]:
-        if len(packet) < 1:
-            return (None, packet.split(":"))
-        if packet[0] in [cls.PILOT_POSITION, cls.ATC_POSITION]:
-            return (packet[0], packet[1:].split(":"))
-        if len(packet) < 3:
-            return (None, packet.split(":"))
-        if packet[0:3] in cls.used_command:
-            return (packet[0:3], packet[3:].split(":"))
-        return (None, packet.split(":"))

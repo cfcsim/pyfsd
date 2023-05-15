@@ -1,5 +1,5 @@
 from re import compile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, Union
 
 from haversine import Unit, haversine
 
@@ -50,6 +50,23 @@ def joinLines(*lines: str, newline: bool = True) -> str:
         return "\r\n".join(lines) + "\r\n"
     else:
         return "".join(lines)
+
+
+def asciiOnly(string: Union[str, bytes]) -> bool:
+    if isinstance(string, str):
+        return all(ord(char) < 128 for char in string)
+    else:
+        return all(char < 128 for char in string)
+
+
+def assertNoDuplicate(__iterable: Iterable):
+    list_val = list(__iterable)
+    nodup_list_val = list(set(list_val))
+
+    if len(list_val) != len(nodup_list_val):
+        for nodup_val in nodup_list_val:
+            list_val.remove(nodup_val)
+        raise AssertionError(f"Duplicated value: {list_val}")
 
 
 def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
