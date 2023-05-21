@@ -12,7 +12,7 @@ from zope.interface import Attribute, Interface, implementer
 __all__ = ["CredentialsChecker", "Realm"]
 
 
-class IUserInfo(Interface):
+class IUserInfo(Interface):  # type: ignore[misc, valid-type]
     username = Attribute("username")
     password = Attribute("password")
 
