@@ -30,6 +30,9 @@ build-backend = "pdm.pep517.api"
 [tool.isort]
 profile = "black"
 
+[tool.pdm.scripts]
+start = "twistd -n pyfsd"
+
 [tool.pyright]
 exclude = [
     "**/__pycache__",
@@ -37,6 +40,3 @@ exclude = [
     ".venv",
     ".git",
 ]
-
-[tool.pdm.scripts]
-start = "twistd -n pyfsd"
