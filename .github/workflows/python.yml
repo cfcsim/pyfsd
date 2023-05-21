@@ -29,10 +29,9 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pdm
         pdm install -d
+        echo 'venv = ".venv"' >> pyproject.toml
     - name: Run pyright
       uses: jakebailey/pyright-action@v1
-      with:
-        venv-path: ".venv"
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
