@@ -41,13 +41,13 @@ class PyFSDService(Service):
         if self.plugins is not None:
             for plugin in self.plugins:
                 self.logger.info("Loading plugin {plugin.plugin_name}", plugin=plugin)
-                plugin.beforeStart(self)  # type: ignore
+                plugin.beforeStart(self)
             super().startService()
 
     def stopService(self) -> None:
         if self.plugins is not None:
             for plugin in self.plugins:
-                plugin.beforeStop()  # type: ignore[misc]
+                plugin.beforeStop()
             super().stopService()
 
     def checkConfig(self) -> None:
@@ -77,9 +77,7 @@ class PyFSDService(Service):
             return
         for source in getPlugins(IDatabaseMaker, plugins):
             if source.db_source == source_name:
-                self.db_pool = source.makeDBPool(
-                    self.config["pyfsd"]["database"]  # type: ignore
-                )  # type: ignore[call-arg]
+                self.db_pool = source.makeDBPool(self.config["pyfsd"]["database"])
                 return
         self.logger.warn(
             "No such database source {source_name}, fallback to sqlite3.",
@@ -125,7 +123,7 @@ class PyFSDService(Service):
         self.fetch_metar = metar_service.query
         return metar_service
 
-    def getServicePlugins(self) -> Tuple[IService, ...]:
+    def getServicePlugins(self) -> Tuple[IService]:
         return tuple(getPlugins(IService, plugins))
 
     def pickPlugins(self):
@@ -136,7 +134,7 @@ class PyFSDService(Service):
 
     def findPluginsByEvent(self, event_name: str):
         assert self.plugins is not None, "plugin not loaded"
-        if not hasattr(getattr(BasePyFSDPlugin, event_name, None), "__call__"):
+        if not isinstance(getattr(BasePyFSDPlugin, event_name, None), Callable):
             raise ValueError(f"Invaild event {event_name}")
         for plugin in self.plugins:
             if not hasattr(plugin, event_name):
@@ -144,7 +142,7 @@ class PyFSDService(Service):
             plugin_class = type(plugin)
             if issubclass(plugin_class, BasePyFSDPlugin):
                 plugin_handler = getattr(plugin_class, event_name, None)
-                if not hasattr(plugin_handler, "__call__"):
+                if not isinstance(plugin_handler, Callable):
                     continue
                 if plugin_handler is getattr(BasePyFSDPlugin, event_name):
                     continue

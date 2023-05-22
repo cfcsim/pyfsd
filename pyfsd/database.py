@@ -4,10 +4,10 @@ from zope.interface import Attribute, Interface, implementer
 from .define.utils import verifyConfigStruct
 
 
-class IDatabaseMaker(Interface):  # type: ignore[misc, valid-type]
+class IDatabaseMaker(Interface):
     db_source = Attribute("db_source", "Database source.")
 
-    def makeDBPool(config: dict) -> ConnectionPool:  # type: ignore[empty-body]
+    def makeDBPool(config: dict) -> ConnectionPool:
         """Make a ConnectionPool by config and return it."""
 
 

@@ -8,33 +8,25 @@ if TYPE_CHECKING:
     from .service import PyFSDService
 
 
-class IPyFSDPlugin(Interface):  # type: ignore[misc, valid-type]
+class IPyFSDPlugin(Interface):
     plugin_name = Attribute("plugin_name")
 
-    def beforeStart(pyfsd: "PyFSDService") -> None:  # type: ignore[empty-body]
+    def beforeStart(pyfsd: "PyFSDService") -> None:
         ...
 
-    def beforeStop() -> None:  # type: ignore[empty-body, misc]
+    def beforeStop() -> None:
         ...
 
-    def newConnectionEstablished(
-        protocol: "FSDClientProtocol",  # type: ignore
-    ) -> None:  # type: ignore[empty-body]
+    def newConnectionEstablished(protocol: "FSDClientProtocol") -> None:
         ...
 
-    def newClientCreated(
-        protocol: "FSDClientProtocol",  # type: ignore
-    ) -> None:  # type: ignore[empty-body]
+    def newClientCreated(protocol: "FSDClientProtocol") -> None:
         ...
 
-    def lineReceivedFromClient(
-        protocol: "FSDClientProtocol", byte_line: bytes  # type: ignore
-    ) -> None:  # type: ignore[empty-body]
+    def lineReceivedFromClient(protocol: "FSDClientProtocol", byte_line: bytes) -> None:
         ...
 
-    def clientDisconnected(  # type: ignore[empty-body]
-        protocol: "FSDClientProtocol", client: "Client"  # type: ignore
-    ) -> bool:
+    def clientDisconnected(protocol: "FSDClientProtocol", client: "Client") -> bool:
         ...
 
 
@@ -48,14 +40,10 @@ class BasePyFSDPlugin:
     def beforeStop(self) -> None:
         ...
 
-    def newConnectionEstablished(  # type: ignore[empty-body]
-        self, protocol: "FSDClientProtocol"
-    ) -> bool:
+    def newConnectionEstablished(self, protocol: "FSDClientProtocol") -> bool:
         ...
 
-    def newClientCreated(  # type: ignore[empty-body]
-        self, protocol: "FSDClientProtocol"
-    ) -> bool:
+    def newClientCreated(self, protocol: "FSDClientProtocol") -> bool:
         ...
 
     def lineReceivedFromClient(
@@ -63,7 +51,7 @@ class BasePyFSDPlugin:
     ) -> None:
         ...
 
-    def clientDisconnected(  # type: ignore[empty-body]
+    def clientDisconnected(
         self, protocol: "FSDClientProtocol", client: "Client"
     ) -> bool:
         ...
