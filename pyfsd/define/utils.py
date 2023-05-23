@@ -1,7 +1,8 @@
 from re import compile
 from typing import TYPE_CHECKING, Iterable, Union
 
-from haversine import Unit, haversine
+# Not yet typed
+from haversine import Unit, haversine  # type: ignore[import]
 
 if TYPE_CHECKING:
     from ..object.client import Position

@@ -2,13 +2,10 @@
 May delete later. """
 
 from dataclasses import dataclass, field
-from math import fabs
 from typing import TYPE_CHECKING, Optional, Tuple
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
-
-    from ..object.client import Position
 
 
 def getSeason(month: int, swap: bool) -> int:

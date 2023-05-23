@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Iterable, Optional
 
 from twisted.application.service import Service
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, succeed
 from twisted.internet.threads import deferToThread
 
 from .manager import MetarManager
@@ -25,8 +25,6 @@ class MetarService(Service):
 
     def query(self, icao: str) -> Deferred[Optional["Metar"]]:
         if self.metar_manager.cron:
-            deferred = Deferred()
-            deferred.callback(self.metar_manager.query(icao))
-            return deferred
+            return succeed(self.metar_manager.query(icao))
         else:
             return deferToThread(self.metar_manager.query, icao)

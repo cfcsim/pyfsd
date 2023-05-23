@@ -34,7 +34,7 @@ class AWCMetarFetcher:
                     return None
                 else:
                     return Metar(parser.metar_text, strict=False)
-        except ContentTooShortError or HTTPError or URLError:
+        except (ContentTooShortError, HTTPError, URLError):
             return None
 
     def fetchAll(self) -> NoReturn:

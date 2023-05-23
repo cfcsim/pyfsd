@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Iterable, List, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
 
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
@@ -36,9 +36,9 @@ class MetarManager:
 
     def pickFetchers(self, enabled_fetchers: Iterable[str]) -> int:
         count = 1
-        temp_fetchers = {}
+        temp_fetchers: Dict[str, IMetarFetcher] = {}
         fetchers = []
-        temp_fetchers[NOAAMetarFetcher.metar_source] = NOAAMetarFetcher()
+        temp_fetchers[NOAAMetarFetcher.metar_source] = IMetarFetcher(NOAAMetarFetcher())
         for fetcher in getPlugins(IMetarFetcher, package=plugins):
             count += 1
             temp_fetchers[fetcher.metar_source] = fetcher
@@ -58,7 +58,7 @@ class MetarManager:
                 # with catch_warnings(record=True) as warn:
                 self.metar_cache = fetcher.fetchAll()
                 break
-            except NotImplementedError or MetarNotAvailableError:
+            except (NotImplementedError, MetarNotAvailableError):
                 pass
         self.logger.info(
             f"Fetched {len(self.metar_cache)} METARs."  # with {len(warn)} warnings."
@@ -90,6 +90,6 @@ class MetarManager:
             for fetcher in self.fetchers:
                 try:
                     return fetcher.fetch(icao)
-                except NotImplementedError or MetarNotAvailableError:
+                except (NotImplementedError, MetarNotAvailableError):
                     pass
         return None

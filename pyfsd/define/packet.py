@@ -1,6 +1,7 @@
 from typing import AnyStr, List, Optional, Tuple, Union, cast
 
-from constantly import ValueConstant, Values
+# Not yet typed
+from constantly import ValueConstant, Values  # type: ignore[import]
 
 from .utils import asciiOnly, assertNoDuplicate
 
@@ -36,7 +37,7 @@ def makePacket(*_items: Union[AnyStr, ValueConstant]) -> AnyStr:
 
 def _breakPacket(
     packet: AnyStr, *heads: AnyStr
-) -> Tuple[Optional[AnyStr], Tuple[AnyStr]]:
+) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]:
     assert isinstance(packet, (str, bytes))
     assertNoDuplicate(heads)
     head: Optional[AnyStr] = None
@@ -55,7 +56,7 @@ def _breakPacket(
 
 def breakPacket(
     packet: AnyStr, *_heads: Union[AnyStr, ValueConstant]
-) -> Tuple[Optional[AnyStr], Tuple[AnyStr]]:
+) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]:
     heads = []
     all_str = all(isinstance(head, (str, ValueConstant)) for head in _heads)
     all_bytes = all(isinstance(head, (bytes, ValueConstant)) for head in _heads)

@@ -60,7 +60,7 @@ class NOAAMetarFetcher:
                     metar_file.read().decode("ascii", "backslashreplace").splitlines()
                 )
                 return self.parseMetar(metar_str)
-        except ContentTooShortError or HTTPError or URLError:
+        except (ContentTooShortError, HTTPError, URLError):
             return None
 
     def fetchAll(self) -> MetarInfoDict:
@@ -79,6 +79,6 @@ class NOAAMetarFetcher:
                         continue
                     current_metar = self.parseMetar(blocklines)
                     all_metar[cast(str, current_metar.station_id)] = current_metar
-        except ContentTooShortError or HTTPError or URLError:
+        except (ContentTooShortError, HTTPError, URLError):
             raise MetarNotAvailableError
         return all_metar

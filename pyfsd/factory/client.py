@@ -74,7 +74,7 @@ class FSDClientFactory(Factory):
         )
 
     def buildProtocol(self, addr: "IAddress") -> Optional["Protocol"]:
-        if addr.host in self.blacklist:
+        if addr.host in self.blacklist:  # type: ignore[attr-defined]
             return None
         return super().buildProtocol(addr)
 

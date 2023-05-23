@@ -60,7 +60,7 @@ def setupLoguru() -> None:
         [loguruLogObserver], redirectStandardIO=False  # type: ignore
     )
     # Avoid adding other observers
-    globalLogBeginner.beginLoggingTo = lambda *_, **__: None
+    setattr(globalLogBeginner, "beginLoggingTo", lambda *_, **__: None)
     warnings.showwarning = warningCapturer
 
 

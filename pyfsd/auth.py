@@ -13,8 +13,8 @@ __all__ = ["CredentialsChecker", "Realm"]
 
 
 class IUserInfo(Interface):
-    username = Attribute("username")
-    password = Attribute("password")
+    name = Attribute("name")
+    rating = Attribute("rating")
 
 
 @implementer(IUserInfo)

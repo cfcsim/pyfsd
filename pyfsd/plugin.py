@@ -40,10 +40,14 @@ class BasePyFSDPlugin:
     def beforeStop(self) -> None:
         ...
 
-    def newConnectionEstablished(self, protocol: "FSDClientProtocol") -> bool:
+    def newConnectionEstablished(  # type: ignore[empty-body]
+        self, protocol: "FSDClientProtocol"
+    ) -> None:
         ...
 
-    def newClientCreated(self, protocol: "FSDClientProtocol") -> bool:
+    def newClientCreated(  # type: ignore[empty-body]
+        self, protocol: "FSDClientProtocol"
+    ) -> None:
         ...
 
     def lineReceivedFromClient(
@@ -51,7 +55,7 @@ class BasePyFSDPlugin:
     ) -> None:
         ...
 
-    def clientDisconnected(
+    def clientDisconnected(  # type: ignore[empty-body]
         self, protocol: "FSDClientProtocol", client: "Client"
     ) -> bool:
         ...

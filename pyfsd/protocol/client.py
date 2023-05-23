@@ -272,7 +272,7 @@ class FSDClientProtocol(LineReceiver):
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         (
-            plan_type,
+            plan_type_str,
             aircraft,
             tascruise_str,
             dep_airport,
@@ -288,7 +288,7 @@ class FSDClientProtocol(LineReceiver):
             remarks,
             route,
         ) = packet[2:17]
-        plan_type = plan_type[0] if len(plan_type) > 0 else None
+        plan_type = plan_type_str[0] if len(plan_type_str) > 0 else None
         tascruise = strToInt(tascruise_str, default_value=0)
         dep_time = strToInt(dep_time_str, default_value=0)
         act_dep_time = strToInt(act_dep_time_str, default_value=0)
@@ -674,10 +674,10 @@ class FSDClientProtocol(LineReceiver):
         else:
             self.sendError(FSDErrors.ERR_SYNTAX)
 
-    def connectionLost(self, _) -> None:
+    def connectionLost(self, _=None) -> None:
         if self.timeoutKiller.active():
             self.timeoutKiller.cancel()
-        host: str = self.transport.getPeer().host
+        host: str = self.transport.getPeer().host  # type: ignore[attr-defined]
         if self.client is not None:
             self.logger.info(f"{host} ({self.client.callsign}) disconnected.")
             self.factory.broadcast(

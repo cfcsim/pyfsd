@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from twisted.plugin import IPlugin
 from zope.interface import implementer
@@ -22,7 +22,7 @@ class WhazzupGenerator(BasePyFSDPlugin):
     def generateWhazzup(self, heading_instead_pbh: bool = False) -> dict:
         assert self.pyfsd is not None, "PyFSD not started."
         assert self.pyfsd.client_factory is not None, "Client factory not started."
-        whazzup = {"pilot": [], "controllers": []}
+        whazzup: Dict[str, Any] = {"pilot": [], "controllers": []}
         utc_now = datetime.utcnow()
         whazzup["general"] = {
             "version": 3,
