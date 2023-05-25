@@ -1,11 +1,29 @@
-from typing import AnyStr, List, Optional, Tuple, Union, cast
+from typing import AnyStr, Dict, Iterable, List, Optional, Tuple, TypeVar, Union, cast
 
 # Not yet typed
 from constantly import ValueConstant, Values  # type: ignore[import]
 
 from .utils import asciiOnly, assertNoDuplicate
 
-__all__ = ["makePacket", "breakPacket", "FSDCLIENTPACKET"]
+__all__ = ["concat", "makePacket", "breakPacket", "FSDCLIENTPACKET"]
+
+
+def concat(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
+    all_str = all(isinstance(item, (str, ValueConstant)) for item in items)
+    all_bytes = all(isinstance(item, (bytes, ValueConstant)) for item in items)
+    assert all_str or all_bytes
+    result = cast(AnyStr, "" if all_str else b"")
+    for item in items:
+        if isinstance(item, ValueConstant):
+            if not (isinstance(item.value, str) or asciiOnly(item.value)):
+                raise ValueError(f"Invaild constant value: {item.value!r}")
+            if all_str:
+                result += item.value  # type: ignore
+            else:
+                result += item.value.encode("ascii")  # type: ignore
+        else:
+            result += item
+    return cast(AnyStr, result)
 
 
 def _makePacket(
@@ -36,7 +54,7 @@ def makePacket(*_items: Union[AnyStr, ValueConstant]) -> AnyStr:
 
 
 def _breakPacket(
-    packet: AnyStr, *heads: AnyStr
+    packet: AnyStr, heads: Iterable[AnyStr]
 ) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]:
     assert isinstance(packet, (str, bytes))
     assertNoDuplicate(heads)
@@ -54,10 +72,15 @@ def _breakPacket(
     return (head, tuple(splited_packet))
 
 
+_head_T = TypeVar("_head_T", str, bytes, ValueConstant)
+
+
+# Typing todo: connect AnyStr and _head_T
+# breakPacket("abcd", (b"efgh",)) <----- Should generate type error
 def breakPacket(
-    packet: AnyStr, *_heads: Union[AnyStr, ValueConstant]
-) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]:
-    heads = []
+    packet: AnyStr, _heads: Iterable[_head_T]
+) -> Tuple[Optional[_head_T], Tuple[AnyStr, ...]]:
+    heads: Dict[AnyStr, Union[AnyStr, ValueConstant]] = {}
     all_str = all(isinstance(head, (str, ValueConstant)) for head in _heads)
     all_bytes = all(isinstance(head, (bytes, ValueConstant)) for head in _heads)
     if not (all_str or all_bytes):
@@ -66,10 +89,15 @@ def breakPacket(
         if isinstance(head, ValueConstant):
             if not (isinstance(head.value, str) or asciiOnly(head.value)):
                 raise ValueError(f"Invaild constant value: {head.value!r}")
-            heads.append(head.value if all_str else head.value.encode("ascii"))
+            heads[
+                cast(AnyStr, head.value if all_str else head.value.encode("ascii"))
+            ] = head
         else:
-            heads.append(head)
-    return _breakPacket(packet, *heads)
+            heads[cast(AnyStr, head)] = cast(AnyStr, head)
+    result_head, parts = _breakPacket(packet, heads.keys())
+    if result_head is None:
+        return result_head, parts
+    return cast(_head_T, heads[result_head]), parts
 
 
 class FSDCLIENTPACKET(Values):

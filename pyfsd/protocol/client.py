@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from twisted.internet import reactor
 from twisted.internet.interfaces import ITransport
@@ -16,11 +16,12 @@ from ..define.broadcast import (
     isMulticast,
 )
 from ..define.errors import FSDErrors
-from ..define.packet import FSDClientPacket
+from ..define.packet import FSDCLIENTPACKET, breakPacket, concat, makePacket
 from ..define.utils import isCallsignVaild, joinLines, strToFloat, strToInt
 from ..object.client import Client, ClientType
 
 if TYPE_CHECKING:
+    from constantly import ValueConstant  # type: ignore[import]
     from metar.Metar import Metar
     from twisted.internet.base import DelayedCall
 
@@ -38,11 +39,14 @@ class FSDClientProtocol(LineReceiver):
 
     def connectionMade(self):
         self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
-        self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
+        self.logger.info(
+            "New connection from {ip}.",
+            ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
+        )
         self.factory.triggerEvent("newConnectionEstablished", (self,), {})
 
     def send(self, *lines: str, auto_newline: bool = True) -> None:
-        self.transport.write(
+        self.transport.write(  # type: ignore
             joinLines(*lines, newline=auto_newline).encode()  # type: ignore
         )
 
@@ -50,8 +54,8 @@ class FSDClientProtocol(LineReceiver):
         assert not (errno < 0 and errno <= 13)
         err_str = FSDErrors.error_names[errno]
         self.send(
-            FSDClientPacket.makePacket(
-                FSDClientPacket.ERROR + "server",
+            makePacket(
+                concat(FSDCLIENTPACKET.ERROR, "server"),
                 self.client.callsign if self.client is not None else "unknown",
                 f"{errno:03d}",  # = str(errno).rjust(3, "0")
                 env,
@@ -70,8 +74,10 @@ class FSDClientProtocol(LineReceiver):
         motd_lines: List[str] = [f"#TMserver:{self.client.callsign}:PyFSD Development"]
         for line in self.factory.motd:
             motd_lines.append(
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.MESSAGE + "server", self.client.callsign, line
+                makePacket(
+                    concat(FSDCLIENTPACKET.MESSAGE, "server"),
+                    self.client.callsign,
+                    line,
                 )
             )
         self.send(*motd_lines)
@@ -109,8 +115,8 @@ class FSDClientProtocol(LineReceiver):
 
     def handleCast(
         self,
-        packet: List[str],
-        command: str,
+        packet: Tuple[str, ...],
+        command: "ValueConstant",
         require_param: int = 2,
         multicast_able: bool = True,
         custom_at_checker: Optional[BroadcastChecker] = None,
@@ -125,8 +131,8 @@ class FSDClientProtocol(LineReceiver):
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         to_callsign = packet[1]
-        to_packet = FSDClientPacket.makePacket(
-            command + self.client.callsign,
+        to_packet = makePacket(
+            concat(command, self.client.callsign),
             to_callsign,
             *packet[2:] if packet_len > 2 else [""],
         )
@@ -138,7 +144,7 @@ class FSDClientProtocol(LineReceiver):
         else:
             self.factory.sendTo(to_callsign, to_packet)
 
-    def handleAddClient(self, packet: List[str], client_type: ClientType) -> None:
+    def handleAddClient(self, packet: Tuple[str, ...], client_type: ClientType) -> None:
         req_rating: int
         protocol: int
         sim_type: Optional[int]
@@ -218,26 +224,26 @@ class FSDClientProtocol(LineReceiver):
             if client_type == "PILOT":
                 self.factory.broadcast(
                     # two times of req_rating --- not a typo
-                    FSDClientPacket.makePacket(
-                        FSDClientPacket.ADD_PILOT + callsign,
+                    makePacket(
+                        concat(FSDCLIENTPACKET.ADD_PILOT, callsign),
                         "SERVER",
                         cid,
                         "",
-                        req_rating,
-                        req_rating,
-                        sim_type,
+                        f"{req_rating}",
+                        f"{req_rating}",
+                        f"{sim_type}",
                     ),
                     from_client=client,
                 )
             else:
                 self.factory.broadcast(
-                    FSDClientPacket.makePacket(
-                        FSDClientPacket.ADD_ATC + callsign,
+                    makePacket(
+                        concat(FSDCLIENTPACKET.ADD_ATC, callsign),
                         "SERVER",
                         realname,
                         cid,
                         "",
-                        req_rating,
+                        f"{req_rating}",
                     ),
                     from_client=client,
                 )
@@ -245,13 +251,13 @@ class FSDClientProtocol(LineReceiver):
             self.logger.info(
                 "New client {callsign} from {ip}.",
                 callsign=callsign,
-                ip=self.transport.getPeer().host,
+                ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
             )
             self.factory.triggerEvent("newClientCreated", (self,), {})
 
         self.factory.login(cid, password).addCallback(onResult).addErrback(onFail)
 
-    def handleRemoveClient(self, packet: List[str]) -> None:
+    def handleRemoveClient(self, packet: Tuple[str, ...]) -> None:
         if len(packet) == 0:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
@@ -262,7 +268,7 @@ class FSDClientProtocol(LineReceiver):
             return
         self.transport.loseConnection()
 
-    def handlePlan(self, packet: List[str]) -> None:
+    def handlePlan(self, packet: Tuple[str, ...]) -> None:
         if len(packet) < 17:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
@@ -314,27 +320,27 @@ class FSDClientProtocol(LineReceiver):
             route,
         )
         self.factory.broadcast(
-            FSDClientPacket.makePacket(
-                FSDClientPacket.PLAN + self.client.callsign,
+            makePacket(
+                concat(FSDCLIENTPACKET.PLAN, self.client.callsign),
                 "*A",
                 "",
             )
             if plan_type is None
-            else FSDClientPacket.makePacket(
-                FSDClientPacket.PLAN + self.client.callsign,
+            else makePacket(
+                concat(FSDCLIENTPACKET.PLAN, self.client.callsign),
                 "*A",
                 plan_type,
                 aircraft,
-                tascruise,
+                f"{tascruise}",
                 dep_airport,
-                dep_time,
-                act_dep_time,
+                f"{dep_time}",
+                f"{act_dep_time}",
                 alt,
                 dest_airport,
-                hrs_enroute,
-                min_enroute,
-                hrs_fuel,
-                min_fuel,
+                f"{hrs_enroute}",
+                f"{min_enroute}",
+                f"{hrs_fuel}",
+                f"{min_fuel}",
                 alt_airport,
                 remarks,
                 route,
@@ -343,7 +349,7 @@ class FSDClientProtocol(LineReceiver):
             from_client=self.client,
         )
 
-    def handlePilotPositionUpdate(self, packet: List[str]) -> None:
+    def handlePilotPositionUpdate(self, packet: Tuple[str, ...]) -> None:
         if len(packet) < 10:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
@@ -380,23 +386,23 @@ class FSDClientProtocol(LineReceiver):
         )
         self.timeoutKiller.reset(800)
         self.factory.broadcast(
-            FSDClientPacket.makePacket(
-                FSDClientPacket.PILOT_POSITION + mode,
+            makePacket(
+                concat(FSDCLIENTPACKET.PILOT_POSITION, mode),
                 self.client.callsign,
-                transponder,
-                self.client.rating,
+                f"{transponder}",
+                f"{self.client.rating}",
                 "%.5f" % lat,
                 "%.5f" % lon,
-                altitdue,
-                groundspeed,
-                pbh,
-                flags,
+                f"{altitdue}",
+                f"{groundspeed}",
+                f"{pbh}",
+                f"{flags}",
             ),
             check_func=broadcastPositionChecker,
             from_client=self.client,
         )
 
-    def handleATCPositionUpdate(self, packet: List[str]) -> None:
+    def handleATCPositionUpdate(self, packet: Tuple[str, ...]) -> None:
         if len(packet) < 8:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return
@@ -429,21 +435,21 @@ class FSDClientProtocol(LineReceiver):
         )
         self.timeoutKiller.reset(800)
         self.factory.broadcast(
-            FSDClientPacket.makePacket(
-                FSDClientPacket.ATC_POSITION + self.client.callsign,
-                frequency,
-                facility_type,
-                visual_range,
-                self.client.rating,
+            makePacket(
+                concat(FSDCLIENTPACKET.ATC_POSITION, self.client.callsign),
+                f"{frequency}",
+                f"{facility_type}",
+                f"{visual_range}",
+                f"{self.client.rating}",
                 "%.5f" % lat,
                 "%.5f" % lon,
-                altitdue,
+                f"{altitdue}",
             ),
             check_func=broadcastPositionChecker,
             from_client=self.client,
         )
 
-    def handleServerPing(self, packet: List[str]) -> None:
+    def handleServerPing(self, packet: Tuple[str, ...]) -> None:
         packet_len: int = len(packet)
         if packet_len < 2:
             self.sendError(FSDErrors.ERR_SYNTAX)
@@ -454,15 +460,15 @@ class FSDClientProtocol(LineReceiver):
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
         self.send(
-            FSDClientPacket.makePacket(
-                FSDClientPacket.PONG + "server",
+            makePacket(
+                concat(FSDCLIENTPACKET.PONG, "server"),
                 self.client.callsign,
                 *packet[2:] if packet_len > 2 else [""],
             )
         )
 
     # Hard to implement
-    #    def handleWeather(self, packet: List[str]) -> None:
+    #    def handleWeather(self, packet: Tuple[str, ...]) -> None:
     #        if len(packet) < 3:
     #            self.sendError(FSDErrors.ERR_SYNTAX)
     #        if self.client is None:
@@ -480,7 +486,7 @@ class FSDClientProtocol(LineReceiver):
     #
     #        self.factory.fetch_metar(packet[3]).addCallback(sendMetar)
 
-    def handleAcars(self, packet: List[str]) -> None:
+    def handleAcars(self, packet: Tuple[str, ...]) -> None:
         if len(packet) < 3:
             self.sendError(FSDErrors.ERR_SYNTAX)
         if self.client is None:
@@ -496,8 +502,8 @@ class FSDClientProtocol(LineReceiver):
                     self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
                 else:
                     self.send(
-                        FSDClientPacket.makePacket(
-                            FSDClientPacket.REPLY_ACARS + "server",
+                        makePacket(
+                            concat(FSDCLIENTPACKET.REPLY_ACARS, "server"),
                             self.client.callsign,
                             "METAR",
                             metar.code,
@@ -506,7 +512,7 @@ class FSDClientProtocol(LineReceiver):
 
             self.factory.fetch_metar(packet[3]).addCallback(sendMetar)
 
-    def handleCq(self, packet: List[str]) -> None:
+    def handleCq(self, packet: Tuple[str, ...]) -> None:
         # Behavior may differ from FSD.
         if len(packet) < 3:
             self.sendError(FSDErrors.ERR_SYNTAX)
@@ -514,7 +520,7 @@ class FSDClientProtocol(LineReceiver):
             return
         if packet[1].upper() != "SERVER":
             self.handleCast(
-                packet, FSDClientPacket.CQ, require_param=3, multicast_able=True
+                packet, FSDCLIENTPACKET.CQ, require_param=3, multicast_able=True
             )
             return
         elif packet[2].lower() == "fp":
@@ -530,22 +536,22 @@ class FSDClientProtocol(LineReceiver):
             if not self.client.type == "ATC":
                 return
             self.send(
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.PLAN,
+                makePacket(
+                    FSDCLIENTPACKET.PLAN,
                     callsign,
                     self.client.callsign,
                     plan.type,
                     plan.aircraft,
-                    plan.tascruise,
+                    f"{plan.tascruise}",
                     plan.dep_airport,
-                    plan.dep_time,
-                    plan.act_dep_time,
+                    f"{plan.dep_time}",
+                    f"{plan.act_dep_time}",
                     plan.alt,
                     plan.dest_airport,
-                    plan.hrs_enroute,
-                    plan.min_enroute,
-                    plan.hrs_fuel,
-                    plan.min_fuel,
+                    f"{plan.hrs_enroute}",
+                    f"{plan.min_enroute}",
+                    f"{plan.hrs_fuel}",
+                    f"{plan.min_fuel}",
                     plan.alt_airport,
                     plan.remarks,
                     plan.route,
@@ -556,18 +562,18 @@ class FSDClientProtocol(LineReceiver):
             callsign = packet[1]
             if (client := self.factory.clients.get(callsign)) is not None:
                 self.send(
-                    FSDClientPacket.makePacket(
-                        FSDClientPacket.CR,
+                    makePacket(
+                        FSDCLIENTPACKET.CR,
                         callsign,
                         self.client.callsign,
                         "RN",
                         client.realname,
                         "USER",
-                        client.rating,
+                        f"{client.rating}",
                     )
                 )
 
-    def handleKill(self, packet: List[str]) -> None:
+    def handleKill(self, packet: Tuple[str, ...]) -> None:
         if len(packet) < 3:
             self.sendError(FSDErrors.ERR_SYNTAX)
         if self.client is None:
@@ -578,24 +584,24 @@ class FSDClientProtocol(LineReceiver):
             return
         if self.client.rating < 11:
             self.send(
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.MESSAGE + "server",
+                makePacket(
+                    concat(FSDCLIENTPACKET.MESSAGE, "server"),
                     self.client.callsign,
                     "You are not allowed to kill users!",
                 )
             )
         else:
             self.send(
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.MESSAGE + "server",
+                makePacket(
+                    concat(FSDCLIENTPACKET.MESSAGE, "server"),
                     self.client.callsign,
                     f"Attempting to kill {callsign_kill}",
                 )
             )
             self.factory.sendTo(
                 callsign_kill,
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.KILL + "SERVER", callsign_kill, reason
+                makePacket(
+                    concat(FSDCLIENTPACKET.KILL, "SERVER"), callsign_kill, reason
                 ),
             )
             self.factory.clients[callsign_kill].transport.loseConnection()
@@ -619,30 +625,33 @@ class FSDClientProtocol(LineReceiver):
             return
         if not line:
             return
-        command, packet = FSDClientPacket.breakPacket(line)
-        if command == FSDClientPacket.ADD_ATC or command == FSDClientPacket.ADD_PILOT:
+        command, packet = breakPacket(line, FSDCLIENTPACKET.client_used_command)
+        if command == FSDCLIENTPACKET.ADD_ATC or command == FSDCLIENTPACKET.ADD_PILOT:
             self.handleAddClient(
-                packet, "ATC" if command == FSDClientPacket.ADD_ATC else "PILOT"
+                packet, "ATC" if command == FSDCLIENTPACKET.ADD_ATC else "PILOT"
             )
-        elif command == FSDClientPacket.PLAN:
+        elif command == FSDCLIENTPACKET.PLAN:
             self.handlePlan(packet)
         elif (
-            command == FSDClientPacket.REMOVE_ATC
-            or command == FSDClientPacket.REMOVE_PILOT
+            command == FSDCLIENTPACKET.REMOVE_ATC
+            or command == FSDCLIENTPACKET.REMOVE_PILOT
         ):
             self.handleRemoveClient(packet)
-        elif command == FSDClientPacket.PILOT_POSITION:
+        elif command == FSDCLIENTPACKET.PILOT_POSITION:
             self.handlePilotPositionUpdate(packet)
-        elif command == FSDClientPacket.ATC_POSITION:
+        elif command == FSDCLIENTPACKET.ATC_POSITION:
             self.handleATCPositionUpdate(packet)
-        elif command == FSDClientPacket.PONG:
+        elif command == FSDCLIENTPACKET.PONG:
+            assert command is not None, "Why FSDCLIENTPACKET.PONG is None???"
             self.handleCast(packet, command, require_param=2, multicast_able=True)
-        elif command == FSDClientPacket.PING:
+        elif command == FSDCLIENTPACKET.PING:
+            assert command is not None, "Why FSDCLIENTPACKET.PING is None???"
             if len(packet) > 1 and packet[1].lower() == "server":
                 self.handleServerPing(packet)
             else:
                 self.handleCast(packet, command, require_param=2, multicast_able=True)
-        elif command == FSDClientPacket.MESSAGE:
+        elif command is FSDCLIENTPACKET.MESSAGE:
+            assert command is not None, "Why FSDCLIENTPACKET.MESSAGE is None???"
             self.handleCast(
                 packet,
                 command=command,
@@ -651,25 +660,30 @@ class FSDClientProtocol(LineReceiver):
                 custom_at_checker=broadcastMessageChecker,
             )
         elif (
-            command == FSDClientPacket.REQUEST_HANDOFF
-            or command == FSDClientPacket.AC_HANDOFF
+            command == FSDCLIENTPACKET.REQUEST_HANDOFF
+            or command == FSDCLIENTPACKET.AC_HANDOFF
         ):
+            assert command is not None, "Why FSDCLIENTPACKET.*_HANDOFF is None???"
             self.handleCast(packet, command, require_param=3, multicast_able=False)
-        elif command == FSDClientPacket.SB or command == FSDClientPacket.PC:
+        elif command == FSDCLIENTPACKET.SB or command == FSDCLIENTPACKET.PC:
+            assert command is not None, "Why FSDCLIENTPACKET.SB/PC is None???"
             self.handleCast(packet, command, require_param=2, multicast_able=False)
-        elif command == FSDClientPacket.WEATHER:
+        elif command == FSDCLIENTPACKET.WEATHER:
             ...
-        elif command == FSDClientPacket.REQUEST_COMM:
+        elif command == FSDCLIENTPACKET.REQUEST_COMM:
+            assert command is not None, "Why FSDCLIENTPACKET.REQUEST_COMM is None???"
             self.handleCast(packet, command, require_param=2, multicast_able=False)
-        elif command == FSDClientPacket.REPLY_COMM:
+        elif command == FSDCLIENTPACKET.REPLY_COMM:
+            assert command is not None, "Why FSDCLIENTPACKET.REPLY_COMM is None???"
             self.handleCast(packet, command, require_param=3, multicast_able=False)
-        elif command == FSDClientPacket.REQUEST_ACARS:
+        elif command == FSDCLIENTPACKET.REQUEST_ACARS:
             self.handleAcars(packet)
-        elif command == FSDClientPacket.CR:
+        elif command == FSDCLIENTPACKET.CR:
+            assert command is not None, "Why FSDCLIENTPACKET.CR is None???"
             self.handleCast(packet, command, require_param=4, multicast_able=False)
-        elif command == FSDClientPacket.CQ:
+        elif command == FSDCLIENTPACKET.CQ:
             self.handleCq(packet)
-        elif command == FSDClientPacket.KILL:
+        elif command == FSDCLIENTPACKET.KILL:
             self.handleKill(packet)
         else:
             self.sendError(FSDErrors.ERR_SYNTAX)
@@ -681,10 +695,10 @@ class FSDClientProtocol(LineReceiver):
         if self.client is not None:
             self.logger.info(f"{host} ({self.client.callsign}) disconnected.")
             self.factory.broadcast(
-                FSDClientPacket.makePacket(
-                    FSDClientPacket.REMOVE_ATC + self.client.callsign
+                makePacket(
+                    concat(FSDCLIENTPACKET.REMOVE_ATC, self.client.callsign)
                     if self.client.type == "ATC"
-                    else FSDClientPacket.REMOVE_PILOT + self.client.callsign,
+                    else concat(FSDCLIENTPACKET.REMOVE_PILOT, self.client.callsign),
                     self.client.cid,
                 ),
                 from_client=self.client,

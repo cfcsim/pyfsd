@@ -7,7 +7,7 @@ from twisted.internet.task import LoopingCall
 from twisted.internet.threads import deferToThread
 
 from ..auth import IUserInfo, UsernameSHA256Password
-from ..define.packet import FSDClientPacket
+from ..define.packet import FSDCLIENTPACKET, concat, makePacket
 from ..define.utils import joinLines
 from ..plugin import PreventEvent
 from ..protocol.client import FSDClientProtocol
@@ -65,11 +65,11 @@ class FSDClientFactory(Factory):
     def heartbeat(self) -> None:
         random_int: int = randint(-214743648, 2147483647)
         self.broadcast(
-            FSDClientPacket.makePacket(
-                FSDClientPacket.WIND_DELTA + "SERVER",
+            makePacket(
+                concat(FSDCLIENTPACKET.WIND_DELTA, "SERVER"),
                 "*",
-                random_int % 11 - 5,
-                random_int % 21 - 10,
+                f"{random_int % 11 - 5}",
+                f"{random_int % 21 - 10}",
             )
         )
 
