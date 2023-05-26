@@ -1,14 +1,14 @@
 diff --git a/pyfsd/protocol/client.py b/pyfsd/protocol/client.py
-index 1ab6a26..dd795be 100644
+index fbcb7a9..24564b1 100644
 --- a/pyfsd/protocol/client.py
 +++ b/pyfsd/protocol/client.py
 @@ -1,3 +1,4 @@
 +from time import time
- from typing import TYPE_CHECKING, List, Optional
+ from typing import TYPE_CHECKING, List, Optional, Tuple
  
  from twisted.internet import reactor
-@@ -41,6 +42,13 @@ class FSDClientProtocol(LineReceiver):
-         self.logger.info("New connection from {ip}.", ip=self.transport.getPeer().host)
+@@ -46,6 +47,13 @@ class FSDClientProtocol(LineReceiver):
+         self.factory.triggerEvent("newConnectionEstablished", (self,), {})
  
      def send(self, *lines: str, auto_newline: bool = True) -> None:
 +        host: str = self.transport.getPeer().host
@@ -18,10 +18,10 @@ index 1ab6a26..dd795be 100644
 +            lines=lines,
 +            cs=self.client.callsign if self.client is not None else host,
 +        )
-         self.transport.write(
+         self.transport.write(  # type: ignore
              joinLines(*lines, newline=auto_newline).encode()  # type: ignore
          )
-@@ -48,6 +56,14 @@ class FSDClientProtocol(LineReceiver):
+@@ -53,6 +61,14 @@ class FSDClientProtocol(LineReceiver):
      def sendError(self, errno: int, env: str = "", fatal: bool = False) -> None:
          assert not (errno < 0 and errno <= 13)
          err_str = FSDErrors.error_names[errno]
@@ -34,9 +34,9 @@ index 1ab6a26..dd795be 100644
 +            cs=self.client.callsign if self.client is not None else host,
 +        )
          self.send(
-             FSDClientPacket.makePacket(
-                 FSDClientPacket.ERROR + "server",
-@@ -606,6 +622,13 @@ class FSDClientProtocol(LineReceiver):
+             makePacket(
+                 concat(FSDCLIENTPACKET.ERROR, "server"),
+@@ -625,6 +641,13 @@ class FSDClientProtocol(LineReceiver):
              return
          if not line:
              return
@@ -47,11 +47,11 @@ index 1ab6a26..dd795be 100644
 +            line=line,
 +            cs=self.client.callsign if self.client is not None else host,
 +        )
-         command, packet = FSDClientPacket.breakPacket(line)
-         if command == FSDClientPacket.ADD_ATC or command == FSDClientPacket.ADD_PILOT:
+         command, packet = breakPacket(line, FSDCLIENTPACKET.client_used_command)
+         if command == FSDCLIENTPACKET.ADD_ATC or command == FSDCLIENTPACKET.ADD_PILOT:
              self.handleAddClient(
 diff --git a/pyfsd/setup_loguru.py b/pyfsd/setup_loguru.py
-index fb9ba12..6900d7c 100644
+index c61dd89..b2af7db 100644
 --- a/pyfsd/setup_loguru.py
 +++ b/pyfsd/setup_loguru.py
 @@ -52,7 +52,8 @@ def warningCapturer(message, category, filename, lineno, file=None, line=None):
