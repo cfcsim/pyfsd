@@ -56,7 +56,12 @@ class PyFSDService(Service):
             {
                 "pyfsd": {
                     "database": {"source": str},
-                    "client": {"port": int, "motd": str, "blacklist": list},
+                    "client": {
+                        "port": int,
+                        "motd": str,
+                        "motd_encoding": str,
+                        "blacklist": list,
+                    },
                     "metar": {"mode": str, "fetchers": list},
                 }
             },
@@ -107,7 +112,9 @@ class PyFSDService(Service):
             self.fetch_metar,
             self.findPluginsByEvent,
             self.config["pyfsd"]["client"]["blacklist"],
-            self.config["pyfsd"]["client"]["motd"].splitlines(),
+            self.config["pyfsd"]["client"]["motd"]
+            .encode(self.config["pyfsd"]["client"]["motd_encoding"])
+            .splitlines(),
         )
         return TCPServer(
             int(self.config["pyfsd"]["client"]["port"]), self.client_factory

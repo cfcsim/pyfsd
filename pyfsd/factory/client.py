@@ -27,11 +27,11 @@ __all__ = ["FSDClientFactory"]
 
 
 class FSDClientFactory(Factory):
-    clients: Dict[str, "Client"]
+    clients: Dict[bytes, "Client"]
     portal: "Portal"
     heartbeater: LoopingCall
     blacklist: list
-    motd: List[str]
+    motd: List[bytes]
     protocol = FSDClientProtocol
     fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
     handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]]
@@ -42,7 +42,7 @@ class FSDClientFactory(Factory):
         fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"],
         handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]],
         blacklist: list,
-        motd: List[str],
+        motd: List[bytes],
     ) -> None:
         self.clients = {}
         self.portal = portal
@@ -70,7 +70,7 @@ class FSDClientFactory(Factory):
                 "*",
                 f"{random_int % 11 - 5}",
                 f"{random_int % 21 - 10}",
-            )
+            ).encode("ascii")
         )
 
     def buildProtocol(self, addr: "IAddress") -> Optional["Protocol"]:
@@ -80,7 +80,7 @@ class FSDClientFactory(Factory):
 
     def broadcast(
         self,
-        *lines: str,
+        *lines: bytes,
         check_func: "BroadcastChecker" = lambda _, __: True,
         auto_newline: bool = True,
         from_client: Optional["Client"] = None,
@@ -93,7 +93,7 @@ class FSDClientFactory(Factory):
                 continue
             client.transport.write(data.encode())  # type: ignore
 
-    def sendTo(self, callsign: str, *lines: str, auto_newline: bool = True) -> bool:
+    def sendTo(self, callsign: bytes, *lines: bytes, auto_newline: bool = True) -> bool:
         data = joinLines(*lines, newline=auto_newline)
         try:
             self.clients[callsign].transport.write(data.encode())  # type: ignore

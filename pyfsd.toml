@@ -6,6 +6,7 @@ filename = "pyfsd.db"
 port = 6809
 motd = """Shhh... Let's not leak out hard work
 Developer: Telegram @gamecss"""
+motd_encoding = "ascii"
 blacklist = []
 
 [pyfsd.metar]

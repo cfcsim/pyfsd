@@ -38,7 +38,7 @@ class PyFSDServiceMaker:
         pyfsd_service.getMetarService().setServiceParent(root_service)
         pyfsd_service.getClientService().setServiceParent(root_service)
         for service in pyfsd_service.getServicePlugins():
-            service.setServiceParent(root_service)
+            service.setServiceParent(root_service)  # type: ignore
         return root_service
 
 

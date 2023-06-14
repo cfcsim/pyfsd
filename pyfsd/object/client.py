@@ -2,11 +2,10 @@ from dataclasses import dataclass, field
 from math import sqrt
 from time import time
 from typing import Literal, Optional, Tuple
-from weakref import ReferenceType
 
 from twisted.internet.interfaces import ITransport
 
-__all__ = ["Position", "FlightPlan", "Client", "ClientType", "ClientInfo"]
+__all__ = ["Position", "FlightPlan", "Client", "ClientType"]
 
 Position = Tuple[float, float]
 ClientType = Literal["ATC", "PILOT"]
@@ -15,31 +14,31 @@ ClientType = Literal["ATC", "PILOT"]
 @dataclass
 class FlightPlan:
     revision: int
-    type: Literal["I", "V"]
-    aircraft: str
+    type: bytes  # Often Literal["I", "V"]
+    aircraft: bytes
     tascruise: int
-    dep_airport: str
+    dep_airport: bytes
     dep_time: int
     act_dep_time: int
-    alt: str
-    dest_airport: str
+    alt: bytes
+    dest_airport: bytes
     hrs_enroute: int
     min_enroute: int
     hrs_fuel: int
     min_fuel: int
-    alt_airport: str
-    remarks: str
-    route: str
+    alt_airport: bytes
+    remarks: bytes
+    route: bytes
 
 
 @dataclass
 class Client:
     type: ClientType
-    callsign: str
+    callsign: bytes
     rating: int
     cid: str
     protocol: int
-    realname: str
+    realname: bytes
     sim_type: int
     transport: ITransport
     position: Position = (0, 0)
@@ -52,8 +51,8 @@ class Client:
     flags: int = 0
     pbh: int = 0
     flight_plan: Optional[FlightPlan] = None
-    sector: Optional[str] = None
-    ident_flag: Optional[str] = None
+    sector: Optional[bytes] = None
+    ident_flag: Optional[bytes] = None
     start_time: int = field(default_factory=lambda: int(time()))
     last_updated: int = field(default_factory=lambda: int(time()))
 
@@ -67,21 +66,21 @@ class Client:
 
     def updatePlan(
         self,
-        plan_type: Literal["I", "V"],
-        aircraft: str,
+        plan_type: bytes,
+        aircraft: bytes,
         tascruise: int,
-        dep_airport: str,
+        dep_airport: bytes,
         dep_time: int,
         act_dep_time: int,
-        alt: str,
-        dest_airport: str,
+        alt: bytes,
+        dest_airport: bytes,
         hrs_enroute: int,
         min_enroute: int,
         hrs_fuel: int,
         min_fuel: int,
-        alt_airport: str,
-        remarks: str,
-        route: str,
+        alt_airport: bytes,
+        remarks: bytes,
+        route: bytes,
     ):
         revision: int
         if self.flight_plan is not None:
@@ -109,7 +108,7 @@ class Client:
 
     def updatePilotPosition(
         self,
-        mode: str,
+        mode: bytes,
         transponder: int,
         lat: float,
         lon: float,
@@ -170,6 +169,3 @@ class Client:
             else:
                 # Unknown
                 return 40
-
-
-ClientInfo = Tuple[str, ReferenceType[Client]]

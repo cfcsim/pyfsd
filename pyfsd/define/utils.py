@@ -1,30 +1,51 @@
-from re import compile
-from typing import TYPE_CHECKING, Iterable, Union
+from re import Pattern, compile
+from typing import TYPE_CHECKING, AnyStr, Iterable, Type, Union, cast
 
 # Not yet typed
 from haversine import Unit, haversine  # type: ignore[import]
 
 if TYPE_CHECKING:
+    from constantly import ValueConstant  # type: ignore[import]
+
     from ..object.client import Position
 
 __all__ = [
+    "constToAnyStr",
     "strToInt",
     "strToFloat",
     "isCallsignVaild",
     "calcDistance",
     "joinLines",
+    "verifyConfigStruct",
+    "asciiOnly",
+    "assertNoDuplicate",
 ]
-__invaild_char_regex = compile("[!@#$%*:& \t]")
+__str_invaild_char_regex = compile("[!@#$%*:& \t]")
+__bytes_invaild_char_regex = compile("[!@#$%*:& \t]")
 
 
-def strToInt(string: str, default_value: int = 0) -> int:
+def constToAnyStr(
+    type_: Type[AnyStr],
+    value: "ValueConstant",
+    encoding: str = "ascii",
+    errors: str = "strict",
+) -> AnyStr:
+    if type_ is str:
+        return cast(AnyStr, value.value)
+    elif type_ is str:
+        return value.value.encode(encoding, errors)
+    else:
+        raise TypeError
+
+
+def strToInt(string: Union[str, bytes], default_value: int = 0) -> int:
     try:
         return int(string)
     except ValueError:
         return default_value
 
 
-def strToFloat(string: str, default_value: float = 0.0) -> float:
+def strToFloat(string: Union[str, bytes], default_value: float = 0.0) -> float:
     try:
         return float(string)
     except ValueError:
@@ -37,20 +58,40 @@ def calcDistance(
     return haversine(from_position, to_position, unit=unit)
 
 
-def isCallsignVaild(callsign: str) -> bool:
-    global __invaild_char_regex
+def isCallsignVaild(callsign: Union[str, bytes]) -> bool:
+    def choice_regex(type_: Type[AnyStr]) -> Pattern[AnyStr]:
+        global __str_invaild_char_regex, __bytes_invaild_char_regex
+        if type_ is str:
+            return __str_invaild_char_regex  # type: ignore
+        elif type_ is bytes:
+            return __bytes_invaild_char_regex  # type: ignore
+        else:
+            raise TypeError(f"{type_!r}")
+
     if len(callsign) < 2 or len(callsign) > 12:
         return False
-    if __invaild_char_regex.search(callsign) is not None:
+    if choice_regex(type(callsign)).search(callsign) is not None:  # type: ignore
         return False
     return True
 
 
-def joinLines(*lines: str, newline: bool = True) -> str:
-    if newline:
-        return "\r\n".join(lines) + "\r\n"
-    else:
-        return "".join(lines)
+def joinLines(*lines: AnyStr, newline: bool = True) -> AnyStr:
+    # How terrible! but I think it'll be faster than before.
+    result: AnyStr = cast(AnyStr, None)
+    split_sign: AnyStr
+    for line in lines:
+        if result is None:
+            result = (line_type := type(line))()
+            if line_type is str:
+                split_sign = cast(AnyStr, "\r\n")
+            elif line_type is bytes:
+                split_sign = cast(AnyStr, b"\r\n")
+            else:
+                raise TypeError(f"Invaild type {line_type!r}")
+        result += line  # type: ignore
+        if newline:
+            result += split_sign  # type: ignore
+    return result
 
 
 def asciiOnly(string: Union[str, bytes]) -> bool:

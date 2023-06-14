@@ -1,103 +1,131 @@
-from typing import AnyStr, Dict, Iterable, List, Optional, Tuple, TypeVar, Union, cast
+from typing import AnyStr, Iterable, List, Optional, Tuple, Type, Union, cast, overload
 
 # Not yet typed
 from constantly import ValueConstant, Values  # type: ignore[import]
 
-from .utils import asciiOnly, assertNoDuplicate
+from .utils import constToAnyStr
 
 __all__ = ["concat", "makePacket", "breakPacket", "FSDCLIENTPACKET"]
 
 
 def concat(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
-    all_str = all(isinstance(item, (str, ValueConstant)) for item in items)
-    all_bytes = all(isinstance(item, (bytes, ValueConstant)) for item in items)
-    assert all_str or all_bytes
-    result = cast(AnyStr, "" if all_str else b"")
+    temp_part: str = ""
+    result: Optional[AnyStr] = None
+    result_type: Optional[Union[Type[str], Type[bytes]]] = None
     for item in items:
-        if isinstance(item, ValueConstant):
-            if not (isinstance(item.value, str) or asciiOnly(item.value)):
-                raise ValueError(f"Invaild constant value: {item.value!r}")
-            if all_str:
-                result += item.value  # type: ignore
+        is_const = isinstance(item, ValueConstant)
+        if result is None or result_type is None:
+            if is_const:
+                temp_part += item.value  # type: ignore[union-attr]
+                continue
             else:
-                result += item.value.encode("ascii")  # type: ignore
+                result_type = type(item)
+                assert result_type in (str, bytes), "Invaild type: {result_type!r}"
+                result = cast(
+                    AnyStr,
+                    result_type(
+                        temp_part  # type: ignore[arg-type]
+                        if result_type is str
+                        else temp_part.encode("ascii")
+                    ),
+                )
+        if is_const:
+            if result_type is str:
+                result += item.value  # type: ignore[union-attr]
+            else:
+                result += item.value.encode("ascii")  # type: ignore[union-attr]
         else:
-            result += item
-    return cast(AnyStr, result)
-
-
-def _makePacket(
-    *items: AnyStr, all_str: bool = False, all_bytes: bool = False
-) -> AnyStr:
-    if all(isinstance(item, str) for item in items) or all_str:
-        return ":".join(items)  # type: ignore
-    elif all(isinstance(item, bytes) for item in items) or all_bytes:
-        return b":".join(items)  # type: ignore
+            result += item  # type: ignore
+    if result is None:
+        return cast(AnyStr, temp_part)
     else:
-        raise ValueError("Cannot mix str and bytes")
+        return cast(AnyStr, result)
 
 
-def makePacket(*_items: Union[AnyStr, ValueConstant]) -> AnyStr:
-    items = []
-    all_str = all(isinstance(item, (str, ValueConstant)) for item in _items)
-    all_bytes = all(isinstance(item, (bytes, ValueConstant)) for item in _items)
-    if not (all_str or all_bytes):
-        raise ValueError("Cannot mix str and bytes")
-    for item in _items:
-        if isinstance(item, ValueConstant):
-            if not (isinstance(item.value, str) or asciiOnly(item.value)):
-                raise ValueError(f"Invaild constant value: {item.value!r}")
-            items.append(item.value if all_str else item.value.encode("ascii"))
+def makePacket(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
+    temp_part: str = ""
+    result: Optional[AnyStr] = None
+    result_type: Optional[Union[Type[str], Type[bytes]]] = None
+    for item in items:
+        is_const = isinstance(item, ValueConstant)
+        if result is None or result_type is None:
+            if is_const:
+                temp_part += item.value + ":"  # type: ignore[union-attr]
+                continue
+            else:
+                result_type = type(item)
+                assert result_type in (str, bytes), "Invaild type: {result_type!r}"
+                result = cast(
+                    AnyStr,
+                    result_type(
+                        temp_part  # type: ignore[arg-type]
+                        if result_type is str
+                        else temp_part.encode("ascii")
+                    ),
+                )
+        if result_type is str:
+            if is_const:
+                result += item.value + ":"  # type: ignore[union-attr]
+            else:
+                result += item + ":"  # type: ignore[operator]
         else:
-            items.append(item)
-    return _makePacket(*items, all_str=all_str, all_bytes=all_bytes)
+            if is_const:
+                result += item.value.encode("ascii") + b":"  # type: ignore[union-attr]
+            else:
+                result += item + b":"  # type: ignore[operator]
+    if result is None:
+        return cast(AnyStr, temp_part[:-1])
+    else:
+        return cast(AnyStr, result[:-1])
 
 
-def _breakPacket(
+@overload
+def breakPacket(
     packet: AnyStr, heads: Iterable[AnyStr]
 ) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]:
-    assert isinstance(packet, (str, bytes))
-    assertNoDuplicate(heads)
-    head: Optional[AnyStr] = None
+    ...
+
+
+@overload
+def breakPacket(
+    packet: AnyStr, heads: Iterable[ValueConstant]
+) -> Tuple[Optional[ValueConstant], Tuple[AnyStr, ...]]:
+    ...
+
+
+@overload
+def breakPacket(
+    packet: AnyStr, heads: Iterable[Union[AnyStr, ValueConstant]]
+) -> Tuple[Optional[Union[AnyStr, ValueConstant]], Tuple[AnyStr, ...]]:
+    ...
+
+
+def breakPacket(
+    packet: AnyStr, heads: Iterable[Union[AnyStr, ValueConstant]]
+) -> Tuple[Optional[Union[AnyStr, ValueConstant]], Tuple[AnyStr, ...]]:
+    packet_type = type(packet)
+    assert packet_type in (str, bytes)
+    head: Optional[Union[AnyStr, ValueConstant]] = None
+    true_head: Optional[AnyStr] = None
     splited_packet: List[AnyStr]
     for may_head in heads:
-        if packet.startswith(may_head):
-            head = may_head
-    if isinstance(packet, str):
-        splited_packet = cast(List[AnyStr], packet.split(":"))
-    elif isinstance(packet, bytes):
-        splited_packet = cast(List[AnyStr], packet.split(b":"))
-    if head is not None:
-        splited_packet[0] = splited_packet[0][len(head) :]
-    return (head, tuple(splited_packet))
-
-
-_head_T = TypeVar("_head_T", str, bytes, ValueConstant)
-
-
-# Typing todo: connect AnyStr and _head_T
-# breakPacket("abcd", (b"efgh",)) <----- Should generate type error
-def breakPacket(
-    packet: AnyStr, _heads: Iterable[_head_T]
-) -> Tuple[Optional[_head_T], Tuple[AnyStr, ...]]:
-    heads: Dict[AnyStr, Union[AnyStr, ValueConstant]] = {}
-    all_str = all(isinstance(head, (str, ValueConstant)) for head in _heads)
-    all_bytes = all(isinstance(head, (bytes, ValueConstant)) for head in _heads)
-    if not (all_str or all_bytes):
-        raise ValueError("Cannot mix str and bytes")
-    for head in _heads:
-        if isinstance(head, ValueConstant):
-            if not (isinstance(head.value, str) or asciiOnly(head.value)):
-                raise ValueError(f"Invaild constant value: {head.value!r}")
-            heads[
-                cast(AnyStr, head.value if all_str else head.value.encode("ascii"))
-            ] = head
+        if isinstance(may_head, ValueConstant):
+            true_head = constToAnyStr(packet_type, may_head)
         else:
-            heads[cast(AnyStr, head)] = cast(AnyStr, head)
-    result_head, parts = _breakPacket(packet, heads.keys())
-    if result_head is None:
-        return result_head, parts
-    return cast(_head_T, heads[result_head]), parts
+            true_head = may_head
+        if packet.startswith(true_head):
+            head = may_head
+    if packet_type is str:
+        splited_packet = cast(List[AnyStr], packet.split(":"))  # type: ignore[arg-type]
+    elif packet_type is bytes:
+        splited_packet = cast(
+            List[AnyStr], packet.split(b":")  # type: ignore[arg-type]
+        )
+    else:
+        raise TypeError(f"{packet_type!r}")
+    if true_head is not None:
+        splited_packet[0] = splited_packet[0][len(true_head) :]
+    return (head, tuple(splited_packet))
 
 
 class FSDCLIENTPACKET(Values):
