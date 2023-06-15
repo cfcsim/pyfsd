@@ -1,4 +1,4 @@
-from re import Pattern, compile
+from re import compile
 from typing import TYPE_CHECKING, AnyStr, Iterable, Type, Union, cast
 
 # Not yet typed
@@ -62,7 +62,7 @@ def isCallsignVaild(callsign: Union[str, bytes]) -> bool:
     global __str_invaild_char_regex, __bytes_invaild_char_regex
     if len(callsign) < 2 or len(callsign) > 12:
         return False
-    if (
+    if (  # type: ignore[attr-defined]
         __str_invaild_char_regex
         if type(callsign) is str
         else __bytes_invaild_char_regex

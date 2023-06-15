@@ -282,8 +282,9 @@ class FSDClientProtocol(LineReceiver):
                 )
             self.sendMotd()
             self.logger.info(
-                "New client {callsign} from {ip}.",
-                callsign=callsign,
+                "New client {callsign} ({cid}) from {ip}.",
+                callsign=callsign.decode(errors="backslashreplace"),
+                cid=cid_str,
                 ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
             )
             self.factory.triggerEvent("newClientCreated", (self,), {})
@@ -666,8 +667,6 @@ class FSDClientProtocol(LineReceiver):
                 ),
             )
             self.factory.clients[callsign_kill].transport.loseConnection()
-
-    # def connectionMade(self): ...
 
     def lineReceived(self, byte_line: bytes) -> None:
         def resultHandler(prevented: bool) -> None:
