@@ -91,12 +91,12 @@ class FSDClientFactory(Factory):
                 continue
             if not check_func(from_client, client):
                 continue
-            client.transport.write(data.encode())  # type: ignore
+            client.transport.write(data)  # type: ignore
 
     def sendTo(self, callsign: bytes, *lines: bytes, auto_newline: bool = True) -> bool:
         data = joinLines(*lines, newline=auto_newline)
         try:
-            self.clients[callsign].transport.write(data.encode())  # type: ignore
+            self.clients[callsign].transport.write(data)  # type: ignore
             return True
         except KeyError:
             return False

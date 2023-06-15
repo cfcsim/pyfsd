@@ -21,7 +21,7 @@ __all__ = [
     "assertNoDuplicate",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
-__bytes_invaild_char_regex = compile("[!@#$%*:& \t]")
+__bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
 
 
 def constToAnyStr(
@@ -59,18 +59,16 @@ def calcDistance(
 
 
 def isCallsignVaild(callsign: Union[str, bytes]) -> bool:
-    def choice_regex(type_: Type[AnyStr]) -> Pattern[AnyStr]:
-        global __str_invaild_char_regex, __bytes_invaild_char_regex
-        if type_ is str:
-            return __str_invaild_char_regex  # type: ignore
-        elif type_ is bytes:
-            return __bytes_invaild_char_regex  # type: ignore
-        else:
-            raise TypeError(f"{type_!r}")
-
+    global __str_invaild_char_regex, __bytes_invaild_char_regex
     if len(callsign) < 2 or len(callsign) > 12:
         return False
-    if choice_regex(type(callsign)).search(callsign) is not None:  # type: ignore
+    if (
+        __str_invaild_char_regex
+        if type(callsign) is str
+        else __bytes_invaild_char_regex
+    ).search(
+        callsign  # type: ignore
+    ) is not None:
         return False
     return True
 
