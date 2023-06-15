@@ -32,7 +32,7 @@ def constToAnyStr(
 ) -> AnyStr:
     if type_ is str:
         return cast(AnyStr, value.value)
-    elif type_ is str:
+    elif type_ is bytes:
         return value.value.encode(encoding, errors)
     else:
         raise TypeError
