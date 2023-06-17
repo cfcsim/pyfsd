@@ -11,6 +11,22 @@ from zope.interface import implementer
 from pyfsd.service import PyFSDService
 from pyfsd.setup_loguru import setupLoguru
 
+DEFAULT_CONFIG = """[pyfsd.database]
+source = "sqlite3"
+filename = "pyfsd.db"
+
+[pyfsd.client]
+port = 6809
+motd = \"\"\"Shhh... Let's not leak out hard work
+Developer: Telegram @gamecss\"\"\"
+motd_encoding = "ascii"
+blacklist = []
+
+[pyfsd.metar]
+mode = "cron"
+cron_time = 3600
+fetchers = ["NOAA"]"""
+
 
 class PyFSDOptions(Options):
     optFlags = [
@@ -30,8 +46,14 @@ class PyFSDServiceMaker:
     def makeService(self, options: PyFSDOptions):
         if not options["disable-loguru"]:
             setupLoguru()
-        with open(options["config-path"], "rb") as config_file:
-            config = tomllib.load(config_file)
+        try:
+            with open(options["config-path"], "rb") as config_file:
+                config = tomllib.load(config_file)
+        except FileNotFoundError:
+            with open(options["config-path"], "w") as config_file:
+                config_file.write(DEFAULT_CONFIG)
+            config = tomllib.loads(DEFAULT_CONFIG)
+
         root_service = MultiService()
         pyfsd_service = PyFSDService(config)
         pyfsd_service.setServiceParent(root_service)

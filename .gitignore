@@ -171,16 +171,14 @@ test.py
 *.swp
 *.swo
 
-# Twisted plugin cache
+# Twisted
 dropin.cache
-
-# Twistd log & pid
 twistd.log
 twistd.pid
 
-# PyFSD Database
+# PyFSD
 pyfsd.db
-
-# PyFSD Plugins
+pyfsd.toml
 pyfsd/plugins/*.py
 !pyfsd/plugins/__init__.py
+
