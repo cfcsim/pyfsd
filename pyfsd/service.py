@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Callable, Optional, Tuple
+from inspect import getfile
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
 
 from twisted.application.internet import TCPServer
 from twisted.application.service import IService, Service
@@ -25,7 +26,7 @@ class PyFSDService(Service):
     fetch_metar: Optional[Callable[[str], "Deferred[Optional[Metar]]"]] = None
     db_pool: Optional[ConnectionPool] = None
     portal: Optional[Portal] = None
-    plugins: Optional[Tuple[IPyFSDPlugin]] = None
+    plugins: Optional[Tuple[IPyFSDPlugin, ...]] = None
     logger: Logger = Logger()
     config: dict
 
@@ -40,7 +41,11 @@ class PyFSDService(Service):
     def startService(self) -> None:
         if self.plugins is not None:
             for plugin in self.plugins:
-                self.logger.info("Loading plugin {plugin.plugin_name}", plugin=plugin)
+                self.logger.info(
+                    "Loading plugin {plugin.plugin_name} ({filename})",
+                    plugin=plugin,
+                    filename=getfile(type(plugin)),
+                )
                 plugin.beforeStart(self)
             super().startService()
 
@@ -131,12 +136,31 @@ class PyFSDService(Service):
         return metar_service
 
     def getServicePlugins(self) -> Tuple[IService, ...]:
-        return tuple(getPlugins(IService, plugins))
+        temp_plugins: List[IService] = []
+        for plugin in getPlugins(IService, plugins):
+            if plugin in temp_plugins:
+                self.logger.debug(
+                    "service plugin {plugin.plugin_name} (filename) "
+                    "already loaded, skipping.",
+                    plugin=plugin,
+                    filename=getfile(type(plugin)),
+                )
+            else:
+                temp_plugins.append(plugin)
+        return tuple(temp_plugins)
 
-    def pickPlugins(self):
+    def pickPlugins(self) -> None:
         temp_plugins = []
         for plugin in getPlugins(IPyFSDPlugin, plugins):
-            temp_plugins.append(plugin)
+            if plugin in temp_plugins:
+                self.logger.debug(
+                    "plugin {plugin.plugin_name} ({filename}) "
+                    "already loaded, skipping.",
+                    plugin=plugin,
+                    filename=getfile(type(plugin)),
+                )
+            else:
+                temp_plugins.append(plugin)
         self.plugins = tuple(temp_plugins)
 
     def findPluginsByEvent(self, event_name: str):
