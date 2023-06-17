@@ -180,3 +180,7 @@ twistd.pid
 
 # PyFSD Database
 pyfsd.db
+
+# PyFSD Plugins
+pyfsd/plugins/*.py
+!pyfsd/plugins/__init__.py
