@@ -115,6 +115,7 @@ def breakPacket(
             true_head = may_head
         if packet.startswith(true_head):
             head = may_head
+            break
     if packet_type is str:
         splited_packet = cast(List[AnyStr], packet.split(":"))  # type: ignore[arg-type]
     elif packet_type is bytes:
