@@ -1,7 +1,7 @@
 # This workflow will install Python dependencies, run tests and lint with a variety of Python versions
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python linting
+name: Python building
 
 on:
   push:
@@ -10,13 +10,13 @@ on:
     branches: [ "early-dev" ]
 
 jobs:
-  linting:
+  build:
   
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
 
     steps:
     - uses: actions/checkout@v3
@@ -40,3 +40,13 @@ jobs:
     - name: Run flake8
       run: |
         flake8 pyfsd --count --show-source --statistics
+    - name: Build package
+      if: ${{ always() }}
+      id: build
+      run: |
+        pdm build
+    - uses: actions/upload-artifact@v3
+      if: steps.build.outputs.exit_code == 0
+      with:
+        name: dist
+        path: dist/*
