@@ -1,7 +1,7 @@
 [project]
 name = "pyfsd"
-version = "0.1.0"
-description = ""
+dynamic = ["version"]
+description = "An implementation of protocol 9 of FSD based on Python & Twisted."
 authors = [
     {name = "gamecss", email = "52902973+gamecss@users.noreply.github.com"},
 ]
@@ -11,6 +11,13 @@ dependencies = [
     "haversine>=2.8.0",
     "tomli>=2.0.1; python_version<'3.11'",
     "metar>=1.10.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
 ]
 requires-python = ">=3.8.1"
 readme = "README.md"
@@ -26,14 +33,21 @@ dev = [
 ]
 
 [build-system]
-requires = ["pdm-pep517>=1.0"]
-build-backend = "pdm.pep517.api"
+requires = ["pdm-backend", "versioneer[toml]"]
+build-backend = "pdm.backend"
 
 [tool.isort]
 profile = "black"
 
 [tool.pdm.scripts]
 start = "twistd -n pyfsd"
+
+[tool.pdm.build]
+includes = ["pyfsd/", "twisted/"]
+
+[tool.pdm.version]
+source = "call"
+getter = "versioneer_helper:get_version"
 
 [tool.pyright]
 exclude = [
@@ -42,3 +56,11 @@ exclude = [
     ".venv",
     ".git",
 ]
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "NONE"
+versionfile_build = "NONE"
+tag_prefix = ""
+parentdir_prefix = "pyfsd-"
