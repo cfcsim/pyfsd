@@ -48,6 +48,8 @@ includes = ["pyfsd/", "twisted/"]
 [tool.pdm.version]
 source = "call"
 getter = "versioneer_helper:get_version"
+write_to = "pyfsd/_version.py"
+write_template = "__version__ = '{}'"
 
 [tool.pyright]
 exclude = [
