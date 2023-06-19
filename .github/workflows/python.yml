@@ -46,7 +46,7 @@ jobs:
       run: |
         pdm build
     - uses: actions/upload-artifact@v3
-      if: steps.build.outputs.exit_code == 0
+      if: ${{ always() }} # steps.build.outputs.exit_code == 0
       with:
         name: dist
         path: dist/*
