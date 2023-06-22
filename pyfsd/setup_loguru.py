@@ -3,11 +3,14 @@ import warnings
 from typing import TYPE_CHECKING
 
 from loguru import logger
+from loguru._datetime import aware_now, datetime
+from loguru._logger import start_time
 from twisted.logger import ILogObserver, globalLogBeginner
 from twisted.logger._format import _formatEvent
 from zope.interface import implementer
 
 if TYPE_CHECKING:
+    from loguru import Record
     from twisted.logger import LogEvent
     from twisted.python.failure import Failure
 
@@ -38,7 +41,7 @@ def getDepth() -> int:
 
 
 def warningCapturer(message, category, filename, lineno, file=None, line=None):
-    if category == RuntimeWarning and filename.endswith("metar/Metar.py"):
+    if category is RuntimeWarning and filename.endswith("metar/Metar.py"):
         # ignore metar parse warning
         return
     if file is None:
@@ -65,13 +68,20 @@ def setupLoguru() -> None:
 
 
 def extractException(failure: "Failure"):
-    """
-    if failure.type is None:
-        return None
-    elif not issubclass(failure.type, BaseException):
-        return None
-    """
     return failure.type, failure.value, failure.getTracebackObject()
+
+
+def getSystem(event: "LogEvent") -> str:
+    if "log_system" in event:
+        try:
+            return str(event["log_system"])
+        except:
+            return "?"
+    else:
+        if "log_namespace" in event:
+            return event["log_namespace"]
+        else:
+            return "-"
 
 
 @logger.catch(message="Loguru observer failure")
@@ -94,6 +104,17 @@ def loguruLogObserver(event: "LogEvent") -> None:
     else:
         event_text = _formatEvent(event)
         if event_text is not None:
-            # namespace = event["log_namespace"].rsplit(".", 1)[0]
             depth = getDepth()
-            logger.opt(depth=depth).log(level_name, event_text)
+
+            def patcher(record: "Record") -> None:
+                record["time"] = datetime.fromtimestamp(event["log_time"])
+                system = getSystem(event)
+                if (
+                    name := record.get("name", None)
+                ) is not None and not system.startswith(name):
+                    record["name"] = f"({system}):{name}"
+                else:
+                    record["name"] = system
+                record["elapsed"] = aware_now() - start_time
+
+            logger.patch(patcher).opt(depth=depth).log(level_name, event_text)

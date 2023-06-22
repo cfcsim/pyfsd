@@ -1,1 +1,2 @@
-__version__ = "PLACEHOLDER"
+# Will replaced by pdm when build wheel
+__version__ = "<early_dev branch>"

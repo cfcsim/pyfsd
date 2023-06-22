@@ -9,6 +9,7 @@ from twisted.logger import Logger
 from twisted.plugin import getPlugins
 
 from . import plugins
+from ._version import __version__
 from .auth import CredentialsChecker, Realm
 from .database import IDatabaseMaker, SQLite3DBMaker
 from .define.utils import verifyConfigStruct
@@ -29,6 +30,7 @@ class PyFSDService(Service):
     plugins: Optional[Tuple[IPyFSDPlugin, ...]] = None
     logger: Logger = Logger()
     config: dict
+    version = __version__
 
     def __init__(self, config: dict) -> None:
         self.config = config
