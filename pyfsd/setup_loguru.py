@@ -75,7 +75,7 @@ def getSystem(event: "LogEvent") -> str:
     if "log_system" in event:
         try:
             return str(event["log_system"])
-        except:
+        except:  # noqa: E722
             return "?"
     else:
         if "log_namespace" in event:
