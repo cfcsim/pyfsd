@@ -180,6 +180,7 @@ twistd.pid
 # PyFSD
 pyfsd.db
 pyfsd.toml
+pyfsd_client.toml
 pyfsd/plugins/*.py
 !pyfsd/plugins/__init__.py
 whazzup.json
