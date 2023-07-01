@@ -36,10 +36,10 @@ jobs:
     #    version: "1.1.308"
     - name: Run mypy
       run: |
-        mypy pyfsd
+        mypy .
     - name: Run flake8
       run: |
-        flake8 pyfsd --count --show-source --statistics
+        flake8 . --count --show-source --statistics
     - name: Build package
       if: ${{ always() }}
       id: build

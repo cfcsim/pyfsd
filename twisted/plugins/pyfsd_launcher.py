@@ -1,7 +1,7 @@
 try:
-    import tomllib
+    import tomllib  # type: ignore[import]
 except ModuleNotFoundError:
-    import tomli as tomllib
+    import tomli as tomllib  # type: ignore[import]
 
 from twisted.application.service import IServiceMaker, MultiService
 from twisted.plugin import IPlugin

@@ -5,7 +5,7 @@ from twisted.protocols.basic import LineReceiver
 from pyfsd.define.packet import FSDCLIENTPACKET, breakPacket, concat, makePacket
 
 if TYPE_CHECKING:
-    from constantly import ValueConstant
+    from constantly import ValueConstant  # type: ignore[import]
 
     from pyfsd.object.client import Client
 

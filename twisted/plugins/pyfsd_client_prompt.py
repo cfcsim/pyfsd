@@ -1,7 +1,7 @@
 try:
-    import tomllib
+    import tomllib  # type: ignore[import]
 except ModuleNotFoundError:
-    import tomli as tomllib
+    import tomli as tomllib  # type: ignore[import]
 
 from twisted.application.internet import TCPClient
 from twisted.application.service import IServiceMaker, MultiService
@@ -80,7 +80,7 @@ class FSDClientServiceMaker:
             9,
             config_client["realname"].encode(),
             config_client["sim_type"],
-            None,
+            None,  # type: ignore
         )
         root_service = MultiService()
         factory = FSDClientFactory(client)
@@ -94,7 +94,6 @@ class FSDClientServiceMaker:
         prompt_protocol = ServerProtocol(
             ClientPrompt, factory.buildProtocol(None), config_client["password"]
         )
-        prompt_protocol.factory = prompt_protocol
         RawStdinService(prompt_protocol).setServiceParent(root_service)
         return root_service
 
