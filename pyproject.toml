@@ -30,6 +30,7 @@ dev = [
     "isort>=5.12.0",
     "mypy-zope>=0.9.1",
     "mypy>=1.0.1",
+    "flake8-pyi>=23.6.0",
 ]
 
 [build-system]

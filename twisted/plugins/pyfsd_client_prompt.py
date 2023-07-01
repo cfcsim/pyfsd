@@ -5,15 +5,16 @@ except ModuleNotFoundError:
 
 from twisted.application.internet import TCPClient
 from twisted.application.service import IServiceMaker, MultiService
-from twisted.internet.stdio import StandardIO
+from twisted.conch.insults.insults import ServerProtocol
 from twisted.plugin import IPlugin
 from twisted.python.usage import Options
 from zope.interface import implementer
 
 from pyfsd.client.factory import FSDClientFactory
-from pyfsd.client.prompt import PromptProtocol
+from pyfsd.client.prompt import ClientPrompt
 from pyfsd.define.utils import verifyConfigStruct
 from pyfsd.object.client import Client
+from pyfsd.prompt.service import RawStdinService
 from pyfsd.setup_loguru import setupLoguru
 
 DEFAULT_CONFIG = """[client]
@@ -90,9 +91,11 @@ class FSDClientServiceMaker:
             15,
             None,
         ).setServiceParent(root_service)
-        StandardIO(
-            PromptProtocol(factory.buildProtocol(None), config_client["password"])
+        prompt_protocol = ServerProtocol(
+            ClientPrompt, factory.buildProtocol(None), config_client["password"]
         )
+        prompt_protocol.factory = prompt_protocol
+        RawStdinService(prompt_protocol).setServiceParent(root_service)
         return root_service
 
 

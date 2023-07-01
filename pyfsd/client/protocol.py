@@ -74,4 +74,4 @@ class FSDClientProtocol(LineReceiver):
         self.handlers[event].append((handler, once))
 
     def connectionMade(self):
-        print("Connection made.")
+        pass
