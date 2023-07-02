@@ -10,6 +10,12 @@ class ClientPrompt(PromptProtocol):
     def __init__(self, protocol: "FSDClientProtocol", password: str) -> None:
         self.protocol = protocol
         self.password = password
+        """
+        sys.stderr = PSInserter(sys.stderr, self)
+        sys.stdout = PSInserter(sys.stdout, self)
+        logger.remove()
+        logger.add(sys.stderr)
+        """
 
     def lineReceived(self, line):
         self.terminal.write(line)
@@ -21,3 +27,9 @@ class ClientPrompt(PromptProtocol):
         from twisted.internet.reactor import stop
 
         stop()
+
+    """
+    def connectionMade(self) -> None:
+        super().connectionMade()
+        self.terminal.write(b"\r" + self.ps[self.pn])
+    """

@@ -1,6 +1,13 @@
+from atexit import register
 from sys import platform
 
 __all__ = ["RawMode"]
+
+
+def restoreIfNotRestored(raw_mode: "RawMode"):
+    if raw_mode.in_raw_mode:
+        raw_mode.restore()
+
 
 if platform == "win32":
     """
@@ -29,6 +36,7 @@ if platform == "win32":
                 & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT),
             )
             self.in_raw_mode = True
+            register(restoreIfNotRestored, self)
 
         def restore(self):
             assert self.in_raw_mode
@@ -83,6 +91,7 @@ else:
             new_mode[CC][VTIME] = 0
             tcsetattr(self.fileno, TCSADRAIN, new_mode)
             self.in_raw_mode = True
+            register(restoreIfNotRestored, self)
 
         def restore(self):
             assert self.in_raw_mode

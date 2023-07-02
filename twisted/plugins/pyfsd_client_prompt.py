@@ -83,7 +83,7 @@ class FSDClientServiceMaker:
             None,  # type: ignore
         )
         root_service = MultiService()
-        factory = FSDClientFactory(client)
+        factory = FSDClientFactory(client, lambda *args: print(args))
         TCPClient(
             config_client["address"],
             config_client["port"],

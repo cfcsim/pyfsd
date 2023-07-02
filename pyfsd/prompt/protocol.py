@@ -67,9 +67,11 @@ class PromptProtocol(Manhole):
 
     def characterReceived(self, ch, _):
         reverseCount = len(self.lineBuffer) - self.lineBufferIndex
-        if reverseCount:
-            self.terminal.cursorBackward(reverseCount)
+        if reverseCount > 0:
+            # self.terminal.cursorBackward(reverseCount)
+            self.terminal.saveCursor()
             self.terminal.write(ch + b"".join(self.lineBuffer[self.lineBufferIndex :]))
+            self.terminal.restoreCursor()
         else:
             self.terminal.write(ch)
         self.lineBuffer.insert(self.lineBufferIndex, ch)

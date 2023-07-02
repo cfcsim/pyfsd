@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Literal, Tuple, cast
+from typing import TYPE_CHECKING, Callable, Iterable, Literal, Tuple, cast
 
 from twisted.protocols.basic import LineReceiver
 
@@ -11,22 +11,16 @@ if TYPE_CHECKING:
 
 
 Event = Literal["error", "message", "other_packet"]
-EventHandler = Callable[[Tuple[bytes, ...]], None]
+EventHandler = Callable[[Event, Tuple[bytes, ...]], None]
 
 
 class FSDClientProtocol(LineReceiver):
     client: "Client"
-    handlers: Dict[Event, List[Tuple[EventHandler, bool]]] = {}
+    handler: "EventHandler"
 
-    def callHandlers(self, event: Event, items: Tuple[bytes, ...]) -> None:
-        for handler_pair in self.handlers.get(event, []):
-            handler, once = handler_pair
-            handler(items)
-            if once:
-                self.handlers[event].remove(handler_pair)
-
-    def __init__(self, client: "Client") -> None:
+    def __init__(self, client: "Client", handler: EventHandler) -> None:
         self.client = client
+        self.handler = handler
 
     def login(self, password: bytes) -> None:
         if self.client.type == "ATC":
@@ -60,18 +54,12 @@ class FSDClientProtocol(LineReceiver):
             line, cast(Iterable["ValueConstant"], FSDCLIENTPACKET.iterconstants())
         )
         if head is FSDCLIENTPACKET.ERROR:
-            self.callHandlers("error", items[2:])
+            self.handler("error", items[2:])
         elif head is FSDCLIENTPACKET.MESSAGE:
-            self.callHandlers("message", items)
+            self.handler("message", items)
         else:
-            self.callHandlers("other_packet", items)
-
-    def addHandler(
-        self, event: Event, handler: EventHandler, once: bool = False
-    ) -> None:
-        if event not in self.handlers:
-            self.handlers[event] = []
-        self.handlers[event].append((handler, once))
+            self.handler("other_packet", items)
 
     def connectionMade(self):
-        pass
+        if self.client.transport is None:
+            self.client.transport = self.transport
