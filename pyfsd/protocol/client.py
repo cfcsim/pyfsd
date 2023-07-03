@@ -1,3 +1,4 @@
+from threading import Lock
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from twisted.internet import reactor
@@ -34,8 +35,14 @@ class FSDClientProtocol(LineReceiver):
     factory: "FSDClientFactory"
     transport: ITransport
     timeoutKiller: "DelayedCall"
-    logger: Logger = Logger()
+    logger: Logger
     client: Optional[Client] = None
+    line_lock: Lock
+
+    def __init__(self) -> None:
+        self.logger = Logger()
+        self.client = None
+        self.line_lock = Lock()
 
     def connectionMade(self):
         self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
@@ -669,9 +676,14 @@ class FSDClientProtocol(LineReceiver):
             self.factory.clients[callsign_kill].transport.loseConnection()
 
     def lineReceived(self, byte_line: bytes) -> None:
+        with self.line_lock:
+            # Acquire without lock it (nearly)
+            pass
+
         def resultHandler(prevented: bool) -> None:
             if not prevented:
-                self.lineReceived_impl(byte_line)
+                with self.line_lock:
+                    self.lineReceived_impl(byte_line)
 
         self.factory.triggerEvent(
             "lineReceivedFromClient", (self, byte_line), {}
