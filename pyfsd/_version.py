@@ -1,2 +1,2 @@
 # Will replaced by pdm when build wheel
-__version__ = "<early_dev branch>"
+__version__ = "0.0.0"

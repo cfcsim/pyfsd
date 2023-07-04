@@ -87,7 +87,7 @@ class FSDClientProtocol(LineReceiver):
     def sendMotd(self) -> None:
         assert self.client is not None
         motd_lines: List[bytes] = [
-            b"#TMserver:%s:PyFSD early_dev 0x1" % self.client.callsign,
+            b"#TMserver:%s:PyFSD 0.0.0" % self.client.callsign,
         ]
         for line in self.factory.motd:
             motd_lines.append(

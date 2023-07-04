@@ -17,8 +17,7 @@ filename = "pyfsd.db"
 
 [pyfsd.client]
 port = 6809
-motd = \"\"\"Shhh... Let's not leak out hard work
-Developer: Telegram @gamecss\"\"\"
+motd = \"\"\"Modify motd in pyfsd.toml.\"\"\"
 motd_encoding = "ascii"
 blacklist = []
 
