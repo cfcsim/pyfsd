@@ -26,9 +26,10 @@ license = {text = "MIT"}
 [project.optional-dependencies]
 docs = [
     "mkdocs-material>=9.1.18",
-    "mkdocstrings>=0.22.0",
+    "mkdocstrings[python]>=0.22.0",
     "mkdocs-minify-plugin>=0.6.4",
 ]
+
 [tool.pdm.dev-dependencies]
 dev = [
     "black>=23.3.0",
