@@ -5,7 +5,7 @@ from .define.utils import verifyConfigStruct
 
 
 class IDatabaseMaker(Interface):
-    db_source = Attribute("db_source", "Database source.")
+    db_source: str = Attribute("db_source", "Database source.")
 
     def makeDBPool(config: dict) -> ConnectionPool:
         """Make a ConnectionPool by config and return it."""
