@@ -18,15 +18,10 @@ class IPyFSDPlugin(Interface):
 
         :param pyfsd: PyFSD Service.
         :type pyfsd: class:`pyfsd.service.PyFSDService`
-        :return: None
-        :rtype: None
         """
 
     def beforeStop() -> None:
         """Called when service :class:`pyfsd.service.PyFSDService` stopping.
-
-        :return: None
-        :rtype: None
         """
 
     def newConnectionEstablished(protocol: "FSDClientProtocol") -> None:
@@ -34,8 +29,6 @@ class IPyFSDPlugin(Interface):
 
         :param protocol: Protocol of the connection which established.
         :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
-        :return: None
-        :rtype: None
         """
 
     def newClientCreated(protocol: "FSDClientProtocol") -> None:
@@ -43,8 +36,6 @@ class IPyFSDPlugin(Interface):
 
         :param protocol: Protocol of the client which created.
         :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
-        :return: None
-        :rtype: None
         """
 
     def lineReceivedFromClient(protocol: "FSDClientProtocol", line: bytes) -> None:
@@ -54,9 +45,7 @@ class IPyFSDPlugin(Interface):
         :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
         :param line: Line data.
         :type line: bytes
-        :return: None
-        :rtype: None
-        :raises class:`pyfsd.plugin.PreventEvent`: Stop the event.
+        :raises class:`pyfsd.plugin.PreventEvent`: Prevent the event.
         """
 
     def clientDisconnected(
@@ -68,8 +57,6 @@ class IPyFSDPlugin(Interface):
         :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
         :param client: The client attribute of the protocol.
         :type client: class:`pyfsd.object.client.Client`, optional
-        :return: None
-        :rtype: None
         """
 
 
