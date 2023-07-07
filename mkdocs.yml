@@ -27,9 +27,9 @@ plugins:
           import:
             - https://docs.python.org/3/objects.inv
             - https://zopeinterface.readthedocs.io/en/latest/objects.inv
-        options:
-          docstring_style: sphinx
-          annotations_path: brief
+          options:
+            docstring_style: sphinx
+            annotations_path: brief
   - offline
 
 repo_url: https://github.com/gamecss/pyfsd
