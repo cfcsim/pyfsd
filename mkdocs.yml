@@ -21,7 +21,12 @@ plugins:
       htmlmin_opts:
           remove_comments: true
       cache_safe: true
-  - mkdocstrings
+  - mkdocstrings:
+    handlers:
+      python:
+        import:
+          - https://docs.python.org/3/objects.inv
+          - https://zopeinterface.readthedocs.io/en/latest/objects.inv
   - offline
 
 repo_url: https://github.com/gamecss/pyfsd
