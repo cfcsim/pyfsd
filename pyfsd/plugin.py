@@ -59,7 +59,9 @@ class IPyFSDPlugin(Interface):
         :raises class:`pyfsd.plugin.PreventEvent`: Stop the event.
         """
 
-    def clientDisconnected(protocol: "FSDClientProtocol", client: Optional["Client"]) -> bool:
+    def clientDisconnected(
+        protocol: "FSDClientProtocol", client: Optional["Client"]
+    ) -> bool:
         """Called when connection disconnected.
 
         :param protocol: The protocol of the connection which disconnected.
