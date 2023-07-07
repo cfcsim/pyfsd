@@ -1,5 +1,5 @@
 from re import compile
-from typing import TYPE_CHECKING, AnyStr, Iterable, Type, Union, cast
+from typing import TYPE_CHECKING, AnyStr, Callable, Iterable, Type, Union, cast
 
 # Not yet typed
 from haversine import Unit, haversine  # type: ignore[import]
@@ -19,6 +19,7 @@ __all__ = [
     "verifyConfigStruct",
     "asciiOnly",
     "assertNoDuplicate",
+    "iterCallable",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
 __bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
@@ -133,3 +134,12 @@ def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
                     f"'{prefix}{key}' must be {getName(type_)}"
                     f", not {getName(config[key])}"
                 )
+
+
+def iterCallable(obj: object, ignore_private: bool = True) -> Iterable[Callable]:
+    for attr_name in dir(obj):
+        if ignore_private and attr_name.startswith("_"):
+            continue
+        attr = getattr(obj, attr_name)
+        if hasattr(attr, "__call__"):
+            yield attr

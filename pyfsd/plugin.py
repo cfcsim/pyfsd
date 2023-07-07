@@ -1,3 +1,4 @@
+# pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
 from typing import TYPE_CHECKING
 
 from zope.interface import Attribute, Interface, implementer
@@ -10,6 +11,7 @@ if TYPE_CHECKING:
 
 class IPyFSDPlugin(Interface):
     plugin_name = Attribute("plugin_name")
+    api = Attribute("API Level")
 
     def beforeStart(pyfsd: "PyFSDService") -> None:
         ...
@@ -33,6 +35,7 @@ class IPyFSDPlugin(Interface):
 @implementer(IPyFSDPlugin)
 class BasePyFSDPlugin:
     plugin_name = "<plugin name missing>"
+    api = 1
 
     def beforeStart(self, pyfsd: "PyFSDService") -> None:
         ...

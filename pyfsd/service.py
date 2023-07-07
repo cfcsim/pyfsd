@@ -1,5 +1,14 @@
 from inspect import getfile
-from typing import TYPE_CHECKING, Callable, List, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypedDict,
+)
 
 from twisted.application.internet import TCPServer
 from twisted.application.service import IService, Service
@@ -12,7 +21,7 @@ from . import plugins
 from ._version import __version__
 from .auth import CredentialsChecker, Realm
 from .database import IDatabaseMaker, SQLite3DBMaker
-from .define.utils import verifyConfigStruct
+from .define.utils import iterCallable, verifyConfigStruct
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 from .plugin import BasePyFSDPlugin, IPyFSDPlugin
@@ -22,12 +31,33 @@ if TYPE_CHECKING:
     from twisted.internet.defer import Deferred
 
 
+def formatPlugin(plugin: IPyFSDPlugin) -> str:
+    return f"{plugin.plugin_name} ({getfile(type(plugin))})"
+
+
+def formatService(plugin: IService) -> str:
+    plugin_type = type(plugin)
+    if isinstance(plugin.name, str):
+        return f"{plugin.name} ({plugin_type.__name__} from {getfile(plugin_type)})"
+    else:
+        return f"{plugin_type.__name__} (getfile(plugin_type))"
+
+
+MAX_API = BasePyFSDPlugin.api
+PLUGIN_EVENTS = tuple(func.__name__ for func in iterCallable(BasePyFSDPlugin))
+
+
+class PluginDict(TypedDict):
+    all: Tuple[IPyFSDPlugin, ...]
+    tagged: Dict[str, List[Callable]]
+
+
 class PyFSDService(Service):
     client_factory: Optional[FSDClientFactory] = None
     fetch_metar: Optional[Callable[[str], "Deferred[Optional[Metar]]"]] = None
     db_pool: Optional[ConnectionPool] = None
     portal: Optional[Portal] = None
-    plugins: Optional[Tuple[IPyFSDPlugin, ...]] = None
+    plugins: Optional[PluginDict] = None
     logger: Logger = Logger()
     config: dict
     version = __version__
@@ -41,19 +71,19 @@ class PyFSDService(Service):
         self.pickPlugins()
 
     def startService(self) -> None:
+        self.logger.info("PyFSD {version}", version=self.version)
         if self.plugins is not None:
-            for plugin in self.plugins:
+            for plugin in self.plugins["all"]:
                 self.logger.info(
-                    "Loading plugin {plugin.plugin_name} ({filename})",
-                    plugin=plugin,
-                    filename=getfile(type(plugin)),
+                    "Loading plugin {plugin}",
+                    plugin=formatPlugin(plugin),
                 )
                 plugin.beforeStart(self)
             super().startService()
 
     def stopService(self) -> None:
         if self.plugins is not None:
-            for plugin in self.plugins:
+            for plugin in self.plugins["all"]:
                 plugin.beforeStop()
             super().stopService()
 
@@ -117,7 +147,7 @@ class PyFSDService(Service):
         self.client_factory = FSDClientFactory(
             self.portal,
             self.fetch_metar,
-            self.findPluginsByEvent,
+            self.iterHandlerByEventName,
             self.config["pyfsd"]["client"]["blacklist"],
             self.config["pyfsd"]["client"]["motd"]
             .encode(self.config["pyfsd"]["client"]["motd_encoding"])
@@ -142,41 +172,41 @@ class PyFSDService(Service):
         for plugin in getPlugins(IService, plugins):
             if plugin in temp_plugins:
                 self.logger.debug(
-                    "service plugin {plugin.plugin_name} (filename) "
-                    "already loaded, skipping.",
-                    plugin=plugin,
-                    filename=getfile(type(plugin)),
+                    "service {service} already loaded, skipping.",
+                    service=formatService(plugin),
                 )
             else:
                 temp_plugins.append(plugin)
         return tuple(temp_plugins)
 
     def pickPlugins(self) -> None:
-        temp_plugins = []
+        all_plugins = []
+        event_handlers: Dict[str, List[Callable]] = dict(
+            (name, []) for name in PLUGIN_EVENTS
+        )
         for plugin in getPlugins(IPyFSDPlugin, plugins):
-            if plugin in temp_plugins:
+            if plugin in all_plugins:
                 self.logger.debug(
-                    "plugin {plugin.plugin_name} ({filename}) "
-                    "already loaded, skipping.",
-                    plugin=plugin,
-                    filename=getfile(type(plugin)),
+                    "plugin {plugin} already loaded, skipping.",
+                    plugin=formatPlugin(plugin),
                 )
             else:
-                temp_plugins.append(plugin)
-        self.plugins = tuple(temp_plugins)
+                if plugin.api > MAX_API:
+                    self.logger.error(
+                        "{plugin} needs API {api}, try update PyFSD",
+                        api=plugin.api,
+                        plugin=formatPlugin(plugin),
+                    )
+                else:
+                    all_plugins.append(plugin)
+                    for event in PLUGIN_EVENTS:
+                        if hasattr(plugin, event):
+                            event_handlers[event].append(getattr(plugin, event))
 
-    def findPluginsByEvent(self, event_name: str):
+        self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
+
+    def iterHandlerByEventName(self, event_name: str) -> Iterator[Callable]:
         assert self.plugins is not None, "plugin not loaded"
-        if not hasattr(getattr(BasePyFSDPlugin, event_name, None), "__call__"):
+        if event_name not in PLUGIN_EVENTS:
             raise ValueError(f"Invaild event {event_name}")
-        for plugin in self.plugins:
-            if not hasattr(plugin, event_name):
-                continue
-            plugin_class = type(plugin)
-            if issubclass(plugin_class, BasePyFSDPlugin):
-                plugin_handler = getattr(plugin_class, event_name, None)
-                if not hasattr(plugin_handler, "__call__"):
-                    continue
-                if plugin_handler is getattr(BasePyFSDPlugin, event_name):
-                    continue
-            yield plugin
+        return iter(self.plugins["tagged"][event_name])

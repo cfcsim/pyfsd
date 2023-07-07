@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 
     from ..define.broadcast import BroadcastChecker
     from ..object.client import Client
-    from ..plugin import IPyFSDPlugin
 
 __all__ = ["FSDClientFactory"]
 
@@ -34,13 +33,13 @@ class FSDClientFactory(Factory):
     motd: List[bytes]
     protocol = FSDClientProtocol
     fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
-    handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]]
+    handler_finder: Callable[[str], Iterable[Callable]]
 
     def __init__(
         self,
         portal: "Portal",
         fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"],
-        handler_finder: Callable[[str], Iterable["IPyFSDPlugin"]],
+        handler_finder: Callable[[str], Iterable[Callable]],
         blacklist: list,
         motd: List[bytes],
     ) -> None:
@@ -107,13 +106,20 @@ class FSDClientFactory(Factory):
         )
 
     def triggerEvent(
-        self, event_name: str, args: Iterable, kwargs: Mapping, in_thread: bool = True
+        self,
+        event_name: str,
+        args: Iterable,
+        kwargs: Mapping,
+        in_thread: bool = True,
+        prevent_able: bool = True,
     ) -> "Deferred[bool]":
         def trigger() -> bool:
-            for plugin in self.event_handler_finder(event_name):
+            for handler in self.event_handler_finder(event_name):
                 try:
-                    getattr(plugin, event_name)(*args, **kwargs)
+                    handler(*args, **kwargs)
                 except PreventEvent:
+                    if not prevent_able:
+                        raise
                     return True
             return False
 
