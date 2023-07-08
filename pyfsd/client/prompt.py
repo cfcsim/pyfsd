@@ -22,14 +22,7 @@ class ClientPrompt(PromptProtocol):
         self.terminal.nextLine()
         self.terminal.write(self.ps[self.pn])
 
-    def handle_QUIT(self):
-        super().handle_QUIT()
+    def connectionLost(self, _=None):
         from twisted.internet.reactor import stop
 
         stop()
-
-    """
-    def connectionMade(self) -> None:
-        super().connectionMade()
-        self.terminal.write(b"\r" + self.ps[self.pn])
-    """

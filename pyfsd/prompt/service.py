@@ -33,13 +33,12 @@ class RawStdinService(Service):
         self.raw_mode.setup()
         self.stdio = StandardIO(*self.stdio_arg[0], **self.stdio_arg[1])
         setattr(self.stdio, "raw_mode", self.raw_mode)
-        if hasattr(self.stdio, "terminalProtocol"):
-            setattr(self.stdio.terminalProtocol, "raw_mode", self.raw_mode)
 
     def stopService(self):
         assert self.stdio is not None
-        self.stdio.write(b"\r\x1bc\r")
-        self.stdio.loseConnection()
+        if not self.stdio.disconnected:
+            print("Disconnecting")
+            self.stdio.loseConnection()
         self.stdio = None
         if self.raw_mode.in_raw_mode:
             self.raw_mode.restore()

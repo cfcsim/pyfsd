@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING
 
 from twisted.conch.manhole import (
     CTRL_A,
@@ -16,14 +16,6 @@ if TYPE_CHECKING:
 
 
 class PromptProtocol(Manhole):
-    """
-    So it is my customized Manhole.
-    I dropped INSERT handler and typeover mode.
-    It cannot explain why prompt_toolkit can handle insert correctly without
-    moving cursor, but however it works!
-    Explain about why I do it: (chinese) https://pastebin.com/5WdQQykD
-    """
-
     terminal: "ServerProtocol"
 
     def __init__(self) -> None:
@@ -31,7 +23,6 @@ class PromptProtocol(Manhole):
 
     def connectionMade(self) -> None:
         HistoricRecvLine.connectionMade(self)
-        del self.keyHandlers[self.terminal.INSERT]  # type: ignore
         self.keyHandlers[CTRL_C] = self.handle_INT
         self.keyHandlers[CTRL_D] = self.handle_EOF
         self.keyHandlers[CTRL_L] = self.handle_FF
@@ -57,22 +48,9 @@ class PromptProtocol(Manhole):
         self.terminal.write(self.ps[self.pn])
 
     def initializeScreen(self) -> None:
-        self.mode = "insert"
+        self.terminal.write(self.ps[self.pn])
+        self.setInsertMode()
 
-    def setInsertMode(self) -> NoReturn:
-        raise NotImplementedError
-
-    def setTypeoverMode(self) -> NoReturn:
-        raise NotImplementedError
-
-    def characterReceived(self, ch, _):
-        reverseCount = len(self.lineBuffer) - self.lineBufferIndex
-        if reverseCount > 0:
-            # self.terminal.cursorBackward(reverseCount)
-            self.terminal.saveCursor()
-            self.terminal.write(ch + b"".join(self.lineBuffer[self.lineBufferIndex :]))
-            self.terminal.restoreCursor()
-        else:
-            self.terminal.write(ch)
-        self.lineBuffer.insert(self.lineBufferIndex, ch)
-        self.lineBufferIndex += 1
+    def handle_QUIT(self):
+        self.setTypeoverMode()
+        self.terminal.transport.loseConnection()  # Avoid clear screen
