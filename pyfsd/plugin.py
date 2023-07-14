@@ -21,8 +21,7 @@ class IPyFSDPlugin(Interface):
         """
 
     def beforeStop() -> None:
-        """Called when service :class:`pyfsd.service.PyFSDService` stopping.
-        """
+        """Called when service :class:`pyfsd.service.PyFSDService` stopping."""
 
     def newConnectionEstablished(protocol: "FSDClientProtocol") -> None:
         """Called when new connection established.

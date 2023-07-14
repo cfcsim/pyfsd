@@ -124,7 +124,7 @@ def breakPacket(
         )
     else:
         raise TypeError(f"{packet_type!r}")
-    if true_head is not None:
+    if head is not None and true_head is not None:
         splited_packet[0] = splited_packet[0][len(true_head) :]
     return (head, tuple(splited_packet))
 
