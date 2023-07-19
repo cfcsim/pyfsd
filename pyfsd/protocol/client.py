@@ -1,10 +1,13 @@
 from threading import Lock
+from time import time
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from twisted.internet import reactor
 from twisted.internet.interfaces import ITransport
 from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
+
+from .._version import __version__
 
 # from ..config import config
 from ..define.broadcast import (
@@ -19,6 +22,7 @@ from ..define.broadcast import (
 from ..define.errors import FSDErrors
 from ..define.packet import FSDCLIENTPACKET, breakPacket, concat, makePacket
 from ..define.utils import isCallsignVaild, joinLines, strToFloat, strToInt
+from ..metar.profile import WeatherProfile
 from ..object.client import Client, ClientType
 
 if TYPE_CHECKING:
@@ -29,6 +33,8 @@ if TYPE_CHECKING:
     from ..factory.client import FSDClientFactory
 
 __all__ = ["FSDClientProtocol"]
+
+version = __version__.encode("ascii")
 
 
 class FSDClientProtocol(LineReceiver):
@@ -87,7 +93,7 @@ class FSDClientProtocol(LineReceiver):
     def sendMotd(self) -> None:
         assert self.client is not None
         motd_lines: List[bytes] = [
-            b"#TMserver:%s:PyFSD 0.0.0" % self.client.callsign,
+            b"#TMserver:%s:PyFSD %s" % (self.client.callsign, version)
         ]
         for line in self.factory.motd:
             motd_lines.append(
@@ -534,24 +540,84 @@ class FSDClientProtocol(LineReceiver):
             )
         )
 
-    # Hard to implement
-    #    def handleWeather(self, packet: Tuple[str, ...]) -> None:
-    #        if len(packet) < 3:
-    #            self.sendError(FSDErrors.ERR_SYNTAX)
-    #        if self.client is None:
-    #            return
-    #        if self.client.callsign != packet[0]:
-    #            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-    #            return
-    #
-    #        def sendMetar(metar: Optional["Metar"]) -> None:
-    #            assert self.client is not None
-    #            if metar is None:
-    #                self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
-    #            else:
-    #                packets = []
-    #
-    #        self.factory.fetch_metar(packet[3]).addCallback(sendMetar)
+    def handleWeather(self, packet: Tuple[bytes, ...]) -> None:
+        if len(packet) < 3:
+            self.sendError(FSDErrors.ERR_SYNTAX)
+        if self.client is None:
+            return
+        if self.client.callsign != packet[0]:
+            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
+            return
+
+        def sendMetar(metar: Optional["Metar"]) -> None:
+            assert self.client is not None
+            if metar is None:
+                self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
+            else:
+                packets = []
+                profile = WeatherProfile(int(time()), None, metar)
+                profile.fix(self.client.position)
+
+                temps: List[bytes] = []
+                for temp in profile.temps:
+                    temps.append(b"%d:%d" % (temp.ceiling, temp.temp))
+                packets.append(
+                    makePacket(
+                        concat(FSDCLIENTPACKET.TEMP_DATA, b"server"),
+                        self.client.callsign,
+                        *temps,
+                        b"%d" % profile.barometer,
+                    )
+                )
+
+                winds: List[bytes] = []
+                for wind in profile.winds:
+                    winds.append(
+                        b"%d:%d:%d:%d:%d:%d"
+                        % (
+                            wind.ceiling,
+                            wind.floor,
+                            wind.direction,
+                            wind.speed,
+                            wind.gusting,
+                            wind.turbulence,
+                        )
+                    )
+                packets.append(
+                    makePacket(
+                        concat(FSDCLIENTPACKET.WIND_DATA, b"server"),
+                        self.client.callsign,
+                        *winds,
+                    )
+                )
+
+                clouds: List[bytes] = []
+                for cloud in (*profile.clouds, profile.tstorm):
+                    clouds.append(
+                        b"%d:%d:%d:%d:%d"
+                        % (
+                            cloud.ceiling,
+                            cloud.floor,
+                            cloud.coverage,
+                            cloud.icing,
+                            cloud.turbulence,
+                        )
+                    )
+                packets.append(
+                    makePacket(
+                        concat(FSDCLIENTPACKET.CLOUD_DATA, b"server"),
+                        self.client.callsign,
+                        *clouds,
+                        b"%.2f" % profile.visibility,
+                    )
+                )
+
+                # Mypy bug
+                self.sendLines(*packets)  # type: ignore
+
+        self.factory.fetch_metar(packet[2].decode("ascii", "ignore")).addCallback(
+            sendMetar
+        )
 
     def handleAcars(self, packet: Tuple[bytes, ...]) -> None:
         if len(packet) < 3:
@@ -736,7 +802,7 @@ class FSDClientProtocol(LineReceiver):
             assert command is not None, "Why FSDCLIENTPACKET.SB/PC is None???"
             self.handleCast(packet, command, require_param=2, multicast_able=False)
         elif command == FSDCLIENTPACKET.WEATHER:
-            ...
+            self.handleWeather(packet)
         elif command == FSDCLIENTPACKET.REQUEST_COMM:
             assert command is not None, "Why FSDCLIENTPACKET.REQUEST_COMM is None???"
             self.handleCast(packet, command, require_param=2, multicast_able=False)

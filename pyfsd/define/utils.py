@@ -20,6 +20,8 @@ __all__ = [
     "asciiOnly",
     "assertNoDuplicate",
     "iterCallable",
+    "MRand",
+    "mrand",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
 __bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
@@ -143,3 +145,21 @@ def iterCallable(obj: object, ignore_private: bool = True) -> Iterable[Callable]
         attr = getattr(obj, attr_name)
         if hasattr(attr, "__call__"):
             yield attr
+
+
+class MRand:
+    mrandseed: int = 0
+
+    def __call__(self) -> int:
+        self.mrandseed ^= 0x22591D8C
+        part1 = (self.mrandseed << 1) & 0xFFFFFFFF
+        part2 = self.mrandseed >> 31
+        self.mrandseed ^= part1 | part2
+        # self.mrandseed &= 0xFFFFFFFF
+        return self.mrandseed
+
+    def srand(self, seed: int) -> None:
+        self.mrandseed = seed
+
+
+mrand = MRand()
