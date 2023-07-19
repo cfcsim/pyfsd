@@ -28,7 +28,7 @@ plugins:
             - https://docs.python.org/3/objects.inv
             - https://zopeinterface.readthedocs.io/en/latest/objects.inv
           options:
-            docstring_style: sphinx
+            docstring_style: google
             annotations_path: brief
   - offline
 
@@ -40,3 +40,5 @@ nav:
   - 拄曳: index.md
   - 安装: install.md
   - 插件: plugin.md
+  - 开发指南:
+    - 插件: develop/plugin.md

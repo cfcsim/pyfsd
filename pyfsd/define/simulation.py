@@ -15,6 +15,7 @@ class Int32MRand(MRand):
 
     @mrandseed.setter
     def mrandseed(self, value: int) -> None:
+        # https://stackoverflow.com/a/7771363
         if not INT_MIN <= value <= INT_MAX:
             value = (value + (INT_MAX + 1)) % (2 * (INT_MAX + 1)) - INT_MAX - 1
         self._really_randseed = value

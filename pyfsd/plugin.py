@@ -9,42 +9,57 @@ if TYPE_CHECKING:
     from .service import PyFSDService
 
 
+class PreventEvent(BaseException):
+    """
+    Prevent a PyFSD plugin event.
+    """
+
+
 class IPyFSDPlugin(Interface):
+    """
+    Interface of PyFSD Plugin.
+
+    Attributes:
+        plugin_name: Name of this plugin.
+        api: API level of this plugin.
+    """
+
     plugin_name: str = Attribute("plugin_name", "Name of this plugin.")
     api: int = Attribute("API Level", "API level of this plugin.")
 
     def beforeStart(pyfsd: "PyFSDService") -> None:
-        """Called when service :class:`pyfsd.service.PyFSDService` starting.
+        """Called when service `pyfsd.service.PyFSDService` starting.
 
-        :param pyfsd: PyFSD Service.
-        :type pyfsd: class:`pyfsd.service.PyFSDService`
+        Args:
+            pyfsd: PyFSD Service.
         """
 
     def beforeStop() -> None:
-        """Called when service :class:`pyfsd.service.PyFSDService` stopping."""
+        """Called when service `pyfsd.service.PyFSDService` stopping."""
 
     def newConnectionEstablished(protocol: "FSDClientProtocol") -> None:
         """Called when new connection established.
 
-        :param protocol: Protocol of the connection which established.
-        :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
+        Args:
+            protocol: Protocol of the connection which established.
         """
 
     def newClientCreated(protocol: "FSDClientProtocol") -> None:
-        """Called when new client :class:`pyfsd.object.client.Client` created.
+        """Called when new client `pyfsd.object.client.Client` created.
 
-        :param protocol: Protocol of the client which created.
-        :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
+        Args:
+            protocol: Protocol of the client which created.
         """
 
     def lineReceivedFromClient(protocol: "FSDClientProtocol", line: bytes) -> None:
         """Called when line received from client.
 
-        :param protocol: Protocol of the connection which received line.
-        :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
-        :param line: Line data.
-        :type line: bytes
-        :raises class:`pyfsd.plugin.PreventEvent`: Prevent the event.
+        Args:
+            protocol: Protocol of the connection which received line.
+            line: Line data.
+
+        Raises:
+            PreventEvent: Prevent the event.
         """
 
     def clientDisconnected(
@@ -52,10 +67,9 @@ class IPyFSDPlugin(Interface):
     ) -> bool:
         """Called when connection disconnected.
 
-        :param protocol: The protocol of the connection which disconnected.
-        :type protocol: class:`pyfsd.protocol.client.FSDClientProtocol`
-        :param client: The client attribute of the protocol.
-        :type client: class:`pyfsd.object.client.Client`, optional
+        Args:
+            protocol: The protocol of the connection which disconnected.
+            client: The client attribute of the protocol.
         """
 
 
@@ -89,7 +103,3 @@ class BasePyFSDPlugin:
         self, protocol: "FSDClientProtocol", client: Optional["Client"]
     ) -> bool:
         ...
-
-
-class PreventEvent(Exception):
-    pass
