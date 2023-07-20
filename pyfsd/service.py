@@ -200,7 +200,9 @@ class PyFSDService(Service):
                 else:
                     all_plugins.append(plugin)
                     for event in PLUGIN_EVENTS:
-                        if hasattr(plugin, event):
+                        if hasattr(plugin, event) and getattr(
+                            type(plugin), event
+                        ) is not getattr(BasePyFSDPlugin, event):
                             event_handlers[event].append(getattr(plugin, event))
 
         self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}

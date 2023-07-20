@@ -3,8 +3,6 @@
 [使用&插件开发文档](https://gamecss.github.io/pyfsd)
 
 ## Todo
-### 客户端协议(9)
-- METAR解析(`#WX`)
 ### 多服务器协议
 一点还没做啊!谁会需要多服务器啊???
 

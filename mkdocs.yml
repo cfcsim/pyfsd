@@ -27,10 +27,12 @@ plugins:
           import:
             - https://docs.python.org/3/objects.inv
             - https://zopeinterface.readthedocs.io/en/latest/objects.inv
+            - https://docs.twisted.org/en/stable/api/objects.inv
           options:
             docstring_style: google
             annotations_path: brief
   - offline
+  - autorefs
 
 repo_url: https://github.com/gamecss/pyfsd
 repo_name: gamecss/pyfsd
