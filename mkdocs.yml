@@ -42,5 +42,6 @@ nav:
   - 拄曳: index.md
   - 安装: install.md
   - 插件: plugin.md
+  - 配置: configure.md
   - 开发指南:
     - 插件: develop/plugin.md
