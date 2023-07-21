@@ -72,13 +72,18 @@ class PyFSDService(Service):
 
     def startService(self) -> None:
         self.logger.info("PyFSD {version}", version=self.version)
+        has_root_plugin_config = "plugin" in self.config
         if self.plugins is not None:
             for plugin in self.plugins["all"]:
+                if not has_root_plugin_config:
+                    config = None
+                else:
+                    config = self.config["plugin"].get(plugin.plugin_name, None)
                 self.logger.info(
                     "Loading plugin {plugin}",
                     plugin=formatPlugin(plugin),
                 )
-                plugin.beforeStart(self)
+                plugin.beforeStart(self, config)
             super().startService()
 
     def stopService(self) -> None:
@@ -158,12 +163,7 @@ class PyFSDService(Service):
         )
 
     def getMetarService(self) -> MetarService:
-        metar_service = MetarService(
-            self.config["pyfsd"]["metar"]["cron_time"]
-            if self.config["pyfsd"]["metar"]["mode"] == "cron"
-            else None,
-            self.config["pyfsd"]["metar"]["fetchers"],
-        )
+        metar_service = MetarService(self.config["pyfsd"]["metar"])
         self.fetch_metar = metar_service.query
         return metar_service
 

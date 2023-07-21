@@ -12,7 +12,9 @@ Options:
 -c或--config-path: 配置文件的路径。默认为`pyfsd.toml`。  
 -l或--disable-logger: 禁用loguru，使用Twisted默认日志记录器。
 ## 配置文件
-第一次启动会自动生成。所有配置对都必须存在。
+!!! note
+    
+    第一次启动会自动生成。无特别声明时，所有配置对都必须存在。
 ```toml
 [pyfsd.database]
 source = "sqlite3"
@@ -51,6 +53,6 @@ blacklist = ["114.514.191.81", "143.22.124.13"]
 - `cron`: 间隔一段时间下载一次所有机场的Metar，通过`cron_time`配置。
 - `once`: 每当客户端请求Metar时立即下载相关机场的Metar。
 
-`cron_time`: (非`cron`模式时无效，单位为秒)多久下载一次Metar。
+`cron_time`: (仅`cron`模式时需要，单位为秒)多久下载一次Metar。
 `fetchers`: 设置Metar下载器。可以配置多个，一个无法使用时会使用下一个。
 

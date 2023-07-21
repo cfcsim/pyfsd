@@ -5,10 +5,23 @@ from .define.utils import verifyConfigStruct
 
 
 class IDatabaseMaker(Interface):
-    db_source: str = Attribute("db_source", "Database source.")
+    """Database maker.
+
+    Attributes:
+        db_source: Name of the database source.
+    """
+
+    db_source: str = Attribute("db_source", "Name of the database source.")
 
     def makeDBPool(config: dict) -> ConnectionPool:
-        """Make a ConnectionPool by config and return it."""
+        """Make a ConnectionPool by config and return it.
+
+        Args:
+            config: pyfsd.database section of PyFSD configure file.
+
+        Returns:
+            ConnectionPool of the database source.
+        """
 
 
 @implementer(IDatabaseMaker)

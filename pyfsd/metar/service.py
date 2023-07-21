@@ -13,10 +13,8 @@ if TYPE_CHECKING:
 class MetarService(Service):
     metar_manager: MetarManager
 
-    def __init__(
-        self, cron_time: Optional[float], enabled_fetchers: Iterable[str]
-    ) -> None:
-        self.metar_manager = MetarManager(cron_time, enabled_fetchers)
+    def __init__(self, config: dict) -> None:
+        self.metar_manager = MetarManager(config)
 
     def startService(self):
         if self.metar_manager.cron:

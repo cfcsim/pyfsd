@@ -10,14 +10,11 @@ if TYPE_CHECKING:
 
 
 class PreventEvent(BaseException):
-    """
-    Prevent a PyFSD plugin event.
-    """
+    """Prevent a PyFSD plugin event."""
 
 
 class IPyFSDPlugin(Interface):
-    """
-    Interface of PyFSD Plugin.
+    """Interface of PyFSD Plugin.
 
     Attributes:
         plugin_name: Name of this plugin.
@@ -27,11 +24,13 @@ class IPyFSDPlugin(Interface):
     plugin_name: str = Attribute("plugin_name", "Name of this plugin.")
     api: int = Attribute("API Level", "API level of this plugin.")
 
-    def beforeStart(pyfsd: "PyFSDService") -> None:
+    def beforeStart(pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         """Called when service `pyfsd.service.PyFSDService` starting.
 
         Args:
             pyfsd: PyFSD Service.
+            config: plugin.<plugin_name> section of PyFSD configure file.
+                None if the section doesn't exist.
         """
 
     def beforeStop() -> None:
@@ -78,7 +77,7 @@ class BasePyFSDPlugin:
     plugin_name = "<plugin name missing>"
     api = 1
 
-    def beforeStart(self, pyfsd: "PyFSDService") -> None:
+    def beforeStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         ...
 
     def beforeStop(self) -> None:

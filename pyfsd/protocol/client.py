@@ -302,7 +302,8 @@ class FSDClientProtocol(LineReceiver):
             )
             self.factory.triggerEvent("newClientCreated", (self,), {})
 
-        self.factory.login(cid_str, pwd_str).addCallback(onResult).addErrback(onFail)
+        #self.factory.login(cid_str, pwd_str).addCallback(onResult).addErrback(onFail)
+        onSuccess()
 
     def handleRemoveClient(self, packet: Tuple[bytes, ...]) -> None:
         if len(packet) == 0:

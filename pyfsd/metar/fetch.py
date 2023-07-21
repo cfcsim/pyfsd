@@ -21,15 +21,37 @@ class MetarNotAvailableError(Exception):
 
 
 class IMetarFetcher(Interface):
-    metar_source: str = Attribute("metar_source", "Name of fetcher")
+    """Metar fetcher.
 
-    def fetch(icao: str) -> Optional[Metar]:
-        """Fetch the METAR of the specified airport."""
-        pass
+    Attributes:
+        metar_source: Name of the METAR source.
+    """
 
-    def fetchAll() -> MetarInfoDict:
-        """Fetch METAR for all airports."""
-        pass
+    metar_source: str = Attribute("metar_source", "Name of this fetcher")
+
+    def fetch(config: dict, icao: str) -> Optional[Metar]:
+        """Fetch the METAR of the specified airport.
+
+        Args:
+            config: pyfsd.metar section of PyFSD configure file.
+            icao: The ICAO of the airport.
+
+        Returns:
+            The METAR of the specified airport.
+        """
+
+    def fetchAll(config: dict) -> MetarInfoDict:
+        """Fetch METAR for all airports.
+
+        Args:
+            config: pyfsd.metar section of PyFSD configure file.
+
+        Returns:
+            All METAR.
+
+        Raises:
+            MetarNotAvailableError: Metar not available.
+        """
 
 
 @implementer(IMetarFetcher)
@@ -50,7 +72,7 @@ class NOAAMetarFetcher:
         )
         return metar
 
-    def fetch(self, icao: str) -> Optional[Metar]:
+    def fetch(self, _, icao: str) -> Optional[Metar]:
         try:
             with urlopen(
                 "https://tgftp.nws.noaa.gov/data/observations/metar/stations/"
@@ -63,7 +85,7 @@ class NOAAMetarFetcher:
         except (ContentTooShortError, HTTPError, URLError):
             return None
 
-    def fetchAll(self) -> MetarInfoDict:
+    def fetchAll(self, _) -> MetarInfoDict:
         all_metar: MetarInfoDict = {}
         utc_hour = datetime.now(timezone.utc).hour
         try:

@@ -38,6 +38,11 @@ repo_url: https://github.com/gamecss/pyfsd
 repo_name: gamecss/pyfsd
 edit_uri: edit/early-dev/docs/
 
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+
 nav:
   - 拄曳: index.md
   - 安装: install.md

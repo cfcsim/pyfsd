@@ -23,16 +23,16 @@ class MetarManager:
     fetchers: List[IMetarFetcher]
     metar_cache: MetarInfoDict = {}
     cron: bool = False
+    config: dict
     cron_time: Optional[float]
     cron_task: Optional[LoopingCall] = None
     logger = Logger()
 
-    def __init__(
-        self, cron_time: Optional[float], enabled_fetchers: Iterable[str]
-    ) -> None:
-        self.pickFetchers(enabled_fetchers)
-        self.cron_time = cron_time
-        self.cron = cron_time is not None
+    def __init__(self, config: dict) -> None:
+        self.cron_time = config["cron_time"] if config["mode"] == "cron" else None
+        self.cron = self.cron_time is not None
+        self.config = config
+        self.pickFetchers(config["fetchers"])
 
     def pickFetchers(self, enabled_fetchers: Iterable[str]) -> int:
         count = 1
@@ -56,7 +56,7 @@ class MetarManager:
         for fetcher in self.fetchers:
             try:
                 # with catch_warnings(record=True) as warn:
-                self.metar_cache = fetcher.fetchAll()
+                self.metar_cache = fetcher.fetchAll(self.config)
                 break
             except (NotImplementedError, MetarNotAvailableError):
                 pass
@@ -89,7 +89,7 @@ class MetarManager:
         else:
             for fetcher in self.fetchers:
                 try:
-                    return fetcher.fetch(icao)
+                    return fetcher.fetch(self.config, icao)
                 except (NotImplementedError, MetarNotAvailableError):
                     pass
         return None
