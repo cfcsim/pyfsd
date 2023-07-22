@@ -21,7 +21,6 @@ __all__ = [
     "assertNoDuplicate",
     "iterCallable",
     "MRand",
-    "mrand",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
 __bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
@@ -161,5 +160,3 @@ class MRand:
     def srand(self, seed: int) -> None:
         self.mrandseed = seed
 
-
-mrand = MRand()
