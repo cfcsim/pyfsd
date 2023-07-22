@@ -1,10 +1,11 @@
 # 插件开发
 基于[Twisted插件机制](https://docs.twisted.org/en/stable/core/howto/plugin.html)。  
-现在有三种插件形式:  
+现在四种插件形式:  
 [`PyFSDPlugin`][pyfsd.plugin.IPyFSDPlugin]: 接受关于PyFSD本体的一些事件，如新用户连接等。  
 [`MetarFetcher`][pyfsd.metar.fetch.IMetarFetcher]: Metar源。  
 [`DatabaseMaker`][pyfsd.database.IDatabaseMaker]: 数据库源。
-注：所有插件都应该实现(`@zope.interface.implementer`) [twisted.plugin.IPlugin][]并实例化才能被加载。  
+[`Service`][twisted.application.service.IService]: Twisted的服务。
+注：所有插件都应该[实现](https://zopeinterface.readthedocs.io/en/latest/README.html#declaring-implemented-interfaces)[twisted.plugin.IPlugin][]并实例化才能被加载。  
 ## 插件参考
 ### PyFSD Plugin
 #### PreventEvent

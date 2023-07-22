@@ -108,10 +108,16 @@ class PyFSDService(Service):
                 }
             },
         )
-        if self.config["pyfsd"]["metar"]["mode"] == "cron":
+        if self.config["pyfsd"]["metar"]["mode"] in ["cron", "both"]:
             verifyConfigStruct(
-                self.config["pyfsd"]["metar"], {"cron_time": int}, prefix="pyfsd.metar"
+                self.config["pyfsd"]["metar"], {"cron_time": int}, prefix="pyfsd.metar."
             )
+            if self.config["pyfsd"]["metar"]["mode"] == "both":
+                verifyConfigStruct(
+                    self.config["pyfsd"]["metar"],
+                    {"skip_failed_fetcher": bool},
+                    prefix="pyfsd.metar.",
+                )
         elif self.config["pyfsd"]["metar"]["mode"] != "once":
             raise ValueError(
                 f"Invaild metar mode: {self.config['pyfsd']['metar']['mode']}"

@@ -552,7 +552,7 @@ class FSDClientProtocol(LineReceiver):
         def sendMetar(metar: Optional["Metar"]) -> None:
             assert self.client is not None
             if metar is None:
-                self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
+                self.sendError(FSDErrors.ERR_NOWEATHER, packet[2])
             else:
                 packets = []
                 profile = WeatherProfile(int(time()), None, metar)

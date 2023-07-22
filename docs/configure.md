@@ -48,10 +48,10 @@ fetchers = ["NOAA"]
 blacklist = ["114.514.191.81", "143.22.124.13"]
 ```
 ### Metar
-通过pyfsd.metar表来配置Metar。
-`mode`: 下载Metar的模式。可选值:
-- `cron`: 间隔一段时间下载一次所有机场的Metar，通过`cron_time`配置。
-- `once`: 每当客户端请求Metar时立即下载相关机场的Metar。
+通过pyfsd.metar表来配置Metar。  
+`mode`: 下载Metar的模式。可选值:  
+- `cron`: 间隔一段时间下载一次所有机场的Metar，通过`cron_time`配置。  
+- `once`: 每当客户端请求Metar时立即下载相关机场的Metar。  
 
 `cron_time`: (仅`cron`模式时需要，单位为秒)多久下载一次Metar。
 `fetchers`: 设置Metar下载器。可以配置多个，一个无法使用时会使用下一个。

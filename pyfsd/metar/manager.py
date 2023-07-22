@@ -1,5 +1,6 @@
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, TypedDict
 
+from twisted.internet.defer import fail
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
 from twisted.plugin import getPlugins
@@ -19,17 +20,25 @@ if TYPE_CHECKING:
     from metar.Metar import Metar
 
 
+class CronFetcherInfo(TypedDict):
+    failed: Iterable[IMetarFetcher]
+    succeed: Optional[IMetarFetcher]
+
+
 class MetarManager:
     fetchers: List[IMetarFetcher]
     metar_cache: MetarInfoDict = {}
     cron: bool = False
     config: dict
     cron_time: Optional[float]
+    cron_fetcher_info: Optional[CronFetcherInfo] = None
     cron_task: Optional[LoopingCall] = None
     logger = Logger()
 
     def __init__(self, config: dict) -> None:
-        self.cron_time = config["cron_time"] if config["mode"] == "cron" else None
+        self.cron_time = (
+            config["cron_time"] if config["mode"] in ["cron", "both"] else None
+        )
         self.cron = self.cron_time is not None
         self.config = config
         self.pickFetchers(config["fetchers"])
@@ -53,13 +62,18 @@ class MetarManager:
     def cacheMetar(self) -> None:
         self.logger.info("Fetching METAR")
         # warn = []
+        fetcher_info: CronFetcherInfo = {"failed": (), "succeed": None}
+        failed_fetchers = []
         for fetcher in self.fetchers:
             try:
                 # with catch_warnings(record=True) as warn:
                 self.metar_cache = fetcher.fetchAll(self.config)
+                fetcher_info["succeed"] = fetcher
                 break
             except (NotImplementedError, MetarNotAvailableError):
-                pass
+                failed_fetchers.append(fetcher)
+        fetcher_info["failed"] = tuple(failed_fetchers)
+        self.fetcher_info = fetcher_info
         self.logger.info(
             f"Fetched {len(self.metar_cache)} METARs."  # with {len(warn)} warnings."
         )
@@ -82,14 +96,35 @@ class MetarManager:
             self.cron_task.stop()
 
     def query(self, icao: str) -> Optional["Metar"]:
-        if self.cron:
-            if self.cron_task is None:
-                raise RuntimeError("Metar cache not available")
-            return self.metar_cache.get(icao)
-        else:
+        def queryEach(to_skip: Iterable[IMetarFetcher] = ()) -> Optional["Metar"]:
             for fetcher in self.fetchers:
+                if fetcher in to_skip:
+                    continue
                 try:
-                    return fetcher.fetch(self.config, icao)
+                    result = fetcher.fetch(self.config, icao)
+                    if result is not None:
+                        return result
                 except (NotImplementedError, MetarNotAvailableError):
                     pass
-        return None
+            return None
+
+        if self.cron:
+            if self.cron_task is None:
+                if self.config["mode"] == "both":
+                    return queryEach()
+                else:
+                    raise RuntimeError("Metar cache not available")
+            result = self.metar_cache.get(icao, None)
+            if result is None:
+                if self.config["mode"] == "both":
+                    return queryEach(
+                        to_skip=self.fetcher_info["failed"]
+                        if self.config["skip_failed_fetcher"]
+                        else ()
+                    )
+                else:
+                    return None
+            else:
+                return result
+        else:
+            return queryEach()

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, Optional
 from urllib.error import ContentTooShortError, HTTPError, URLError
 from urllib.request import urlopen
 
@@ -100,7 +100,8 @@ class NOAAMetarFetcher:
                     if len(blocklines) < 2:
                         continue
                     current_metar = self.parseMetar(blocklines)
-                    all_metar[cast(str, current_metar.station_id)] = current_metar
+                    if current_metar.station_id is not None:
+                        all_metar[current_metar.station_id] = current_metar
         except (ContentTooShortError, HTTPError, URLError):
             raise MetarNotAvailableError
         return all_metar
