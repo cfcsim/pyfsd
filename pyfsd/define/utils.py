@@ -159,4 +159,3 @@ class MRand:
 
     def srand(self, seed: int) -> None:
         self.mrandseed = seed
-
