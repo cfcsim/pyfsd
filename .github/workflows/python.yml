@@ -27,7 +27,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Merge debug patch
-      if: ${{ matrix.python-version == "3.8" }}
+      if: ${{ matrix.python-version == '3.8' }}
       run: |
         patch -p1 < debug.patch
     - uses: pdm-project/setup-pdm@v3
@@ -55,5 +55,5 @@ jobs:
     - uses: actions/upload-artifact@v3
       if: ${{ steps.build.outputs.exit_code == 0 }}
       with:
-        name: ${{ matrix.python-version == "3.8" && "dist_debug" || "dist" }}
+        name: ${{ matrix.python-version == '3.8' && 'dist_debug' || 'dist' }}
         path: dist/*
