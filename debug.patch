@@ -1,14 +1,8 @@
 diff --git a/pyfsd/protocol/client.py b/pyfsd/protocol/client.py
-index 86691d3..aeffc48 100644
+index d9cdf55..8b8a770 100644
 --- a/pyfsd/protocol/client.py
 +++ b/pyfsd/protocol/client.py
-@@ -1,4 +1,5 @@
- from threading import Lock
-+from time import time
- from typing import TYPE_CHECKING, List, Optional, Tuple
- 
- from twisted.internet import reactor
-@@ -51,6 +52,21 @@ class FSDClientProtocol(LineReceiver):
+@@ -57,6 +57,21 @@ class FSDClientProtocol(LineReceiver):
              ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
          )
          self.factory.triggerEvent("newConnectionEstablished", (self,), {})
@@ -30,7 +24,7 @@ index 86691d3..aeffc48 100644
  
      def sendLines(
          self, *lines: bytes, auto_newline: bool = True, togerher: bool = True
-@@ -296,7 +312,8 @@ class FSDClientProtocol(LineReceiver):
+@@ -302,7 +317,8 @@ class FSDClientProtocol(LineReceiver):
              )
              self.factory.triggerEvent("newClientCreated", (self,), {})
  
@@ -40,7 +34,7 @@ index 86691d3..aeffc48 100644
  
      def handleRemoveClient(self, packet: Tuple[bytes, ...]) -> None:
          if len(packet) == 0:
-@@ -680,6 +697,16 @@ class FSDClientProtocol(LineReceiver):
+@@ -746,6 +762,16 @@ class FSDClientProtocol(LineReceiver):
              # Acquire without lock it (nearly)
              pass
  
