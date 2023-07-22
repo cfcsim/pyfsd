@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Optional
 
 from twisted.application.service import Service
 from twisted.internet.defer import Deferred, succeed

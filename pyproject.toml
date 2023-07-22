@@ -41,7 +41,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["pdm-backend", "versioneer[toml]"]
+requires = ["pdm-backend", "versioneer[toml]>=0.29"]
 build-backend = "pdm.backend"
 
 [tool.isort]
@@ -55,7 +55,7 @@ includes = ["pyfsd/", "twisted/"]
 
 [tool.pdm.version]
 source = "call"
-getter = "versioneer_helper:get_version"
+getter = "versioneer:get_version"
 write_to = "pyfsd/_version.py"
 write_template = "__version__ = \"{}\"\n"
 
