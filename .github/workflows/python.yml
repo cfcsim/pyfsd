@@ -54,6 +54,7 @@ jobs:
       id: build
       run: |
         pdm build
+        echo ::set-output name=exit_code::$?
     - uses: actions/upload-artifact@v3
       if: ${{ steps.build.outputs.exit_code == 0 }}
       with:
