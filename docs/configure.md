@@ -40,7 +40,7 @@ fetchers = ["NOAA"]
 通过pyfsd.client表来配置客户端协议。  
 `port`: 客户端协议的端口。ECHO Pilot、Swift等连飞软件及原版FSD默认使用6809端口。  
 `motd`: 即Message Of The Day，会在客户端成功登录后发送。  
-`motd_encoding`: MOTD的编码方式。如果MOTD是中文建议改为`GBK`。  
+`motd_encoding`: MOTD的编码方式。如:`gbk`或`utf-8`。
 `blacklist`: IP黑名单。例：  
 ```toml
 [pyfsd.client]
