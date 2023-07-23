@@ -108,17 +108,21 @@ class PyFSDService(Service):
                 }
             },
         )
-        if self.config["pyfsd"]["metar"]["mode"] in ["cron", "both"]:
+        # Metar
+        metar_cfg = self.config["pyfsd"]["metar"]
+        fallback_mode = metar_cfg.get("fallback", None)
+        if fallback_mode is not None:
             verifyConfigStruct(
-                self.config["pyfsd"]["metar"], {"cron_time": int}, prefix="pyfsd.metar."
+                metar_cfg,
+                {"fallback": str, "skip_failed_fetchers": bool},
+                prefix="pyfsd.metar.",
             )
-            if self.config["pyfsd"]["metar"]["mode"] == "both":
-                verifyConfigStruct(
-                    self.config["pyfsd"]["metar"],
-                    {"skip_failed_fetcher": bool},
-                    prefix="pyfsd.metar.",
-                )
-        elif self.config["pyfsd"]["metar"]["mode"] != "once":
+            assert metar_cfg["mode"] != metar_cfg["fallback"]
+        if metar_cfg["mode"] == "cron" or fallback_mode == "cron":
+            verifyConfigStruct(metar_cfg, {"cron_time": int}, prefix="pyfsd.metar.")
+        elif metar_cfg["mode"] != "once" or (
+            fallback_mode is not None and fallback_mode != "once"
+        ):
             raise ValueError(
                 f"Invaild metar mode: {self.config['pyfsd']['metar']['mode']}"
             )

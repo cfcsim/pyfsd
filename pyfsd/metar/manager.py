@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, TypedDict
 
-from twisted.internet.defer import fail
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
 from twisted.plugin import getPlugins
@@ -37,7 +36,9 @@ class MetarManager:
 
     def __init__(self, config: dict) -> None:
         self.cron_time = (
-            config["cron_time"] if config["mode"] in ["cron", "both"] else None
+            config["cron_time"]
+            if config["mode"] == "cron" or config.get("fallback", None) == "cron"
+            else None
         )
         self.cron = self.cron_time is not None
         self.config = config
@@ -108,18 +109,19 @@ class MetarManager:
                     pass
             return None
 
+        fallback_mode = self.config.get("fallback", None)
         if self.cron:
             if self.cron_task is None:
-                if self.config["mode"] == "both":
+                if fallback_mode == "once":
                     return queryEach()
                 else:
                     raise RuntimeError("Metar cache not available")
             result = self.metar_cache.get(icao, None)
             if result is None:
-                if self.config["mode"] == "both":
+                if fallback_mode == "once":
                     return queryEach(
                         to_skip=self.fetcher_info["failed"]
-                        if self.config["skip_failed_fetcher"]
+                        if self.config["skip_failed_fetchers"]
                         else ()
                     )
                 else:
@@ -127,4 +129,8 @@ class MetarManager:
             else:
                 return result
         else:
-            return queryEach()
+            result = queryEach()
+            if result is None and fallback_mode == "cron":
+                return self.metar_cache.get(icao, None)
+            else:
+                return result
