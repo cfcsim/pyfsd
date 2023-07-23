@@ -1,0 +1,109 @@
+diff --git a/pyfsd/metar/manager.py b/pyfsd/metar/manager.py
+index 2363c1e..3be5641 100644
+--- a/pyfsd/metar/manager.py
++++ b/pyfsd/metar/manager.py
+@@ -1,4 +1,4 @@
+-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, TypedDict
++from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, Tuple
+ 
+ from twisted.internet.task import LoopingCall
+ from twisted.logger import Logger
+@@ -19,18 +19,13 @@ if TYPE_CHECKING:
+     from metar.Metar import Metar
+ 
+ 
+-class CronFetcherInfo(TypedDict):
+-    failed: Iterable[IMetarFetcher]
+-    succeed: Optional[IMetarFetcher]
+-
+-
+ class MetarManager:
+     fetchers: List[IMetarFetcher]
+     metar_cache: MetarInfoDict = {}
+     cron: bool = False
+     config: dict
+     cron_time: Optional[float]
+-    cron_fetcher_info: Optional[CronFetcherInfo] = None
++    previous_fetcher: Optional[IMetarFetcher] = None
+     cron_task: Optional[LoopingCall] = None
+     logger = Logger()
+ 
+@@ -63,18 +58,14 @@ class MetarManager:
+     def cacheMetar(self) -> None:
+         self.logger.info("Fetching METAR")
+         # warn = []
+-        fetcher_info: CronFetcherInfo = {"failed": (), "succeed": None}
+-        failed_fetchers = []
+         for fetcher in self.fetchers:
+             try:
+                 # with catch_warnings(record=True) as warn:
+                 self.metar_cache = fetcher.fetchAll(self.config)
+-                fetcher_info["succeed"] = fetcher
++                self.previous_fetcher = fetcher
+                 break
+             except (NotImplementedError, MetarNotAvailableError):
+-                failed_fetchers.append(fetcher)
+-        fetcher_info["failed"] = tuple(failed_fetchers)
+-        self.fetcher_info = fetcher_info
++                pass
+         self.logger.info(
+             f"Fetched {len(self.metar_cache)} METARs."  # with {len(warn)} warnings."
+         )
+@@ -97,40 +88,46 @@ class MetarManager:
+             self.cron_task.stop()
+ 
+     def query(self, icao: str) -> Optional["Metar"]:
+-        def queryEach(to_skip: Iterable[IMetarFetcher] = ()) -> Optional["Metar"]:
++        def queryEach(
++            to_skip: Iterable[IMetarFetcher] = (),
++        ) -> Tuple[Optional[IMetarFetcher], Optional["Metar"]]:
+             for fetcher in self.fetchers:
+                 if fetcher in to_skip:
+                     continue
+                 try:
+-                    result = fetcher.fetch(self.config, icao)
+-                    if result is not None:
+-                        return result
++                    this_result = fetcher.fetch(self.config, icao)
++                    if this_result is not None:
++                        return fetcher, this_result
+                 except (NotImplementedError, MetarNotAvailableError):
+                     pass
+-            return None
++            return None, None
+ 
+         fallback_mode = self.config.get("fallback", None)
+         if self.cron:
+             if self.cron_task is None:
+                 if fallback_mode == "once":
+-                    return queryEach()
++                    return queryEach()[1]
+                 else:
+                     raise RuntimeError("Metar cache not available")
+             result = self.metar_cache.get(icao, None)
+             if result is None:
+                 if fallback_mode == "once":
+                     return queryEach(
+-                        to_skip=self.fetcher_info["failed"]
++                        to_skip=(self.previous_fetcher,)
+                         if self.config["skip_failed_fetchers"]
++                        and self.previous_fetcher is not None
+                         else ()
+-                    )
++                    )[1]
+                 else:
+                     return None
+             else:
+                 return result
+         else:
+-            result = queryEach()
+-            if result is None and fallback_mode == "cron":
++            result_once = queryEach()
++            if result_once[1] is None and fallback_mode == "cron":
++                if not self.cron_task.running:
++                    self.cron_task.f(*self.cron_task.a, **self.cron_task.kw)
+                 return self.metar_cache.get(icao, None)
+             else:
+-                return result
++                self.previous_fetcher = result_once[0]
++                return result_once[1]

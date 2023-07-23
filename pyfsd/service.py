@@ -114,12 +114,18 @@ class PyFSDService(Service):
         if fallback_mode is not None:
             verifyConfigStruct(
                 metar_cfg,
-                {"fallback": str, "skip_failed_fetchers": bool},
+                {"fallback": str},
                 prefix="pyfsd.metar.",
             )
             assert metar_cfg["mode"] != metar_cfg["fallback"]
         if metar_cfg["mode"] == "cron" or fallback_mode == "cron":
-            verifyConfigStruct(metar_cfg, {"cron_time": int}, prefix="pyfsd.metar.")
+            verifyConfigStruct(
+                metar_cfg,
+                {"cron_time": int}
+                if fallback_mode == "cron"
+                else {"cron_time": int, "skip_previous_fetcher": bool},
+                prefix="pyfsd.metar.",
+            )
         elif metar_cfg["mode"] != "once" or (
             fallback_mode is not None and fallback_mode != "once"
         ):

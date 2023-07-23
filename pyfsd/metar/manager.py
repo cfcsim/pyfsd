@@ -120,8 +120,9 @@ class MetarManager:
             if result is None:
                 if fallback_mode == "once":
                     return queryEach(
-                        to_skip=self.fetcher_info["failed"]
-                        if self.config["skip_failed_fetchers"]
+                        to_skip=(self.fetcher_info["succeed"],)
+                        if self.config["skip_previous_fetcher"]
+                        and self.fetcher_info["succeed"] is not None
                         else ()
                     )
                 else:
