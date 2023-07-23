@@ -5,4 +5,4 @@ try:
 
     __version__ = version("pyfsd")
 except (ImportError, PackageNotFoundError):
-    __version__ = "0.0.0"
+    __version__ = "0.0.0.dev2"
