@@ -32,8 +32,8 @@ def main(argv) -> int:
     try:
         options.parseOptions(argv)
     except UsageError as error:
-        print(f"pyfsd.utils.extend_users: {error}")
-        print("pyfsd.utils.extend_users: Try --help for usage details.")
+        print(f"pyfsd.utils.import_users: {error}")
+        print("pyfsd.utils.import_users: Try --help for usage details.")
         return 1
 
     if options["filename"] is None:

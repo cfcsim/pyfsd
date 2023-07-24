@@ -627,7 +627,7 @@ class FSDClientProtocol(LineReceiver):
         if self.client.callsign != packet[0]:
             self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
             return
-        if packet[2].upper() == "METAR" and len(packet) > 3:
+        if packet[2].upper() == b"METAR" and len(packet) > 3:
 
             def sendMetar(metar: Optional["Metar"]) -> None:
                 assert self.client is not None
@@ -759,32 +759,31 @@ class FSDClientProtocol(LineReceiver):
         if len(byte_line) == 0:
             return
         command, packet = breakPacket(byte_line, FSDCLIENTPACKET.client_used_command)
-        if command == FSDCLIENTPACKET.ADD_ATC or command == FSDCLIENTPACKET.ADD_PILOT:
+        if command is None:
+            self.sendError(FSDErrors.ERR_SYNTAX)
+        elif command is FSDCLIENTPACKET.ADD_ATC or command is FSDCLIENTPACKET.ADD_PILOT:
             self.handleAddClient(
-                packet, "ATC" if command == FSDCLIENTPACKET.ADD_ATC else "PILOT"
+                packet, "ATC" if command is FSDCLIENTPACKET.ADD_ATC else "PILOT"
             )
-        elif command == FSDCLIENTPACKET.PLAN:
+        elif command is FSDCLIENTPACKET.PLAN:
             self.handlePlan(packet)
         elif (
-            command == FSDCLIENTPACKET.REMOVE_ATC
-            or command == FSDCLIENTPACKET.REMOVE_PILOT
+            command is FSDCLIENTPACKET.REMOVE_ATC
+            or command is FSDCLIENTPACKET.REMOVE_PILOT
         ):
             self.handleRemoveClient(packet)
-        elif command == FSDCLIENTPACKET.PILOT_POSITION:
+        elif command is FSDCLIENTPACKET.PILOT_POSITION:
             self.handlePilotPositionUpdate(packet)
-        elif command == FSDCLIENTPACKET.ATC_POSITION:
+        elif command is FSDCLIENTPACKET.ATC_POSITION:
             self.handleATCPositionUpdate(packet)
-        elif command == FSDCLIENTPACKET.PONG:
-            assert command is not None, "Why FSDCLIENTPACKET.PONG is None???"
+        elif command is FSDCLIENTPACKET.PONG:
             self.handleCast(packet, command, require_param=2, multicast_able=True)
-        elif command == FSDCLIENTPACKET.PING:
-            assert command is not None, "Why FSDCLIENTPACKET.PING is None???"
-            if len(packet) > 1 and packet[1].lower() == "server":
+        elif command is FSDCLIENTPACKET.PING:
+            if len(packet) > 1 and packet[1].lower() == b"server":
                 self.handleServerPing(packet)
             else:
                 self.handleCast(packet, command, require_param=2, multicast_able=True)
         elif command is FSDCLIENTPACKET.MESSAGE:
-            assert command is not None, "Why FSDCLIENTPACKET.MESSAGE is None???"
             self.handleCast(
                 packet,
                 command=command,
@@ -793,30 +792,25 @@ class FSDClientProtocol(LineReceiver):
                 custom_at_checker=broadcastMessageChecker,
             )
         elif (
-            command == FSDCLIENTPACKET.REQUEST_HANDOFF
-            or command == FSDCLIENTPACKET.AC_HANDOFF
+            command is FSDCLIENTPACKET.REQUEST_HANDOFF
+            or command is FSDCLIENTPACKET.AC_HANDOFF
         ):
-            assert command is not None, "Why FSDCLIENTPACKET.*_HANDOFF is None???"
             self.handleCast(packet, command, require_param=3, multicast_able=False)
-        elif command == FSDCLIENTPACKET.SB or command == FSDCLIENTPACKET.PC:
-            assert command is not None, "Why FSDCLIENTPACKET.SB/PC is None???"
+        elif command is FSDCLIENTPACKET.SB or command is FSDCLIENTPACKET.PC:
             self.handleCast(packet, command, require_param=2, multicast_able=False)
-        elif command == FSDCLIENTPACKET.WEATHER:
+        elif command is FSDCLIENTPACKET.WEATHER:
             self.handleWeather(packet)
-        elif command == FSDCLIENTPACKET.REQUEST_COMM:
-            assert command is not None, "Why FSDCLIENTPACKET.REQUEST_COMM is None???"
+        elif command is FSDCLIENTPACKET.REQUEST_COMM:
             self.handleCast(packet, command, require_param=2, multicast_able=False)
-        elif command == FSDCLIENTPACKET.REPLY_COMM:
-            assert command is not None, "Why FSDCLIENTPACKET.REPLY_COMM is None???"
+        elif command is FSDCLIENTPACKET.REPLY_COMM:
             self.handleCast(packet, command, require_param=3, multicast_able=False)
-        elif command == FSDCLIENTPACKET.REQUEST_ACARS:
+        elif command is FSDCLIENTPACKET.REQUEST_ACARS:
             self.handleAcars(packet)
-        elif command == FSDCLIENTPACKET.CR:
-            assert command is not None, "Why FSDCLIENTPACKET.CR is None???"
+        elif command is FSDCLIENTPACKET.CR:
             self.handleCast(packet, command, require_param=4, multicast_able=False)
-        elif command == FSDCLIENTPACKET.CQ:
+        elif command is FSDCLIENTPACKET.CQ:
             self.handleCq(packet)
-        elif command == FSDCLIENTPACKET.KILL:
+        elif command is FSDCLIENTPACKET.KILL:
             self.handleKill(packet)
         else:
             self.sendError(FSDErrors.ERR_SYNTAX)
