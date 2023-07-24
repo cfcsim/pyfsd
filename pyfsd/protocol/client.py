@@ -755,7 +755,7 @@ class FSDClientProtocol(LineReceiver):
                     self.lineReceived_impl(byte_line)
 
         self.factory.triggerEvent(
-            "lineReceivedFromClient", (self, byte_line), {}
+            "lineReceivedFromClient", (self, byte_line), {}, in_thread=False
         ).addCallback(resultHandler)
 
     def lineReceived_impl(self, byte_line: bytes) -> None:
