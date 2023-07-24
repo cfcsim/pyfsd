@@ -50,3 +50,5 @@ nav:
   - 配置: configure.md
   - 开发指南:
     - 插件: develop/plugin.md
+  - 命令行工具:
+    - import_user: cmdline_tools/import_user.md

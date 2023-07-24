@@ -1,4 +1,5 @@
-"""Convert cfcsim/fsd format users database to PyFSD format."""
+# flake8: noqa
+"""This tool can convert users database in other format into PyFSD format."""
 try:
     import tomllib  # type: ignore[import]
 except ModuleNotFoundError:
@@ -17,9 +18,21 @@ from .formats import formats
 class ConverterOptions(Options):
     optParameters = [
         ["config-path", "c", "pyfsd.toml", "Path to the config file."],
-        ["filename", "f", None, "Path to the original database file."],
-        ["format", "F", None, "Formst of the original database file."],
+        ["format", "f", None, "Format of the original database file."],
     ]
+
+    longdesc = """
+    This tool can convert users database in other format into PyFSD format.            
+    Example:                                                                               
+        $ python -m pyfsd.utils.import_users -f cfcsim cert.sqlitedb3                      
+        $ python -m pyfsd.utils.import_users -f fsd -c env_pyfsd.toml cert.txt             
+    """
+
+    def parseArgs(self, filename):
+        self["filename"] = filename
+
+    def getSynopsis(self) -> str:
+        return "Usage: python -m pyfsd.utils.import_users [options] [filename]"
 
 
 class FakePyFSDService(PyFSDService):

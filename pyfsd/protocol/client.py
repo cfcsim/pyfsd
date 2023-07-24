@@ -1,6 +1,6 @@
 from threading import Lock
 from time import time
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Type
 
 from twisted.internet import reactor
 from twisted.internet.interfaces import ITransport
@@ -8,6 +8,7 @@ from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
 
 from .._version import __version__
+from ..auth import IUserInfo
 
 # from ..config import config
 from ..define.broadcast import (
@@ -30,6 +31,7 @@ if TYPE_CHECKING:
     from metar.Metar import Metar
     from twisted.internet.base import DelayedCall
 
+    from ..auth import UserInfo
     from ..factory.client import FSDClientFactory
 
 __all__ = ["FSDClientProtocol"]
@@ -237,12 +239,13 @@ class FSDClientProtocol(LineReceiver):
             self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
             return
 
-        def onResult(result):
-            rating: int = result[1].rating
-            if rating == 0:
+        def onResult(result: Tuple[Type[IUserInfo], "UserInfo", Callable[[], None]]):
+            interface, userinfo, _ = result
+            assert interface is IUserInfo or IUserInfo in interface.__bases__
+            if userinfo.rating == 0:
                 self.sendError(FSDErrors.ERR_CSSUSPEND, fatal=True)
             else:
-                if rating < req_rating_int:
+                if userinfo.rating < req_rating_int:
                     self.sendError(
                         FSDErrors.ERR_LEVEL,
                         env=req_rating,
