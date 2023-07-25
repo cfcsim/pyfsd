@@ -45,6 +45,7 @@ def formatService(plugin: IService) -> str:
 
 MAX_API = BasePyFSDPlugin.api
 PLUGIN_EVENTS = tuple(func.__name__ for func in iterCallable(BasePyFSDPlugin))
+config: Optional[dict] = None
 
 
 class PluginDict(TypedDict):
@@ -62,8 +63,11 @@ class PyFSDService(Service):
     config: dict
     version = __version__
 
-    def __init__(self, config: dict) -> None:
-        self.config = config
+    def __init__(self, this_config: dict) -> None:
+        global config
+        assert config is None
+        config = this_config
+        self.config = this_config
         self.checkConfig()
         self.connectDatabase()
         self.checkAndInitDatabase()
