@@ -1,5 +1,17 @@
 from re import compile
-from typing import TYPE_CHECKING, AnyStr, Callable, Iterable, Type, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    AnyStr,
+    Callable,
+    Generic,
+    Iterable,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 # Not yet typed
 from haversine import Unit, haversine  # type: ignore[import]
@@ -21,6 +33,7 @@ __all__ = [
     "assertNoDuplicate",
     "iterCallable",
     "MRand",
+    "MayExist",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
 __bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
@@ -111,6 +124,13 @@ def assertNoDuplicate(__iterable: Iterable):
         raise AssertionError(f"Duplicated value: {list_val}")
 
 
+T = TypeVar("T")
+
+
+class MayExist(Generic[T]):
+    pass
+
+
 def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
     def getName(obj) -> str:
         if isinstance(obj, type):
@@ -119,22 +139,27 @@ def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
             return type(obj).__name__
 
     for key, type_ in structure.items():
-        if not (isinstance(type_, dict) or isinstance(type_, type)):
+        is_mayExist = get_origin(type_) is MayExist
+        if not (is_mayExist or isinstance(type_, dict) or isinstance(type_, type)):
             raise TypeError(f"Invaild type '{type_!r}'")
         if key not in config:
-            raise KeyError(f"{prefix}{key}")
-        if isinstance(type_, dict):
-            if not isinstance(config[key], dict):
-                raise TypeError(
-                    f"'{prefix}{key}' must be section, not {getName(config[key])}"
-                )
-            verifyConfigStruct(config[key], type_, prefix=f"{prefix}{key}.")
-        elif isinstance(type_, type):
-            if not isinstance(config[key], type_):
-                raise TypeError(
-                    f"'{prefix}{key}' must be {getName(type_)}"
-                    f", not {getName(config[key])}"
-                )
+            if not is_mayExist:
+                raise KeyError(f"{prefix}{key}")
+        else:
+            if is_mayExist:
+                type_ = get_args(type_)[0]
+            if isinstance(type_, dict):
+                if not isinstance(config[key], dict):
+                    raise TypeError(
+                        f"'{prefix}{key}' must be section, not {getName(config[key])}"
+                    )
+                verifyConfigStruct(config[key], type_, prefix=f"{prefix}{key}.")
+            elif isinstance(type_, type):
+                if not isinstance(config[key], type_):
+                    raise TypeError(
+                        f"'{prefix}{key}' must be {getName(type_)}"
+                        f", not {getName(config[key])}"
+                    )
 
 
 def iterCallable(obj: object, ignore_private: bool = True) -> Iterable[Callable]:
