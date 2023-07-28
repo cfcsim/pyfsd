@@ -8,6 +8,7 @@ on:
     branches: [ "early-dev" ]
   pull_request:
     branches: [ "early-dev" ]
+  workflow_dispatch:
 
 jobs:
   build:
