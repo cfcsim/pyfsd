@@ -51,7 +51,8 @@ profile = "black"
 start = "twistd -n pyfsd"
 
 [tool.pdm.build]
-includes = ["pyfsd/", "twisted/"]
+includes = ["pyfsd/", "twisted/", "pyfsd/plugins/__init__.py"]
+excludes = ["pyfsd/plugins/*"]
 
 [tool.pdm.version]
 source = "call"

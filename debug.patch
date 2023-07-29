@@ -1,8 +1,8 @@
 diff --git a/pyfsd/protocol/client.py b/pyfsd/protocol/client.py
-index d9cdf55..829c823 100644
+index dcdfd4c..d2291b5 100644
 --- a/pyfsd/protocol/client.py
 +++ b/pyfsd/protocol/client.py
-@@ -57,6 +57,21 @@ class FSDClientProtocol(LineReceiver):
+@@ -59,6 +59,21 @@ class FSDClientProtocol(LineReceiver):
              ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
          )
          self.factory.triggerEvent("newConnectionEstablished", (self,), {})
@@ -24,7 +24,7 @@ index d9cdf55..829c823 100644
  
      def sendLines(
          self, *lines: bytes, auto_newline: bool = True, togerher: bool = True
-@@ -232,7 +247,7 @@ class FSDClientProtocol(LineReceiver):
+@@ -234,7 +249,7 @@ class FSDClientProtocol(LineReceiver):
  
          try:
              cid_str = cid.decode("utf-8")
@@ -33,7 +33,7 @@ index d9cdf55..829c823 100644
          except UnicodeDecodeError:
              self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
              return
-@@ -302,7 +317,8 @@ class FSDClientProtocol(LineReceiver):
+@@ -305,7 +320,8 @@ class FSDClientProtocol(LineReceiver):
              )
              self.factory.triggerEvent("newClientCreated", (self,), {})
  
@@ -43,7 +43,7 @@ index d9cdf55..829c823 100644
  
      def handleRemoveClient(self, packet: Tuple[bytes, ...]) -> None:
          if len(packet) == 0:
-@@ -746,6 +762,16 @@ class FSDClientProtocol(LineReceiver):
+@@ -749,6 +765,16 @@ class FSDClientProtocol(LineReceiver):
              # Acquire without lock it (nearly)
              pass
  
