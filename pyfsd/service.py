@@ -10,21 +10,23 @@ from typing import (
     TypedDict,
 )
 
+from alchimia.engine import TwistedEngine
+from sqlalchemy import Integer, create_engine, MetaData, Table, Column, String
+from sqlalchemy.schema import CreateTable
 from twisted.application.internet import TCPServer
 from twisted.application.service import IService, Service
 from twisted.cred.portal import Portal
-from twisted.enterprise.adbapi import ConnectionPool
 from twisted.logger import Logger
 from twisted.plugin import getPlugins
 
 from . import plugins
 from ._version import __version__
 from .auth import CredentialsChecker, Realm
-from .database import IDatabaseMaker, SQLite3DBMaker
 from .define.utils import iterCallable, verifyConfigStruct
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 from .plugin import BasePyFSDPlugin, IPyFSDPlugin
+from .db_tables import users
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -56,7 +58,7 @@ class PluginDict(TypedDict):
 class PyFSDService(Service):
     client_factory: Optional[FSDClientFactory] = None
     fetch_metar: Optional[Callable[[str], "Deferred[Optional[Metar]]"]] = None
-    db_pool: Optional[ConnectionPool] = None
+    db_engine: Optional[TwistedEngine] = None
     portal: Optional[Portal] = None
     plugins: Optional[PluginDict] = None
     logger: Logger = Logger()
@@ -101,7 +103,7 @@ class PyFSDService(Service):
             self.config,
             {
                 "pyfsd": {
-                    "database": {"source": str},
+                    "database": {"url": str},
                     "client": {
                         "port": int,
                         "motd": str,
@@ -138,33 +140,25 @@ class PyFSDService(Service):
             )
 
     def connectDatabase(self) -> None:
-        source_name = self.config["pyfsd"]["database"]["source"]
-        if source_name == "sqlite3":
-            self.db_pool = SQLite3DBMaker.makeDBPool(self.config["pyfsd"]["database"])
-            return
-        for source in getPlugins(IDatabaseMaker, plugins):
-            if source.db_source == source_name:
-                self.db_pool = source.makeDBPool(self.config["pyfsd"]["database"])
-                return
-        self.logger.warn(
-            "No such database source {source_name}, fallback to sqlite3.",
-            source_name=source_name,
+        from twisted.internet import reactor
+
+        self.db_engine = TwistedEngine.from_sqlalchemy_engine(
+            reactor, create_engine(self.config["pyfsd"]["database"]["url"])
         )
-        self.db_pool = SQLite3DBMaker.makeDBPool(self.config["pyfsd"]["database"])
 
     def checkAndInitDatabase(self) -> None:
-        assert self.db_pool is not None, "Must connect database first."
-        self.db_pool.runOperation(
-            """CREATE TABLE IF NOT EXISTS users(
-                callsign TEXT NOT NULL,
-                password TEXT NOT NULL,
-                rating INT UNSIGNED NOT NULL
-            );"""
-        )
+        assert self.db_engine is not None, "Must connect database first."
+
+        def createIfNotExist(exist: bool) -> None:
+            if exist:
+                return
+            self.db_engine.execute(CreateTable(users))  # type: ignore[union-attr]
+
+        self.db_engine.has_table("users").addCallback(createIfNotExist)
 
     def makePortal(self) -> None:
-        assert self.db_pool is not None, "Must connect database first."
-        self.portal = Portal(Realm, (CredentialsChecker(self.db_pool.runQuery),))
+        assert self.db_engine is not None, "Must connect database first."
+        self.portal = Portal(Realm, (CredentialsChecker(self.db_engine.execute),))
 
     def getClientService(self) -> TCPServer:
         assert self.fetch_metar is not None, "Must start metar service first"

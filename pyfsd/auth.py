@@ -9,6 +9,9 @@ from twisted.cred.portal import IRealm
 from twisted.internet.defer import Deferred
 from zope.interface import Attribute, Interface, implementer
 
+from .db_tables import users
+
+
 __all__ = ["CredentialsChecker", "Realm"]
 
 
@@ -41,25 +44,32 @@ class UsernameSHA256Password:
 class CredentialsChecker:
     credentialInterfaces = (IUsernameHashedPassword,)
     sql: str
-    runQuery: Callable[[str, tuple], Deferred]
+    runQuery: Callable[..., Deferred]
 
     def __init__(
         self,
-        runQuery: Callable[[str, tuple], Deferred],
-        query: str = "SELECT callsign, password, rating FROM users WHERE callsign = ?",
+        runQuery: Callable[..., Deferred],
     ) -> None:
         self.runQuery = runQuery
-        self.sql = query
 
     def requestAvatarId(self, credentials: UsernameSHA256Password) -> Deferred:
         if not IUsernameHashedPassword.providedBy(credentials):
             raise UnhandledCredentials()
-        dbDeferred: Deferred = self.runQuery(self.sql, (credentials.username,))
         deferred: Deferred = Deferred()
-        dbDeferred.addCallbacks(
-            self._cbAuthenticate,
+
+        def callback(proxy):
+            proxy.fetchall().addCallbacks(
+                self._cbAuthenticate,
+                self._ebAuthenticate,
+                callbackArgs=(credentials, deferred),
+                errbackArgs=(credentials, deferred),
+            )
+
+        self.runQuery(
+            users.select(users.c.callsign == credentials.username)
+        ).addCallbacks(
+            callback,
             self._ebAuthenticate,
-            callbackArgs=(credentials, deferred),
             errbackArgs=(credentials, deferred),
         )
         return deferred
