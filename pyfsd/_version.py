@@ -1,8 +1,15 @@
 # Will replaced by pdm while building wheel
 PackageNotFoundError = Exception
-try:
-    from importlib.metadata import PackageNotFoundError, version
+version_lookup = lambda _: "0.0.0.dev2"  # noqa: E731
+version: str
 
-    __version__ = version("pyfsd")
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as version_lookup
+except ImportError:
+    pass
+try:
+    version = version_lookup("pyfsd")
 except (ImportError, PackageNotFoundError):
-    __version__ = "0.0.0.dev2"
+    version = "0.0.0.dev2"
+del PackageNotFoundError, version_lookup

@@ -7,7 +7,7 @@ from twisted.internet.interfaces import ITransport
 from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
 
-from .._version import __version__
+from .._version import version as pyfsd_version
 from ..auth import IUserInfo
 
 # from ..config import config
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 __all__ = ["FSDClientProtocol"]
 
-version = __version__.encode("ascii")
+version = pyfsd_version.encode("ascii")
 
 
 class FSDClientProtocol(LineReceiver):

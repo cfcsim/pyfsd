@@ -11,7 +11,6 @@ from zope.interface import Attribute, Interface, implementer
 
 from .db_tables import users
 
-
 __all__ = ["CredentialsChecker", "Realm"]
 
 

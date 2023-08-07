@@ -12,6 +12,19 @@ class Format(Protocol):
         ...
 
 
+class PyFSDFormat:
+    sha256_hashed = True
+
+    @staticmethod
+    def readAll(filename: str) -> Tuple[User, ...]:
+        db = connect(filename)
+        cur = db.cursor()
+        result = tuple(cur.execute("SELECT callsign, password, rating FROM users;"))
+        cur.close()
+        db.close()
+        return result
+
+
 class CfcsimFSDFormat:
     sha256_hashed = False
 
@@ -39,4 +52,8 @@ class FSDTextFormat:
         return tuple(users)
 
 
-formats: Dict[str, Format] = {"cfcsim": CfcsimFSDFormat, "fsd": FSDTextFormat}
+formats: Dict[str, Format] = {
+    "cfcsim": CfcsimFSDFormat,
+    "fsd": FSDTextFormat,
+    "pyfsd": PyFSDFormat,
+}

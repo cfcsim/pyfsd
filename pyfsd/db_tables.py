@@ -1,4 +1,4 @@
-from sqlalchemy import Table, MetaData, Column, String, Integer
+from sqlalchemy import Column, Integer, MetaData, String, Table
 
 metadata = MetaData()
 users = Table(

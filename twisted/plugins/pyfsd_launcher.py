@@ -35,6 +35,16 @@ class PyFSDOptions(Options):
         ["config-path", "c", "pyfsd.toml", "Path to the config file."],
     ]
 
+    def opt_version(self):
+        from platform import python_version
+
+        from twisted.copyright import version as twisted_version
+
+        print("Python", python_version())
+        print("Twisted version:", twisted_version)
+        print("PyFSD version:", PyFSDService.version)
+        exit(0)
+
 
 @implementer(IServiceMaker, IPlugin)
 class PyFSDServiceMaker:

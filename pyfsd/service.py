@@ -11,7 +11,7 @@ from typing import (
 )
 
 from alchimia.engine import TwistedEngine
-from sqlalchemy import Integer, create_engine, MetaData, Table, Column, String
+from sqlalchemy import create_engine
 from sqlalchemy.schema import CreateTable
 from twisted.application.internet import TCPServer
 from twisted.application.service import IService, Service
@@ -20,13 +20,13 @@ from twisted.logger import Logger
 from twisted.plugin import getPlugins
 
 from . import plugins
-from ._version import __version__
+from ._version import version as pyfsd_version
 from .auth import CredentialsChecker, Realm
+from .db_tables import users
 from .define.utils import iterCallable, verifyConfigStruct
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 from .plugin import BasePyFSDPlugin, IPyFSDPlugin
-from .db_tables import users
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -63,7 +63,7 @@ class PyFSDService(Service):
     plugins: Optional[PluginDict] = None
     logger: Logger = Logger()
     config: dict
-    version = __version__
+    version = pyfsd_version
 
     def __init__(self, this_config: dict) -> None:
         global config

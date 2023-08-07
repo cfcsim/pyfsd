@@ -61,7 +61,7 @@ excludes = ["pyfsd/plugins/*"]
 source = "call"
 getter = "versioneer:get_version"
 write_to = "pyfsd/_version.py"
-write_template = "__version__ = \"{}\"\n"
+write_template = "version = \"{}\"\n"
 
 [tool.pyright]
 exclude = [
