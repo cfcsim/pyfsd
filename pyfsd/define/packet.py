@@ -1,7 +1,6 @@
 from typing import AnyStr, Iterable, List, Optional, Tuple, Type, Union, cast, overload
 
-# Not yet typed
-from constantly import ValueConstant, Values  # type: ignore[import]
+from constantly import ValueConstant, Values
 
 from .utils import constToAnyStr
 

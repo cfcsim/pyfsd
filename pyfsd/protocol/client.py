@@ -27,7 +27,7 @@ from ..metar.profile import WeatherProfile
 from ..object.client import Client, ClientType
 
 if TYPE_CHECKING:
-    from constantly import ValueConstant  # type: ignore[import]
+    from constantly import ValueConstant
     from metar.Metar import Metar
     from twisted.internet.base import DelayedCall
 

@@ -14,10 +14,10 @@ from typing import (
 )
 
 # Not yet typed
-from haversine import Unit, haversine  # type: ignore[import]
+from haversine import Unit, haversine
 
 if TYPE_CHECKING:
-    from constantly import ValueConstant  # type: ignore[import]
+    from constantly import ValueConstant
 
     from ..object.client import Position
 
