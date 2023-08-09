@@ -81,7 +81,7 @@ class Client:
         alt_airport: bytes,
         remarks: bytes,
         route: bytes,
-    ):
+    ) -> None:
         revision: int
         if self.flight_plan is not None:
             revision = self.flight_plan.revision + 1

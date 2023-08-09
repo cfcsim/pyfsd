@@ -6,7 +6,7 @@ from twisted.internet.stdio import StandardIO
 from .raw_mode import RawMode
 
 if TYPE_CHECKING:
-    from twisted.internet.interfaces import IProtocol
+    from twisted.internet.interfaces import IProtocol, IReactorCore
 
 
 class RawStdinService(Service):
@@ -19,7 +19,7 @@ class RawStdinService(Service):
         proto: "IProtocol",
         stdin: Optional[int] = 0,
         stdout: Optional[int] = 1,
-        reactor=None,
+        reactor: Optional["IReactorCore"] = None,
     ):
         self.stdio_arg = (
             (proto,),
@@ -27,14 +27,14 @@ class RawStdinService(Service):
         )
         self.raw_mode = RawMode(stdin)
 
-    def startService(self):
+    def startService(self) -> None:
         super().startService()
         assert self.stdio is None
         self.raw_mode.setup()
         self.stdio = StandardIO(*self.stdio_arg[0], **self.stdio_arg[1])
         setattr(self.stdio, "raw_mode", self.raw_mode)
 
-    def stopService(self):
+    def stopService(self) -> None:
         assert self.stdio is not None
         if not self.stdio.disconnected:
             print("Disconnecting")

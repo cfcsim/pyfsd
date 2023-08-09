@@ -48,7 +48,7 @@ def constToAnyStr(
     if type_ is str:
         return cast(AnyStr, value.value)
     elif type_ is bytes:
-        return value.value.encode(encoding, errors)
+        return cast(AnyStr, value.value.encode(encoding, errors))
     else:
         raise TypeError
 
@@ -68,9 +68,9 @@ def strToFloat(string: Union[str, bytes], default_value: float = 0.0) -> float:
 
 
 def calcDistance(
-    from_position: "Position", to_position: "Position", unit=Unit.NAUTICAL_MILES
+    from_position: "Position", to_position: "Position", unit: Unit = Unit.NAUTICAL_MILES
 ) -> float:
-    return haversine(from_position, to_position, unit=unit)
+    return cast(float, haversine(from_position, to_position, unit=unit))
 
 
 def isCallsignVaild(callsign: Union[str, bytes]) -> bool:
@@ -82,7 +82,7 @@ def isCallsignVaild(callsign: Union[str, bytes]) -> bool:
         if type(callsign) is str
         else __bytes_invaild_char_regex
     ).search(
-        callsign  # type: ignore
+        callsign  # pyright: ignore
     ) is not None:
         return False
     return True
@@ -101,9 +101,9 @@ def joinLines(*lines: AnyStr, newline: bool = True) -> AnyStr:
                 split_sign = cast(AnyStr, b"\r\n")
             else:
                 raise TypeError(f"Invaild type {line_type!r}")
-        result += line  # type: ignore
+        result += line  # pyright: ignore
         if newline:
-            result += split_sign  # type: ignore
+            result += split_sign  # pyright: ignore
     return result
 
 
@@ -114,7 +114,7 @@ def asciiOnly(string: Union[str, bytes]) -> bool:
         return all(char < 128 for char in string)
 
 
-def assertNoDuplicate(__iterable: Iterable):
+def assertNoDuplicate(__iterable: Iterable) -> None:
     list_val = list(__iterable)
     nodup_list_val = list(set(list_val))
 
@@ -132,7 +132,7 @@ class MayExist(Generic[T]):
 
 
 def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
-    def getName(obj) -> str:
+    def getName(obj: object) -> str:
         if isinstance(obj, type):
             return obj.__name__
         else:

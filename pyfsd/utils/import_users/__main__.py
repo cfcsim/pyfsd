@@ -3,9 +3,10 @@
 try:
     import tomllib  # type: ignore[import]
 except ModuleNotFoundError:
-    import tomli as tomllib  # type: ignore[import, no-redef]
+    import tomli as tomllib
 
 from hashlib import sha256
+from typing import TYPE_CHECKING, Generator, NoReturn, Optional
 
 from alchimia import wrap_engine
 from sqlalchemy import create_engine
@@ -17,6 +18,9 @@ from twisted.python.usage import Options, UsageError
 from ...db_tables import users as usersTable
 from ...define.utils import verifyConfigStruct
 from .formats import formats
+
+if TYPE_CHECKING:
+    from twisted.internet.interfaces import IReactorCore
 
 
 class ConverterOptions(Options):
@@ -31,7 +35,7 @@ class ConverterOptions(Options):
         $ python -m pyfsd.utils.import_users -f fsd -c env_pyfsd.toml cert.txt             
     """
 
-    def opt_version(self):
+    def opt_version(self) -> NoReturn:
         from platform import python_version
 
         from twisted.copyright import version as twisted_version
@@ -43,7 +47,9 @@ class ConverterOptions(Options):
         print("PyFSD version:", pyfsd_version)
         exit(0)
 
-    def parseArgs(self, filename, format_=None):
+    def parseArgs(  # type: ignore[override]
+        self, filename: str, format_: Optional[str] = None
+    ) -> None:
         self["filename"] = filename
         if format_ is None:
             print("No format specified, ", end="")
@@ -69,7 +75,7 @@ class ConverterOptions(Options):
 
 
 @inlineCallbacks
-def main(reactor, *argv):
+def main(reactor: "IReactorCore", *argv: str) -> Generator:
     options = ConverterOptions()
     try:
         options.parseOptions(argv)

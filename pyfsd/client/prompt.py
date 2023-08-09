@@ -1,5 +1,5 @@
 import sys
-from typing import TYPE_CHECKING, TextIO, cast
+from typing import TYPE_CHECKING, Optional, TextIO, cast
 
 from loguru import logger
 
@@ -8,6 +8,7 @@ from ..prompt.stdout_helper import AsyncPrint
 
 if TYPE_CHECKING:
     from .protocol import FSDClientProtocol
+    from twisted.python.failure import Failure
 
 
 class ClientPrompt(PromptProtocol):
@@ -19,12 +20,12 @@ class ClientPrompt(PromptProtocol):
         logger.remove()
         logger.add(sys.stderr)
 
-    def lineReceived(self, line):
+    def lineReceived(self, line: bytes) -> None:
         self.terminal.write(line)
         self.terminal.nextLine()
         self.terminal.write(self.ps[self.pn])
 
-    def connectionLost(self, _=None):
-        from twisted.internet.reactor import stop
+    def connectionLost(self, _: Optional["Failure"] = None) -> None:
+        from twisted.internet.reactor import stop  # type: ignore[attr-defined]
 
         stop()

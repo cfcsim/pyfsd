@@ -60,6 +60,6 @@ class FSDClientProtocol(LineReceiver):
         else:
             self.handler("other_packet", items)
 
-    def connectionMade(self):
+    def connectionMade(self) -> None:
         if self.client.transport is None:
-            self.client.transport = self.transport
+            self.client.transport = self.transport  # type: ignore[unreachable]

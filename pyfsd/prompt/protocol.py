@@ -34,7 +34,7 @@ class PromptProtocol(Manhole):
         self.keyHandlers[CTRL_E] = self.handle_END
         self.keyHandlers[CTRL_BACKSLASH] = self.handle_QUIT
 
-    def lineReceived(self, line) -> None:
+    def lineReceived(self, line: bytes) -> None:
         pass
 
     def handle_INT(self) -> None:
@@ -55,12 +55,12 @@ class PromptProtocol(Manhole):
         self.terminal.write(self.ps[self.pn])
         self.setInsertMode()
 
-    def handle_QUIT(self):
+    def handle_QUIT(self) -> None:
         self.setTypeoverMode()
         if self.terminal.transport is not None:
             self.terminal.transport.loseConnection()  # Avoid clear screen
 
-    def keystrokeReceived(self, keyID, _):
+    def keystrokeReceived(self, keyID: bytes, _: None) -> None:
         handler = self.keyHandlers.get(keyID)
         if handler is not None:
             handler()

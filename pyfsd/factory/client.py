@@ -54,7 +54,7 @@ class FSDClientFactory(Factory):
         self.heartbeater = LoopingCall(self.heartbeat)
         self.heartbeater.start(70, now=False)
 
-    def stopFactory(self):
+    def stopFactory(self) -> None:
         if self.heartbeater.running:
             self.heartbeater.stop()
 
@@ -90,18 +90,18 @@ class FSDClientFactory(Factory):
                 continue
             if not check_func(from_client, client):
                 continue
-            client.transport.write(data)  # type: ignore
+            client.transport.write(data)  # pyright: ignore
 
     def sendTo(self, callsign: bytes, *lines: bytes, auto_newline: bool = True) -> bool:
         data = joinLines(*lines, newline=auto_newline)
         try:
-            self.clients[callsign].transport.write(data)  # type: ignore
+            self.clients[callsign].transport.write(data)  # pyright: ignore
             return True
         except KeyError:
             return False
 
     def login(self, username: str, password: str) -> "Deferred":
-        return self.portal.login(
+        return self.portal.login(  # type: ignore[no-any-return]
             UsernameSHA256Password(username, password), None, IUserInfo
         )
 
@@ -124,6 +124,6 @@ class FSDClientFactory(Factory):
             return False
 
         if in_thread:
-            return deferToThread(trigger)
+            return deferToThread(trigger)  # type: ignore[no-any-return]
         else:
             return succeed(trigger())

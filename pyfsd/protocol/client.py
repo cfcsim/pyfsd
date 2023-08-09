@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from constantly import ValueConstant
     from metar.Metar import Metar
     from twisted.internet.base import DelayedCall
+    from twisted.python.failure import Failure
 
     from ..auth import UserInfo
     from ..factory.client import FSDClientFactory
@@ -52,7 +53,7 @@ class FSDClientProtocol(LineReceiver):
         self.client = None
         self.line_lock = Lock()
 
-    def connectionMade(self):
+    def connectionMade(self) -> None:
         self.timeoutKiller = reactor.callLater(800, self.timeout)  # type: ignore
         self.logger.info(
             "New connection from {ip}.",
@@ -64,13 +65,13 @@ class FSDClientProtocol(LineReceiver):
         self, *lines: bytes, auto_newline: bool = True, togerher: bool = True
     ) -> None:
         if togerher:
-            self.transport.write(  # type: ignore
-                joinLines(*lines, newline=auto_newline)  # type: ignore
+            self.transport.write(  # pyright: ignore
+                joinLines(*lines, newline=auto_newline)  # pyright: ignore
             )
         else:
             for line in lines:
-                self.transport.write(  # type: ignore
-                    (line + b"\r\n") if auto_newline else line  # type: ignore
+                self.transport.write(  # pyright: ignore
+                    (line + b"\r\n") if auto_newline else line  # pyright: ignore
                 )
 
     def sendError(self, errno: int, env: bytes = b"", fatal: bool = False) -> None:
@@ -239,7 +240,9 @@ class FSDClientProtocol(LineReceiver):
             self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
             return
 
-        def onResult(result: Tuple[Type[IUserInfo], "UserInfo", Callable[[], None]]):
+        def onResult(
+            result: Tuple[Type[IUserInfo], "UserInfo", Callable[[], None]]
+        ) -> None:
             interface, userinfo, _ = result
             assert interface is IUserInfo or IUserInfo in interface.__bases__
             if userinfo.rating == 0:
@@ -254,10 +257,10 @@ class FSDClientProtocol(LineReceiver):
                 else:
                     onSuccess()
 
-        def onFail(_):
+        def onFail(_: "Failure") -> None:
             self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
 
-        def onSuccess():
+        def onSuccess() -> None:
             client = Client(
                 client_type,
                 callsign,
@@ -273,7 +276,8 @@ class FSDClientProtocol(LineReceiver):
             if client_type == "PILOT":
                 self.factory.broadcast(
                     # two times of req_rating --- not a typo
-                    makePacket(
+                    # mypy bug
+                    makePacket(  # type: ignore[arg-type]
                         concat(FSDCLIENTPACKET.ADD_PILOT, callsign),
                         b"SERVER",
                         cid,
@@ -286,7 +290,7 @@ class FSDClientProtocol(LineReceiver):
                 )
             else:
                 self.factory.broadcast(
-                    makePacket(
+                    makePacket(  # type: ignore[arg-type]
                         concat(FSDCLIENTPACKET.ADD_ATC, callsign),
                         b"SERVER",
                         realname,
@@ -818,7 +822,7 @@ class FSDClientProtocol(LineReceiver):
         else:
             self.sendError(FSDErrors.ERR_SYNTAX)
 
-    def connectionLost(self, _=None) -> None:
+    def connectionLost(self, _: Optional["Failure"] = None) -> None:
         if self.timeoutKiller.active():
             self.timeoutKiller.cancel()
         host: str = self.transport.getPeer().host  # type: ignore[attr-defined]

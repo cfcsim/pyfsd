@@ -16,7 +16,7 @@ class MetarService(Service):
     def __init__(self, config: dict) -> None:
         self.metar_manager = MetarManager(config)
 
-    def startService(self):
+    def startService(self) -> None:
         if self.metar_manager.cron:
             self.metar_manager.startCache(in_thread=True)
         super().startService()
@@ -25,4 +25,4 @@ class MetarService(Service):
         if self.metar_manager.cron:
             return succeed(self.metar_manager.query(icao))
         else:
-            return deferToThread(self.metar_manager.query, icao)
+            return deferToThread(self.metar_manager.query, icao)  # type: ignore[no-any-return]

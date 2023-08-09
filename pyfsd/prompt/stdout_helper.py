@@ -9,10 +9,13 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Type,
     cast,
 )
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from twisted.conch.recvline import RecvLine
 
 
@@ -82,7 +85,12 @@ class OutputProxy(IO[AnyStr]):
     def __enter__(self) -> IO[AnyStr]:
         return cast(IO[AnyStr], self)
 
-    def __exit__(self, type_, value, traceback) -> None:
+    def __exit__(
+        self,
+        type_: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        traceback: Optional["TracebackType"],
+    ) -> None:
         return self._origin_output.__exit__(type_, value, traceback)
 
     def __iter__(self) -> Iterator[AnyStr]:
@@ -93,19 +101,19 @@ class OutputProxy(IO[AnyStr]):
 
     @property
     def buffer(self) -> BinaryIO:
-        return self._origin_output.buffer  # type: ignore[attr-defined]
+        return self._origin_output.buffer  # type: ignore[attr-defined, no-any-return]
 
     @property
     def encoding(self) -> str:
-        return self._origin_output.encoding  # type: ignore[attr-defined]
+        return self._origin_output.encoding  # type: ignore[attr-defined, no-any-return]
 
     @property
     def errors(self) -> Optional[str]:
-        return self._origin_output.errors  # type: ignore[attr-defined]
+        return self._origin_output.errors  # type: ignore[attr-defined, no-any-return]
 
     @property
     def line_buffering(self) -> bool:
-        return self._origin_output.line_buffering  # type: ignore[attr-defined]
+        return self._origin_output.line_buffering  # type: ignore[attr-defined, no-any-return]
 
     @property
     def newlines(self) -> Any:
@@ -123,7 +131,7 @@ class AsyncPrint(OutputProxy):
     def buffer(self) -> BinaryIO:
         return AsyncPrint(super().buffer, self.__recvline)  # type: ignore
 
-    def _do(self, to_do: Callable, *args, **kwargs):
+    def _do(self, to_do: Callable, *args, **kwargs):  # type: ignore[no-untyped-def]
         rl = self.__recvline
         rl.terminal.eraseLine()
         rl.terminal.cursorBackward(len(rl.lineBuffer) + len(rl.ps[rl.pn]))
@@ -141,7 +149,7 @@ class AsyncPrint(OutputProxy):
 
     # Any -- why????
     def write(self, s: Any) -> int:
-        return self._do(super().write, s)
+        return self._do(super().write, s)  # type: ignore[no-any-return]
 
     def writelines(self, lines: Iterable[Any]) -> None:
-        return self._do(super().writelines, lines)
+        return self._do(super().writelines, lines)  # type: ignore[no-any-return]

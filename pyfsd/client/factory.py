@@ -15,5 +15,5 @@ class FSDClientFactory(ClientFactory):
     def __init__(self, client: "Client", handler: "EventHandler") -> None:
         self.client_protocol = FSDClientProtocol(client, handler)
 
-    def buildProtocol(self, _) -> FSDClientProtocol:
+    def buildProtocol(self, _) -> FSDClientProtocol:  # type: ignore[no-untyped-def]
         return self.client_protocol

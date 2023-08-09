@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from hashlib import sha256
-from typing import Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable, List, Tuple, Type
 
 from twisted.cred.checkers import ICredentialsChecker
 from twisted.cred.credentials import IUsernameHashedPassword
@@ -10,6 +10,9 @@ from twisted.internet.defer import Deferred
 from zope.interface import Attribute, Interface, implementer
 
 from .db_tables import users
+
+if TYPE_CHECKING:
+    from alchimia.engine import TwistedResultProxy
 
 __all__ = ["CredentialsChecker", "Realm"]
 
@@ -56,7 +59,7 @@ class CredentialsChecker:
             raise UnhandledCredentials()
         deferred: Deferred = Deferred()
 
-        def callback(proxy):
+        def callback(proxy: "TwistedResultProxy") -> None:
             proxy.fetchall().addCallbacks(
                 self._cbAuthenticate,
                 self._ebAuthenticate,
@@ -91,14 +94,18 @@ class CredentialsChecker:
             else:
                 deferred.errback(UnhandledCredentials())
 
-    def _ebAuthenticate(self, message: str, _, deferred: Deferred):
+    def _ebAuthenticate(
+        self, message: str, _: UsernameSHA256Password, deferred: Deferred
+    ) -> None:
         deferred.errback(LoginFailed(message))
 
 
 @implementer(IRealm)
 class Realm:
     @staticmethod
-    def requestAvatar(result: Tuple[str, int], _, *interfaces):
+    def requestAvatar(
+        result: Tuple[str, int], _: None, *interfaces: Type[Interface]
+    ) -> Tuple[Type[IUserInfo], UserInfo, Callable]:
         if IUserInfo in interfaces:
             return IUserInfo, UserInfo(*result), lambda: None
         else:

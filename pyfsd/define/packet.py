@@ -34,11 +34,11 @@ def concat(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
             else:
                 result += item.value.encode("ascii")  # type: ignore[union-attr]
         else:
-            result += item  # type: ignore
+            result += item  # pyright: ignore
     if result is None:
-        return cast(AnyStr, temp_part)
+        return temp_part  # type: ignore[return-value]
     else:
-        return cast(AnyStr, result)
+        return result  # pyright: ignore
 
 
 def makePacket(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
@@ -73,9 +73,9 @@ def makePacket(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
             else:
                 result += item + b":"  # type: ignore[operator]
     if result is None:
-        return cast(AnyStr, temp_part[:-1])
+        return temp_part[:-1]  # type: ignore[return-value]
     else:
-        return cast(AnyStr, result[:-1])
+        return result[:-1]  # pyright: ignore
 
 
 @overload
@@ -116,11 +116,9 @@ def breakPacket(
             head = may_head
             break
     if packet_type is str:
-        splited_packet = cast(List[AnyStr], packet.split(":"))  # type: ignore[arg-type]
+        splited_packet = packet.split(":")  # type: ignore[arg-type]
     elif packet_type is bytes:
-        splited_packet = cast(
-            List[AnyStr], packet.split(b":")  # type: ignore[arg-type]
-        )
+        splited_packet = packet.split(b":")  # type: ignore[arg-type]
     else:
         raise TypeError(f"{packet_type!r}")
     if head is not None and true_head is not None:

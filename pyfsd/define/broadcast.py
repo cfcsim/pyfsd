@@ -9,7 +9,7 @@ BroadcastChecker = Callable[[Optional[Client], Client], bool]
 def createBroadcastRangeChecker(visual_range: int) -> BroadcastChecker:
     def checker(from_client: Optional[Client], to_client: Client) -> bool:
         assert from_client is not None
-        if from_client.position is None or to_client.position is None:
+        if not from_client.position_ok or not to_client.position_ok:
             return False
         distance = calcDistance(from_client.position, to_client.position)
         return distance < visual_range
@@ -19,16 +19,13 @@ def createBroadcastRangeChecker(visual_range: int) -> BroadcastChecker:
 
 def broadcastPositionChecker(from_client: Optional[Client], to_client: Client) -> bool:
     assert from_client is not None
-    if from_client.position is None or to_client.position is None:
+    if not from_client.position_ok or not to_client.position_ok:
         return False
     visual_range: int
     x: int = to_client.getRange()
     y: int = from_client.getRange()
     if to_client.type == "ATC":
-        if to_client.visual_range is not None:
-            visual_range = to_client.visual_range
-        else:
-            return False
+        visual_range = to_client.visual_range
     elif from_client.type == "PILOT":
         visual_range = x + y
     else:
@@ -42,7 +39,7 @@ def broadcastPositionChecker(from_client: Optional[Client], to_client: Client) -
 
 def broadcastMessageChecker(from_client: Optional[Client], to_client: Client) -> bool:
     assert from_client is not None
-    if from_client.position is None or to_client.position is None:
+    if not from_client.position_ok or not to_client.position_ok:
         return False
     visual_range: int
     x: int = to_client.getRange()
@@ -78,7 +75,7 @@ def allPilotChecker(_: Optional[Client], to_client: Client) -> bool:
 
 def atChecker(from_client: Optional[Client], to_client: Client) -> bool:
     assert from_client is not None
-    if from_client.position is None or to_client.position is None:
+    if not from_client.position_ok or not to_client.position_ok:
         return False
     distance = calcDistance(from_client.position, to_client.position)
     return distance < from_client.getRange()
