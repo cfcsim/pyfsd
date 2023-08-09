@@ -72,7 +72,7 @@ class NOAAMetarFetcher:
         )
         return metar
 
-    def fetch(self, _, icao: str) -> Optional[Metar]:
+    def fetch(self, _: dict, icao: str) -> Optional[Metar]:
         try:
             with urlopen(
                 "https://tgftp.nws.noaa.gov/data/observations/metar/stations/"
@@ -85,7 +85,7 @@ class NOAAMetarFetcher:
         except (ContentTooShortError, HTTPError, URLError):
             return None
 
-    def fetchAll(self, _) -> MetarInfoDict:
+    def fetchAll(self, _: dict) -> MetarInfoDict:
         all_metar: MetarInfoDict = {}
         utc_hour = datetime.now(timezone.utc).hour
         try:
