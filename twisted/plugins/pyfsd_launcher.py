@@ -1,8 +1,9 @@
 try:
     import tomllib  # type: ignore[import]
 except ModuleNotFoundError:
-    import tomli as tomllib  # type: ignore[import, no-redef]
+    import tomli as tomllib
 
+from typing import NoReturn
 from twisted.application.service import IServiceMaker, MultiService
 from twisted.plugin import IPlugin
 from twisted.python.usage import Options
@@ -35,7 +36,7 @@ class PyFSDOptions(Options):
         ["config-path", "c", "pyfsd.toml", "Path to the config file."],
     ]
 
-    def opt_version(self):
+    def opt_version(self) -> NoReturn:
         from platform import python_version
 
         from twisted.copyright import version as twisted_version
@@ -52,7 +53,7 @@ class PyFSDServiceMaker:
     description = "PyFSD Service"
     options = PyFSDOptions
 
-    def makeService(self, options: PyFSDOptions):
+    def makeService(self, options: PyFSDOptions) -> MultiService:
         if not options["disable-loguru"]:
             setupLoguru()
         try:
@@ -69,7 +70,7 @@ class PyFSDServiceMaker:
         pyfsd_service.getMetarService().setServiceParent(root_service)
         pyfsd_service.getClientService().setServiceParent(root_service)
         for service in pyfsd_service.getServicePlugins():
-            service.setServiceParent(root_service)  # type: ignore
+            service.setServiceParent(root_service)  # pyright: ignore
         return root_service
 
 
