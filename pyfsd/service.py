@@ -14,7 +14,7 @@ from alchimia.engine import TwistedEngine
 from sqlalchemy import create_engine
 from sqlalchemy.schema import CreateTable
 from twisted.application.internet import TCPServer
-from twisted.application.service import IService, Service
+from twisted.application.service import Service
 from twisted.cred.portal import Portal
 from twisted.logger import Logger
 from twisted.plugin import getPlugins
@@ -23,13 +23,14 @@ from . import plugins
 from ._version import version as pyfsd_version
 from .auth import CredentialsChecker, Realm
 from .db_tables import users
-from .define.utils import iterCallable, verifyConfigStruct
+from .define.utils import LiteralValue, MayExist, iterCallable, verifyConfigStruct
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
-from .plugin import BasePyFSDPlugin, IPyFSDPlugin
+from .plugin import BasePyFSDPlugin, IPyFSDPlugin, IServiceBuilder
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
+    from twisted.application.service import IService
     from twisted.internet.defer import Deferred
 
 
@@ -37,12 +38,8 @@ def formatPlugin(plugin: IPyFSDPlugin) -> str:
     return f"{plugin.plugin_name} ({getfile(type(plugin))})"
 
 
-def formatService(plugin: IService) -> str:
-    plugin_type = type(plugin)
-    if isinstance(plugin.name, str):
-        return f"{plugin.name} ({plugin_type.__name__} from {getfile(plugin_type)})"
-    else:
-        return f"{plugin_type.__name__} (getfile(plugin_type))"
+def formatService(plugin: IServiceBuilder) -> str:
+    return f"{plugin.service_name} ({getfile(type(plugin))})"
 
 
 MAX_API = BasePyFSDPlugin.api
@@ -78,18 +75,16 @@ class PyFSDService(Service):
 
     def startService(self) -> None:
         self.logger.info("PyFSD {version}", version=self.version)
-        has_root_plugin_config = "plugin" in self.config
+        root_plugin_config = self.config.get("plugin", {})
         if self.plugins is not None:
             for plugin in self.plugins["all"]:
-                if not has_root_plugin_config:
-                    config = None
-                else:
-                    config = self.config["plugin"].get(plugin.plugin_name, None)
                 self.logger.info(
                     "Loading plugin {plugin}",
                     plugin=formatPlugin(plugin),
                 )
-                plugin.beforeStart(self, config)
+                plugin.beforeStart(
+                    self, root_plugin_config.get(plugin.plugin_name, None)
+                )
             super().startService()
 
     def stopService(self) -> None:
@@ -110,7 +105,14 @@ class PyFSDService(Service):
                         "motd_encoding": str,
                         "blacklist": list,
                     },
-                    "metar": {"mode": str, "fetchers": list},
+                    "metar": {
+                        "mode": LiteralValue("cron", "once"),
+                        "fallback": MayExist(LiteralValue("cron", "once")),
+                        "fetchers": list,
+                        "cron_time": MayExist(int),
+                        "skip_previous_fetcher": MayExist(bool),
+                    },
+                    "plugin": MayExist(dict),
                 }
             },
         )
@@ -118,26 +120,19 @@ class PyFSDService(Service):
         metar_cfg = self.config["pyfsd"]["metar"]
         fallback_mode = metar_cfg.get("fallback", None)
         if fallback_mode is not None:
-            verifyConfigStruct(
-                metar_cfg,
-                {"fallback": str},
-                prefix="pyfsd.metar.",
-            )
-            assert metar_cfg["mode"] != metar_cfg["fallback"]
+            assert (
+                metar_cfg["mode"] != metar_cfg["fallback"]
+            ), "Metar fallback mode cannot be the same as normal mode."
         if metar_cfg["mode"] == "cron" or fallback_mode == "cron":
-            verifyConfigStruct(
-                metar_cfg,
-                {"cron_time": int}
-                if fallback_mode == "cron"
-                else {"cron_time": int, "skip_previous_fetcher": bool},
-                prefix="pyfsd.metar.",
-            )
-        elif metar_cfg["mode"] != "once" or (
-            fallback_mode is not None and fallback_mode != "once"
-        ):
-            raise ValueError(
-                f"Invaild metar mode: {self.config['pyfsd']['metar']['mode']}"
-            )
+            if "cron_time" not in metar_cfg:
+                raise KeyError("pyfsd.metar.cron_time")
+            elif fallback_mode == "cron" and "skip_previous_fetcher" not in metar_cfg:
+                raise KeyError("pyfsd.metar.skip_previous_fetcher")
+        for key, value in self.config["plugin"].items():
+            if not isinstance(value, dict):
+                raise TypeError(
+                    f"plugin.{key}' must be section"
+                )
 
     def connectDatabase(self) -> None:
         from twisted.internet import reactor
@@ -150,9 +145,8 @@ class PyFSDService(Service):
         assert self.db_engine is not None, "Must connect database first."
 
         def createIfNotExist(exist: bool) -> None:
-            if exist:
-                return
-            self.db_engine.execute(CreateTable(users))  # type: ignore[union-attr]
+            if not exist:
+                self.db_engine.execute(CreateTable(users))  # type: ignore[union-attr]
 
         self.db_engine.has_table("users").addCallback(createIfNotExist)
 
@@ -181,16 +175,22 @@ class PyFSDService(Service):
         self.fetch_metar = metar_service.query
         return metar_service
 
-    def getServicePlugins(self) -> Tuple[IService, ...]:
-        temp_plugins: List[IService] = []
-        for plugin in getPlugins(IService, plugins):
-            if plugin in temp_plugins:
+    def getServicePlugins(self) -> Tuple["IService", ...]:
+        temp_plugin_creators: List[IServiceBuilder] = []
+        root_plugin_config = self.config.get("plugin", {})
+        for plugin in getPlugins(IServiceBuilder, plugins):
+            if plugin in temp_plugin_creators:
                 self.logger.debug(
                     "service {service} already loaded, skipping.",
                     service=formatService(plugin),
                 )
             else:
-                temp_plugins.append(plugin)
+                temp_plugin_creators.append(plugin)
+        temp_plugins = []
+        for creator in temp_plugin_creators:
+            temp_plugins.append(
+                creator.buildService(root_plugin_config.get(creator.service_name, None))
+            )
         return tuple(temp_plugins)
 
     def pickPlugins(self) -> None:

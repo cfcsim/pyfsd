@@ -4,6 +4,7 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 from typing import NoReturn
+
 from twisted.application.service import IServiceMaker, MultiService
 from twisted.plugin import IPlugin
 from twisted.python.usage import Options

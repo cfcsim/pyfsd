@@ -25,4 +25,6 @@ class MetarService(Service):
         if self.metar_manager.cron:
             return succeed(self.metar_manager.query(icao))
         else:
-            return deferToThread(self.metar_manager.query, icao)  # type: ignore[no-any-return]
+            return deferToThread(  # type: ignore[no-any-return]
+                self.metar_manager.query, icao
+            )

@@ -105,7 +105,6 @@ def setupLoguru() -> None:
     # Avoid adding other observers
     setattr(globalLogBeginner, "beginLoggingTo", lambda *_, **__: None)
     warnings.showwarning = warningCapturer
-    sys.stdout = sys.stderr = sys.__stderr__
 
 
 def extractException(
@@ -247,7 +246,6 @@ def getSystem(event: "LogEvent") -> str:
 @logger.catch(message="Loguru observer failure")
 @implementer(ILogObserver)
 def loguruLogObserver(event: "LogEvent") -> None:
-    # sys.__stdout__.write(repr(event) + "\n")
     level_name = event["log_level"].name.upper()
     if level_name == "WARN":
         level_name = "WARNING"

@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Optional
 from zope.interface import Attribute, Interface, implementer
 
 if TYPE_CHECKING:
+    from twisted.application.service import IService
+
     from .object.client import Client
     from .protocol.client import FSDClientProtocol
     from .service import PyFSDService
@@ -69,6 +71,27 @@ class IPyFSDPlugin(Interface):
         Args:
             protocol: The protocol of the connection which disconnected.
             client: The client attribute of the protocol.
+        """
+
+
+class IServiceBuilder(Interface):
+    """Interface of service builder, a object which can build a service.
+
+    Attributes:
+        service_name: Name of the to-build service.
+    """
+
+    service_name: str = Attribute("service_name", "Name of the to-build service.")
+
+    def buildService(config: Optional[dict]) -> "IService":
+        """Build a service.
+
+        Args:
+            config: plugin.<service_name> section of PyFSD configure file.
+                None if the section doesn't exist.
+
+        Returns:
+            A twisted service (IService).
         """
 
 

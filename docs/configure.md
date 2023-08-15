@@ -59,5 +59,23 @@ blacklist = ["114.514.191.81", "143.22.124.13"]
 
 `fallback`: 替代计划。  
 解释：当是`cron`模式时，获取一个机场的METAR失败，就会尝试用`once`模式获取。反之亦然，当是`once`模式时，获取一个机场的METAR失败，就会尝试用`cron`模式获取。  
-gamecss设计这个模式的初衷是某些METAR源可能缺失某些机场，这个时候就要用其他METAR源去替代。但是如果缺失机场的METAR源同时也支持`once`模式，就会浪费时间再去缺失那个机场的METAR源查询。所以：  
+例:  
+```toml
+[pyfsd.metar]
+mode = "cron"
+cron_time = 3600
+fetchers = ["NOAA", "xmairavt7"]
+skip_previous_fetcher = false
+```
+按以上配置，无法在`cron`模式获取到需要的机场的Metar时，就会回退到`once`模式，然后再尝试NOAA源(`once`模式)，如没有获取到再去尝试xmairavt7源。
+做这个模式的初衷是某些METAR源可能缺失某些机场，这个时候就要用其他METAR源去替代。但是从上例可以看出，如果缺失机场的METAR源同时也支持`once`模式，就会浪费时间再去缺失那个机场的METAR源查询。所以：  
 `skip_previous_fetcher`: (bool, true真false假，仅在`cron`模式时生效)跳过`cron`模式时下载时(即缺失那个机场的METAR源)使用的METAR源。`fallback`配置对存在时并且`mode`为`cron`时此配置对也必须存在。如果你不需要此特性，填false。
+例:  
+```toml
+[pyfsd.metar]
+mode = "cron"
+cron_time = 3600
+fetchers = ["NOAA", "xmairavt7"]
+skip_previous_fetcher = true
+```
+按以上配置，无法在`cron`模式获取到需要的机场的Metar时，就会回退到`once`模式，然后直接尝试xmairavt7源(既跳过NOAA源)。

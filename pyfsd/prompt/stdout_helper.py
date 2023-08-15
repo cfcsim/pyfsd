@@ -113,7 +113,7 @@ class OutputProxy(IO[AnyStr]):
 
     @property
     def line_buffering(self) -> bool:
-        return self._origin_output.line_buffering  # type: ignore[attr-defined, no-any-return]
+        return self._origin_output.line_buffering  # type: ignore[attr-defined, no-any-return]  # noqa: E501
 
     @property
     def newlines(self) -> Any:
