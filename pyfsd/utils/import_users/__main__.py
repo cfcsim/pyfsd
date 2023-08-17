@@ -16,7 +16,7 @@ from twisted.internet.task import react
 from twisted.python.usage import Options, UsageError
 
 from ...db_tables import users as usersTable
-from ...define.utils import verifyConfigStruct
+from ...define.config_check import verifyConfigStruct
 from .formats import formats
 
 if TYPE_CHECKING:

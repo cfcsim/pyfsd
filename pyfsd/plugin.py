@@ -83,7 +83,7 @@ class IServiceBuilder(Interface):
 
     service_name: str = Attribute("service_name", "Name of the to-build service.")
 
-    def buildService(config: Optional[dict]) -> "IService":
+    def buildService(pyfsd: "PyFSDService", config: Optional[dict]) -> "IService":
         """Build a service.
 
         Args:

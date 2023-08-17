@@ -23,7 +23,8 @@ from . import plugins
 from ._version import version as pyfsd_version
 from .auth import CredentialsChecker, Realm
 from .db_tables import users
-from .define.utils import LiteralValue, MayExist, iterCallable, verifyConfigStruct
+from .define.config_check import LiteralValue, MayExist, verifyConfigStruct
+from .define.utils import iterCallable
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 from .plugin import BasePyFSDPlugin, IPyFSDPlugin, IServiceBuilder
@@ -130,9 +131,7 @@ class PyFSDService(Service):
                 raise KeyError("pyfsd.metar.skip_previous_fetcher")
         for key, value in self.config["plugin"].items():
             if not isinstance(value, dict):
-                raise TypeError(
-                    f"plugin.{key}' must be section"
-                )
+                raise TypeError(f"plugin.{key}' must be section")
 
     def connectDatabase(self) -> None:
         from twisted.internet import reactor
@@ -189,7 +188,9 @@ class PyFSDService(Service):
         temp_plugins = []
         for creator in temp_plugin_creators:
             temp_plugins.append(
-                creator.buildService(root_plugin_config.get(creator.service_name, None))
+                creator.buildService(
+                    self, root_plugin_config.get(creator.service_name, None)
+                )
             )
         return tuple(temp_plugins)
 
