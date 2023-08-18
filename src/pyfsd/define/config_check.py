@@ -1,4 +1,4 @@
-from typing import List, Tuple, Union, Type
+from typing import List, Tuple, Type, Union
 
 __all__ = [
     "explainType",
@@ -18,7 +18,7 @@ def explainType(obj: object) -> str:
     if isinstance(obj, type):
         return f"literally {obj.__name__}"
     elif isinstance(obj, dict):
-        return "section"
+        return str(obj)
     else:
         return type(obj).__name__
 
@@ -43,10 +43,24 @@ class UnionType:
         return cls(*args)
 
     def __repr__(self) -> str:
-        return f"UnionType{self.types!r}"
+        def explain(type_: Union[Type, dict]) -> str:
+            if isinstance(type_, type):
+                return type_.__name__
+            elif isinstance(type_, dict):
+                return repr(type_)
+            else:
+                raise RuntimeError(f"Invaild type: {type_!r}")
+
+        return f"UnionType({', '.join(explain(type_) for type_ in self.types)})"
 
     def __str__(self) -> str:
-        return " or ".join(explainType(type_) for type_ in self.types)
+        return " or ".join(
+            type_.__name__ if isinstance(type_, type) else repr(type_)
+            for type_ in self.types
+        )
+
+    def __eq__(self, another: object) -> bool:
+        return isinstance(another, UnionType) and another.types == self.types
 
 
 class LiteralValue:
@@ -63,6 +77,9 @@ class LiteralValue:
 
     def __str__(self) -> str:
         return "literally " + " or ".join(str(value) for value in self.values)
+
+    def __eq__(self, another: object) -> bool:
+        return isinstance(another, LiteralValue) and another.values == self.values
 
 
 class MayExist:
@@ -86,12 +103,13 @@ class MayExist:
         return f"MayExist({name})"
 
     def __str__(self) -> str:
-        if isinstance(self.type, (UnionType, LiteralValue)):
-            return f"optionally {self.type}"
-        elif isinstance(self.type, dict):
-            return "optionally section"
+        if isinstance(self.type, (UnionType, LiteralValue, dict)):
+            return str(self.type)
         else:
-            return f"optionally {self.type.__name__}"
+            return self.type.__name__
+
+    def __eq__(self, another: object) -> bool:
+        return isinstance(another, MayExist) and another.type == self.type
 
 
 class ConfigKeyError(KeyError):
@@ -112,10 +130,7 @@ class ConfigValueError(ValueError):
         super().__init__(name, (excepted, actually))
 
     def __str__(self) -> str:
-        return (
-            f"'{self.name}' must be {self.excepted}, "
-            f"not {explainType(self.actually)}"
-        )
+        return f"'{self.name}' must be {self.excepted}, not {self.actually}"
 
 
 class ConfigTypeError(TypeError):
@@ -137,11 +152,10 @@ class ConfigTypeError(TypeError):
         elif isinstance(self.excepted, UnionType):
             type_ = str(self.excepted)
         elif isinstance(self.excepted, dict):
-            type_ = "section"
-        return (
-            f"config '{self.name}' must be {type_}"
-            f", not {explainType(self.actually)}"
-        )
+            type_ = str(self.excepted)
+        else:
+            raise RuntimeError(f"Invaild type: {self.excepted!r}")
+        return f"'{self.name}' must be {type_}, not {explainType(self.actually)}"
 
 
 def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
@@ -155,20 +169,23 @@ def verifyConfigStruct(config: dict, structure: dict, prefix: str = "") -> None:
                 raise ConfigKeyError(f"{prefix}{key}")
         else:
             if isinstance(type_, MayExist):
-                type_ = type_.type
-        if isinstance(type_, type):
-            if not isinstance(value, type_):
+                true_type = type_.type
+            else:
+                true_type = type_
+
+        if isinstance(true_type, type):
+            if not isinstance(value, true_type):
                 raise ConfigTypeError(f"{prefix}{key}", type_, value)
-        elif isinstance(type_, dict):
+        elif isinstance(true_type, dict):
             if not isinstance(config[key], dict):
                 raise ConfigTypeError(f"{prefix}{key}", type_, value)
-            verifyConfigStruct(value, type_, prefix=f"{prefix}{key}.")
-        elif isinstance(type_, LiteralValue):
-            if value not in type_.values:
+            verifyConfigStruct(value, true_type, prefix=f"{prefix}{key}.")
+        elif isinstance(true_type, LiteralValue):
+            if value not in true_type.values:
                 raise ConfigValueError(f"{prefix}{key}", type_, value)
-        elif isinstance(type_, UnionType):
+        elif isinstance(true_type, UnionType):
             succeed = False
-            for may_type in type_.types:
+            for may_type in true_type.types:
                 if isinstance(may_type, type):
                     if isinstance(value, may_type):
                         succeed = True
