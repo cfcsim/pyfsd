@@ -1,11 +1,22 @@
 import sys
 import warnings
-from typing import TYPE_CHECKING, List, Optional, TextIO, Tuple, Type, Union, cast
+from io import TextIOWrapper
+from typing import (
+    TYPE_CHECKING,
+    Iterable,
+    List,
+    Optional,
+    TextIO,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from loguru import logger
 from loguru._datetime import aware_now, datetime
 from loguru._logger import start_time
-from twisted.logger import ILogObserver, globalLogBeginner
+from twisted.logger import FileLogObserver, ILogObserver, globalLogBeginner
 from twisted.logger._format import _formatEvent
 from twisted.python.failure import (
     EXCEPTION_CAUGHT_HERE,
@@ -93,17 +104,40 @@ def warningCapturer(
 
 
 def setupLoguru() -> None:
-    # Avoid stderr lost
     logger.remove()
-    logger.add(sys.__stderr__)
-    # Delete observers
-    globalLogBeginner._publisher._observers = []
-    # Setup loguru
-    globalLogBeginner.beginLoggingTo(
-        [loguruLogObserver], redirectStandardIO=False  # pyright: ignore
-    )
+    _beginLoggingTo = globalLogBeginner.beginLoggingTo
+
+    def handler(  # type: ignore[no-untyped-def]
+        observers: Iterable[ILogObserver],
+        discardBuffer: bool = False,
+        redirectStandardIO: bool = True,
+    ):
+        have_file = False
+        # Catch log file
+        for observer in observers:
+            if isinstance(observer, FileLogObserver):
+                if observer._encoding is not None:
+                    file = TextIOWrapper(observer._outFile, observer._encoding)
+                else:
+                    file = cast(TextIOWrapper, observer._outFile)
+                logger.add(file)
+                have_file = True
+            else:
+                _beginLoggingTo(
+                    observers,
+                    discardBuffer=discardBuffer,
+                    redirectStandardIO=redirectStandardIO,
+                )
+        # Setup loguru
+        if have_file:
+            _beginLoggingTo(
+                [loguruLogObserver],
+                discardBuffer=discardBuffer,
+                redirectStandardIO=False,
+            )
+
     # Avoid adding other observers
-    setattr(globalLogBeginner, "beginLoggingTo", lambda *_, **__: None)
+    setattr(globalLogBeginner, "beginLoggingTo", handler)
     warnings.showwarning = warningCapturer
 
 
