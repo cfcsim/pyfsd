@@ -68,7 +68,7 @@ index 05c70b7..f55bc60 100644
  
  def setupLoguru() -> None:
      logger.remove()
-+    logger.add("debug.log", "DEBUG")
++    logger.add("debug.log", level="DEBUG")
      _beginLoggingTo = globalLogBeginner.beginLoggingTo
  
      def handler(  # type: ignore[no-untyped-def]
@@ -77,7 +77,7 @@ index 05c70b7..f55bc60 100644
                  else:
                      file = cast(TextIOWrapper, observer._outFile)
 -                logger.add(file)
-+                logger.add(file, "INFO")
++                logger.add(file, level="INFO")
                  have_file = True
              else:
                  _beginLoggingTo(
