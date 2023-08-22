@@ -44,7 +44,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["pdm-backend", "versioneer[toml]>=0.29"]
+requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.isort]
@@ -58,8 +58,7 @@ includes = ["src/pyfsd/", "src/twisted/", "src/pyfsd/plugins/__init__.py"]
 excludes = ["src/pyfsd/plugins/*", "src/twisted/plugins/dropin.cache"]
 
 [tool.pdm.version]
-source = "call"
-getter = "versioneer:get_version"
+source = "scm"
 write_to = "pyfsd/_version.py"
 write_template = "version = \"{}\"\n"
 
@@ -70,11 +69,3 @@ exclude = [
     ".venv",
     ".git",
 ]
-
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "NONE"
-versionfile_build = "NONE"
-tag_prefix = ""
-parentdir_prefix = "pyfsd-"

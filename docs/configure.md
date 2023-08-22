@@ -17,8 +17,7 @@ Options:
     第一次启动会自动生成。无特别声明时，所有配置对都必须存在。
 ```toml
 [pyfsd.database]
-source = "sqlite3"
-filename = "pyfsd.db"
+url = "sqlite:///pyfsd.db"
 
 [pyfsd.client]
 port = 6809
@@ -34,9 +33,7 @@ skip_previous_fetcher = true
 ```
 ### 数据库
 通过pyfsd.database表来配置数据库。  
-`source`: 数据库源。PyFSD仅自带`sqlite3`源，可以通过添加插件来使用其他源。  
-其他参数取决于你使用的数据库源。对`sqlite3`源来说:  
-`filename`: 数据库文件名。
+`url`: 数据库连接描述URL。具体可在[此处](https://docs.sqlalchemy.org/en/13/core/engines.html#database-urls)查看。
 ### 客户端
 通过pyfsd.client表来配置客户端协议。  
 `port`: 客户端协议的端口。ECHO Pilot、Swift等连飞软件及原版FSD默认使用6809端口。  

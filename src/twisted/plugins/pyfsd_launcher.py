@@ -14,8 +14,7 @@ from pyfsd.service import PyFSDService
 from pyfsd.setup_loguru import setupLoguru
 
 DEFAULT_CONFIG = """[pyfsd.database]
-source = "sqlite3"
-filename = "pyfsd.db"
+url = "sqlite:///pyfsd.db"
 
 [pyfsd.client]
 port = 6809

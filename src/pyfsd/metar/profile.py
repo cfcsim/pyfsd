@@ -1,5 +1,4 @@
-"""Python implemented fsd/wprofile
-May delete later. """
+"""Python implemented fsd/wprofile."""
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -56,13 +55,13 @@ def getVariation(num: int, min_: int, max_: int) -> int:
 
 
 def getSeason(month: int, swap: bool) -> int:
-    if month in [11, 0, 1]:
+    if month in [12, 1, 2]:
         return 2 if swap else 0
-    elif month in [2, 3, 4]:
+    elif month in [3, 4, 5]:
         return 1
-    elif month in [5, 6, 7]:
+    elif month in [6, 7, 8]:
         return 0 if swap else 2
-    elif month in [8, 9, 10]:
+    elif month in [9, 10, 11]:
         return 1
     else:
         raise ValueError(f"Invaild month {month}")
@@ -221,7 +220,7 @@ class WeatherProfile:
     def fix(self, position: "Position") -> None:
         a1 = position[0]
         a2 = fabs(position[1] / 18)
-        season = getSeason(int(a1), a1 < 0)
+        season = getSeason(datetime.now().month, a1 < 0)
         updateVariationIfOutdated()
         lat_var = getVariation(VAR_UPDIRECTION, -25, 25)
         self.winds[3].direction = round(6 if a1 > 0 else -6 * a1 + lat_var + a2)
