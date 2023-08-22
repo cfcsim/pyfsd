@@ -11,6 +11,9 @@ dependencies = [
     "haversine>=2.8.0",
     "tomli>=2.0.1; python_version<'3.11'",
     "metar>=1.10.0",
+    "constantly>=15.1.0",
+    "alchimia>=0.8.1",
+    "sqlalchemy<1.4",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -41,7 +44,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["pdm-backend", "versioneer[toml]>=0.29"]
+requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.isort]
@@ -51,14 +54,13 @@ profile = "black"
 start = "twistd -n pyfsd"
 
 [tool.pdm.build]
-includes = ["pyfsd/", "twisted/", "pyfsd/plugins/__init__.py"]
-excludes = ["pyfsd/plugins/*"]
+includes = ["src/pyfsd/", "src/twisted/", "src/pyfsd/plugins/__init__.py"]
+excludes = ["src/pyfsd/plugins/*", "src/twisted/plugins/dropin.cache"]
 
 [tool.pdm.version]
-source = "call"
-getter = "versioneer:get_version"
+source = "scm"
 write_to = "pyfsd/_version.py"
-write_template = "__version__ = \"{}\"\n"
+write_template = "version = \"{}\"\n"
 
 [tool.pyright]
 exclude = [
@@ -67,11 +69,3 @@ exclude = [
     ".venv",
     ".git",
 ]
-
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "NONE"
-versionfile_build = "NONE"
-tag_prefix = ""
-parentdir_prefix = "pyfsd-"

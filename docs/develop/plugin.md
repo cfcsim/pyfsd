@@ -2,9 +2,8 @@
 基于[Twisted插件机制](https://docs.twisted.org/en/stable/core/howto/plugin.html)。  
 现在四种插件形式:  
 [`PyFSDPlugin`][pyfsd.plugin.IPyFSDPlugin]: 接受关于PyFSD本体的一些事件，如新用户连接等。  
+[`IServiceBuilder`][pyfsd.plugin.IServiceBuilder]: 制作(并在稍后加载)Twisted的服务。
 [`MetarFetcher`][pyfsd.metar.fetch.IMetarFetcher]: Metar源。  
-[`DatabaseMaker`][pyfsd.database.IDatabaseMaker]: 数据库源。
-[`Service`][twisted.application.service.IService]: Twisted的服务。
 注：所有插件都应该[实现](https://zopeinterface.readthedocs.io/en/latest/README.html#declaring-implemented-interfaces)[twisted.plugin.IPlugin][]并实例化才能被加载。  
 ## 插件参考
 ### PyFSD Plugin
@@ -12,10 +11,10 @@
 ::: pyfsd.plugin.PreventEvent
 #### PyFSD Plugin
 ::: pyfsd.plugin.IPyFSDPlugin
+### IServiceBuilder
+::: pyfsd.plugin.IServiceBuilder
 ### Metar获取器
 ::: pyfsd.metar.fetch.IMetarFetcher
-### 数据库源
-::: pyfsd.database.IDatabaseMaker
 ## 示例
 ### PyFSDPlugin
 （所有事件详见`IPyFSDPlugin`）
