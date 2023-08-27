@@ -1,0 +1,20 @@
+# Changes here will be overwritten by Copier
+_commit: 0.16.6
+_src_path: https://github.com/pawamoy/copier-pdm.git
+author_email: 52902973+gamecss@users.noreply.github.com
+author_fullname: gamecss
+author_username: gamecss
+copyright_date: '2023'
+copyright_holder: gamecss
+copyright_holder_email: 52902973+gamecss@users.noreply.github.com
+copyright_license: MIT License
+insiders: false
+project_description: An implementation of protocol 9 of FSD based on Python & Twisted.
+project_name: pyfsd
+python_package_command_line_name: pyfsd
+python_package_distribution_name: pyfsd
+python_package_import_name: pyfsd
+repository_name: pyfsd
+repository_namespace: cfcsim
+repository_provider: github.com
+

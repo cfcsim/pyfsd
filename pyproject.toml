@@ -1,9 +1,29 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
 [project]
 name = "pyfsd"
-dynamic = ["version"]
 description = "An implementation of protocol 9 of FSD based on Python & Twisted."
-authors = [
-    {name = "gamecss", email = "52902973+gamecss@users.noreply.github.com"},
+authors = [{name = "gamecss", email = "52902973+gamecss@users.noreply.github.com"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8.1"
+keywords = []
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Documentation",
+    "Typing :: Typed",
 ]
 dependencies = [
     "twisted>=22.10.0",
@@ -13,27 +33,35 @@ dependencies = [
     "metar>=1.10.0",
     "constantly>=15.1.0",
     "alchimia>=0.8.1",
-    "sqlalchemy~=1.3",
+    "sqlalchemy~=1.3, <1.4",
 ]
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-]
-requires-python = ">=3.8.1"
-readme = "README.md"
-license = {text = "MIT"}
 
-[project.optional-dependencies]
+[project.urls]
+Homepage = "https://github.com/cfcsim/pyfsd"
+Documentation = "https://cfcsim.github.io/pyfsd"
+Repository = "https://github.com/cfcsim/pyfsd"
+Issues = "https://github.com/cfcsim/pyfsd/issues"
+Discussions = "https://github.com/cfcsim/pyfsd/discussions"
+
+[tool.pdm.build]
+package-dir = "src"
+editable-backend = "editables"
+includes = ["pyfsd/", "twisted/", "pyfsd/plugins/__init__.py"]
+excludes = ["pyfsd/plugins/*", "twisted/plugins/dropin.cache"]
+
+[tool.pdm.dev-dependencies]
 docs = [
     "mkdocs-material>=9.1.18",
     "mkdocstrings[python]>=0.22.0",
     "mkdocs-minify-plugin>=0.6.4",
+    "markdown-callouts>=0.2",
+    "markdown-exec>=0.5",
+    "mkdocs>=1.5",
+    "mkdocs-gen-files>=0.3",
+    "mkdocs-git-committers-plugin-2>=1.1",
+    "mkdocs-literate-nav>=0.4",
+    "mkdocs-minify-plugin>=0.6.4",
 ]
-
-[tool.pdm.dev-dependencies]
 dev = [
     "black>=23.3.0",
     "flake8>=6.0.0",
@@ -43,24 +71,16 @@ dev = [
     "flake8-pyi>=23.6.0",
 ]
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
-[tool.isort]
-profile = "black"
-
 [tool.pdm.scripts]
 start = "twistd -n pyfsd"
-
-[tool.pdm.build]
-includes = ["src/pyfsd/", "src/twisted/", "src/pyfsd/plugins/__init__.py"]
-excludes = ["src/pyfsd/plugins/*", "src/twisted/plugins/dropin.cache"]
 
 [tool.pdm.version]
 source = "scm"
 write_to = "pyfsd/_version.py"
 write_template = "version = \"{}\"\n"
+
+[tool.isort]
+profile = "black"
 
 [tool.pyright]
 exclude = [
