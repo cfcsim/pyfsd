@@ -1,4 +1,5 @@
 # pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
+"""PyFSD plugin architecture."""
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -48,8 +49,8 @@ class PyFSDHandledLineResult(PyFSDHandledEventResult):
     """A lineReceivedFromClient result handled by PyFSD.
 
     Attributes:
-        handled_by_plugin: Event handled by plugin or not.
-        success: The event successfully handled or not.
+        handled_by_plugin (Literal[False]): Event handled by plugin or not.
+        success (bool): The event successfully handled or not.
         packet_ok: The packet is correct or not.
         has_result: Succeed in generating result or not.
     """
@@ -189,6 +190,8 @@ class IServiceBuilder(Interface):
 
 @implementer(IPyFSDPlugin)
 class BasePyFSDPlugin:
+    """(A?)Base class of PyFSD Plugin."""
+
     plugin_name = "<plugin name missing>"
     api = 2
 
@@ -211,10 +214,15 @@ class BasePyFSDPlugin:
     ]:
         ...
 
-    def auditLineFromClient(self, protocol: "FSDClientProtocol", line: bytes) -> None:
+    def auditLineFromClient(
+        self,
+        protocol: "FSDClientProtocol",
+        line: bytes,
+        result: Union[PyFSDHandledLineResult, PluginHandledEventResult],
+    ) -> None:
         ...
 
-    def clientDisconnected(  # type: ignore[empty-body]
+    def clientDisconnected(
         self, protocol: "FSDClientProtocol", client: Optional["Client"]
     ) -> None:
         ...

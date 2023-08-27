@@ -55,7 +55,11 @@ def _get_deps(base_deps: Mapping[str, Mapping[str, str]]) -> dict[str, dict[str,
         dep_name = parsed["dist"].lower()
         if dep_name not in lock_pkgs:
             continue
-        deps[dep_name] = {"license": _get_license(dep_name), **parsed, **lock_pkgs[dep_name]}
+        deps[dep_name] = {
+            "license": _get_license(dep_name),
+            **parsed,
+            **lock_pkgs[dep_name],
+        }
 
     again = True
     while again:
@@ -63,17 +67,29 @@ def _get_deps(base_deps: Mapping[str, Mapping[str, str]]) -> dict[str, dict[str,
         for pkg_name in lock_pkgs:
             if pkg_name in deps:
                 for pkg_dependency in lock_pkgs[pkg_name].get("dependencies", []):
-                    parsed = regex.match(pkg_dependency).groupdict()  # type: ignore[union-attr]
+                    parsed = regex.match(  # type: ignore[union-attr]
+                        pkg_dependency
+                    ).groupdict()
                     dep_name = parsed["dist"].lower()
-                    if dep_name in lock_pkgs and dep_name not in deps and dep_name != project["name"]:
-                        deps[dep_name] = {"license": _get_license(dep_name), **parsed, **lock_pkgs[dep_name]}
+                    if (
+                        dep_name in lock_pkgs
+                        and dep_name not in deps
+                        and dep_name != project["name"]
+                    ):
+                        deps[dep_name] = {
+                            "license": _get_license(dep_name),
+                            **parsed,
+                            **lock_pkgs[dep_name],
+                        }
                         again = True
 
     return deps
 
 
 def _render_credits() -> str:
-    dev_dependencies = _get_deps(chain(*pdm.get("dev-dependencies", {}).values()))  # type: ignore[arg-type]
+    dev_dependencies = _get_deps(
+        chain(*pdm.get("dev-dependencies", {}).values())  # type: ignore[arg-type]
+    )
     prod_dependencies = _get_deps(
         chain(  # type: ignore[arg-type]
             project.get("dependencies", []),
@@ -83,8 +99,12 @@ def _render_credits() -> str:
 
     template_data = {
         "project_name": project_name,
-        "prod_dependencies": sorted(prod_dependencies.values(), key=lambda dep: dep["name"]),
-        "dev_dependencies": sorted(dev_dependencies.values(), key=lambda dep: dep["name"]),
+        "prod_dependencies": sorted(
+            prod_dependencies.values(), key=lambda dep: dep["name"]
+        ),
+        "dev_dependencies": sorted(
+            dev_dependencies.values(), key=lambda dep: dep["name"]
+        ),
         "more_credits": "",
     }
     template_text = dedent(
@@ -98,7 +118,9 @@ def _render_credits() -> str:
         [`copier-pdm`](https://github.com/pawamoy/copier-pdm)
 
         {% macro dep_line(dep) -%}
-        [`{{ dep.name }}`](https://pypi.org/project/{{ dep.name }}/) | {{ dep.summary }} | {{ ("`" ~ dep.spec ~ "`") if dep.spec else "" }} | `{{ dep.version }}` | {{ dep.license }}
+        [`{{ dep.name }}`](https://pypi.org/project/{{ dep.name }}/) | \
+{{ dep.summary }} | {{ ("`" ~ dep.spec ~ "`") if dep.spec else "" }} | \
+`{{ dep.version }}` | {{ dep.license }}
         {%- endmacro %}
 
         ### 运行时依赖
@@ -117,7 +139,8 @@ def _render_credits() -> str:
         {{ dep_line(dep) }}
         {% endfor %}
 
-        {% if more_credits %}**[More credits from the author]({{ more_credits }})**{% endif %}
+        {% if more_credits %}**[More credits from the author]\
+({{ more_credits }})**{% endif %}
         """,
     )
     jinja_env = SandboxedEnvironment(undefined=StrictUndefined)
