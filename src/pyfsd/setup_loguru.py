@@ -135,10 +135,10 @@ def setupLoguru() -> None:
                 discardBuffer=discardBuffer,
                 redirectStandardIO=False,
             )
+            warnings.showwarning = warningCapturer
 
     # Avoid adding other observers
     setattr(globalLogBeginner, "beginLoggingTo", handler)
-    warnings.showwarning = warningCapturer
 
 
 def extractException(

@@ -2,7 +2,9 @@ from threading import Lock
 from time import time
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Type
 
+from twisted.cred.error import UnauthorizedLogin
 from twisted.internet import reactor
+from twisted.internet.defer import Deferred
 from twisted.internet.interfaces import ITransport
 from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
@@ -34,10 +36,33 @@ if TYPE_CHECKING:
 
     from ..auth import UserInfo
     from ..factory.client import FSDClientFactory
+    from ..plugin import (
+        PluginHandledEventResult,
+        PyFSDHandledLineResult,
+        ToHandledByPyFSDEventResult,
+    )
 
 __all__ = ["FSDClientProtocol"]
 
 version = pyfsd_version.encode("ascii")
+SUCCESS_RESULT: "PyFSDHandledLineResult" = {
+    "handled_by_plugin": False,
+    "success": True,
+    "packet_ok": True,
+    "has_result": True,
+}
+ALL_FAILED_RESULT: "PyFSDHandledLineResult" = {
+    "handled_by_plugin": False,
+    "success": False,
+    "packet_ok": False,
+    "has_result": False,
+}
+FAILED_WITHOUT_PACKET_RESULT: "PyFSDHandledLineResult" = {
+    "handled_by_plugin": False,
+    "success": False,
+    "packet_ok": True,
+    "has_result": False,
+}
 
 
 class FSDClientProtocol(LineReceiver):
@@ -59,7 +84,9 @@ class FSDClientProtocol(LineReceiver):
             "New connection from {ip}.",
             ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
         )
-        self.factory.triggerEvent("newConnectionEstablished", (self,), {})
+        self.factory.defer_event(
+            "newConnectionEstablished", (self,), {}, False, False, True
+        )
 
     def sendLines(
         self, *lines: bytes, auto_newline: bool = True, togerher: bool = True
@@ -110,26 +137,40 @@ class FSDClientProtocol(LineReceiver):
             )
         self.sendLines(*motd_lines)
 
+    def checkPacket(
+        self, packet: Tuple[bytes, ...], require_param: int = 0, need_login: bool = True
+    ) -> "PyFSDHandledLineResult | None":
+        if len(packet) < require_param:
+            self.sendError(FSDErrors.ERR_SYNTAX)
+            return ALL_FAILED_RESULT
+        if need_login:
+            if self.client is None:
+                return ALL_FAILED_RESULT
+            if self.client.callsign != packet[0]:
+                self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
+                return ALL_FAILED_RESULT
+        return None
+
     def multicast(
         self,
         to_limiter: str,
         *lines: bytes,
         custom_at_checker: Optional[BroadcastChecker] = None,
-    ) -> None:
+    ) -> bool:
         assert self.client is not None
         if to_limiter == "*":
-            # No check_func specified, why? -- Default checker is lambda: True
-            self.factory.broadcast(*lines, from_client=self.client)
+            # Default checker is lambda: True, so send to all client
+            return self.factory.broadcast(*lines, from_client=self.client)
         elif to_limiter == "*A":
-            self.factory.broadcast(
+            return self.factory.broadcast(
                 *lines, check_func=allATCChecker, from_client=self.client
             )
         elif to_limiter == "*P":
-            self.factory.broadcast(
+            return self.factory.broadcast(
                 *lines, check_func=allPilotChecker, from_client=self.client
             )
         elif to_limiter.startswith("@"):
-            self.factory.broadcast(
+            return self.factory.broadcast(
                 *lines,
                 from_client=self.client,
                 check_func=custom_at_checker
@@ -141,8 +182,8 @@ class FSDClientProtocol(LineReceiver):
 
     def unicast(
         self, callsign: bytes, *lines: bytes, auto_newline: bool = True
-    ) -> None:
-        self.factory.sendTo(callsign, *lines, auto_newline=auto_newline)
+    ) -> bool:
+        return self.factory.sendTo(callsign, *lines, auto_newline=auto_newline)
 
     def handleCast(
         self,
@@ -151,16 +192,12 @@ class FSDClientProtocol(LineReceiver):
         require_param: int = 2,
         multicast_able: bool = True,
         custom_at_checker: Optional[BroadcastChecker] = None,
-    ) -> None:
+    ) -> "PyFSDHandledLineResult":
         packet_len: int = len(packet)
-        if packet_len < require_param:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-            return
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+        if (error := self.checkPacket(packet, require_param)) is not None:
+            return error
+        # This won't happen because checkPacket function checked it.
+        assert self.client is not None
         to_callsign = packet[1]
         maycast_tocs = to_callsign.decode("ascii", "replace")
         to_packet = makePacket(
@@ -168,31 +205,44 @@ class FSDClientProtocol(LineReceiver):
             to_callsign,
             *packet[2:] if packet_len > 2 else [b""],
         )
+        packet_ok = True
         if isMulticast(maycast_tocs):
             if multicast_able:
-                self.multicast(
+                success = self.multicast(
                     maycast_tocs,
                     # Mypy bug, to_packet is bytes
                     to_packet,  # type: ignore[arg-type]
                     custom_at_checker=custom_at_checker,
                 )
+            else:
+                success = False
+                packet_ok = False
         else:
-            self.factory.sendTo(
+            success = self.factory.sendTo(
                 to_callsign,
                 # Mypy bug, to_packet is bytes
                 to_packet,  # type: ignore[arg-type]
             )
+        return {
+            "handled_by_plugin": False,
+            "success": success and packet_ok,
+            "packet_ok": packet_ok,
+            "has_result": success,
+        }
 
     def handleAddClient(
         self, packet: Tuple[bytes, ...], client_type: ClientType
-    ) -> None:
+    ) -> "Deferred[PyFSDHandledLineResult] | PyFSDHandledLineResult":
+        if (
+            error := self.checkPacket(
+                packet, 8 if client_type == "PILOT" else 7, need_login=False
+            )
+        ) is not None:
+            return error
         if self.client is not None:
             self.sendError(FSDErrors.ERR_REGISTERED)
-            return
+            return ALL_FAILED_RESULT
         if client_type == "PILOT":
-            if len(packet) < 8:
-                self.sendError(FSDErrors.ERR_SYNTAX)
-                return
             (
                 callsign,
                 _,
@@ -205,9 +255,6 @@ class FSDClientProtocol(LineReceiver):
             ) = packet[:8]
             sim_type_int = strToInt(sim_type, default_value=0)
         else:
-            if len(packet) < 7:
-                self.sendError(FSDErrors.ERR_SYNTAX)
-                return
             (
                 callsign,
                 _,
@@ -225,20 +272,22 @@ class FSDClientProtocol(LineReceiver):
         protocol_int = strToInt(protocol, default_value=-1)
         if not isCallsignVaild(callsign):
             self.sendError(FSDErrors.ERR_CSINVALID, fatal=True)
-            return
-        if callsign in self.factory.clients:
-            self.sendError(FSDErrors.ERR_CSINUSE)
-            return
-        if not protocol_int == 9:
+            return ALL_FAILED_RESULT
+        if protocol_int != 9:
             self.sendError(FSDErrors.ERR_REVISION, fatal=True)
-            return
-
+            return ALL_FAILED_RESULT
         try:
             cid_str = cid.decode("utf-8")
             pwd_str = password.decode("utf-8")
         except UnicodeDecodeError:
             self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
-            return
+            return ALL_FAILED_RESULT
+
+        if callsign in self.factory.clients:
+            self.sendError(FSDErrors.ERR_CSINUSE)
+            return FAILED_WITHOUT_PACKET_RESULT
+
+        result_deferred: "Deferred[PyFSDHandledLineResult]" = Deferred()
 
         def onResult(
             result: Tuple[Type[IUserInfo], "UserInfo", Callable[[], None]]
@@ -247,6 +296,8 @@ class FSDClientProtocol(LineReceiver):
             assert interface is IUserInfo or IUserInfo in interface.__bases__
             if userinfo.rating == 0:
                 self.sendError(FSDErrors.ERR_CSSUSPEND, fatal=True)
+                result_deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
+
             else:
                 if userinfo.rating < req_rating_int:
                     self.sendError(
@@ -254,11 +305,15 @@ class FSDClientProtocol(LineReceiver):
                         env=req_rating,
                         fatal=True,
                     )
+                    result_deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
                 else:
                     onSuccess()
 
-        def onFail(_: "Failure") -> None:
+        def onFail(f: "Failure") -> None:
+            if not isinstance(f.value, UnauthorizedLogin):
+                self.logger.failure("Exception threw while authorizing", failure=f)
             self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
+            result_deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
 
         def onSuccess() -> None:
             client = Client(
@@ -307,30 +362,26 @@ class FSDClientProtocol(LineReceiver):
                 cid=cid_str,
                 ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
             )
-            self.factory.triggerEvent("newClientCreated", (self,), {})
+            self.factory.defer_event(
+                "newClientCreated", (self,), {}, False, False, True
+            )
+            result_deferred.callback(SUCCESS_RESULT)
 
         self.factory.login(cid_str, pwd_str).addCallback(onResult).addErrback(onFail)
+        return result_deferred
 
-    def handleRemoveClient(self, packet: Tuple[bytes, ...]) -> None:
-        if len(packet) == 0:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-            return
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+    def handleRemoveClient(self, packet: Tuple[bytes, ...]) -> "PyFSDHandledLineResult":
+        if (error := self.checkPacket(packet, 1)) is not None:
+            return error
+        # This won't happen because checkPacket function checked it.
+        assert self.client is not None
         self.transport.loseConnection()
+        return SUCCESS_RESULT
 
-    def handlePlan(self, packet: Tuple[bytes, ...]) -> None:
-        if len(packet) < 17:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-            return
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+    def handlePlan(self, packet: Tuple[bytes, ...]) -> "PyFSDHandledLineResult":
+        if (error := self.checkPacket(packet, 17)) is not None:
+            return error
+        assert self.client is not None
         (
             plan_type,
             aircraft,
@@ -402,16 +453,14 @@ class FSDClientProtocol(LineReceiver):
             check_func=allATCChecker,
             from_client=self.client,
         )
+        return SUCCESS_RESULT
 
-    def handlePilotPositionUpdate(self, packet: Tuple[bytes, ...]) -> None:
-        if len(packet) < 10:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-            return
-        if self.client is None:
-            return
-        if self.client.callsign != packet[1]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+    def handlePilotPositionUpdate(
+        self, packet: Tuple[bytes, ...]
+    ) -> "PyFSDHandledLineResult":
+        if (error := self.checkPacket(packet, 10)) is not None:
+            return error
+        assert self.client is not None
         (
             mode,
             _,
@@ -469,16 +518,14 @@ class FSDClientProtocol(LineReceiver):
             check_func=broadcastPositionChecker,
             from_client=self.client,
         )
+        return SUCCESS_RESULT
 
-    def handleATCPositionUpdate(self, packet: Tuple[bytes, ...]) -> None:
-        if len(packet) < 8:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-            return
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+    def handleATCPositionUpdate(
+        self, packet: Tuple[bytes, ...]
+    ) -> "PyFSDHandledLineResult":
+        if (error := self.checkPacket(packet, 8)) is not None:
+            return error
+        assert self.client is not None
         (
             frequency,
             facility_type,
@@ -528,38 +575,38 @@ class FSDClientProtocol(LineReceiver):
             check_func=broadcastPositionChecker,
             from_client=self.client,
         )
+        return SUCCESS_RESULT
 
-    def handleServerPing(self, packet: Tuple[bytes, ...]) -> None:
-        packet_len: int = len(packet)
-        if packet_len < 2:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-            return
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+    def handleServerPing(self, packet: Tuple[bytes, ...]) -> "PyFSDHandledLineResult":
+        if (error := self.checkPacket(packet, 2)) is not None:
+            return error
+        assert self.client is not None
         self.sendLine(
             makePacket(
                 concat(FSDCLIENTPACKET.PONG, b"server"),
                 self.client.callsign,
-                *packet[2:] if packet_len > 2 else [b""],
+                *packet[2:] if len(packet) > 2 else [b""],
             )
         )
+        return SUCCESS_RESULT
 
-    def handleWeather(self, packet: Tuple[bytes, ...]) -> None:
-        if len(packet) < 3:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+    def handleWeather(
+        self, packet: Tuple[bytes, ...]
+    ) -> "Deferred[PyFSDHandledLineResult] | PyFSDHandledLineResult":
+        if (error := self.checkPacket(packet, 3)) is not None:
+            return error
+        assert self.client is not None
+        deferred: Deferred["PyFSDHandledLineResult"] = Deferred()
+
+        def errback(failure: "Failure") -> None:
+            deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
+            self.logger.failure("Exception threw while fetching METAR", failure=failure)
 
         def sendMetar(metar: Optional["Metar"]) -> None:
             assert self.client is not None
             if metar is None:
                 self.sendError(FSDErrors.ERR_NOWEATHER, packet[2])
+                deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
             else:
                 packets = []
                 profile = WeatherProfile(int(time()), None, metar)
@@ -621,25 +668,34 @@ class FSDClientProtocol(LineReceiver):
 
                 # Mypy bug
                 self.sendLines(*packets)  # type: ignore
+                deferred.callback(SUCCESS_RESULT)
 
         self.factory.fetch_metar(packet[2].decode("ascii", "ignore")).addCallback(
             sendMetar
-        )
+        ).addErrback(errback)
+        return deferred
 
-    def handleAcars(self, packet: Tuple[bytes, ...]) -> None:
-        if len(packet) < 3:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-        if self.client is None:
-            return
-        if self.client.callsign != packet[0]:
-            self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
-            return
+    def handleAcars(
+        self, packet: Tuple[bytes, ...]
+    ) -> "Deferred[PyFSDHandledLineResult] | PyFSDHandledLineResult":
+        if (error := self.checkPacket(packet, 3)) is not None:
+            return error
+        assert self.client is not None
+
         if packet[2].upper() == b"METAR" and len(packet) > 3:
+            deferred: Deferred["PyFSDHandledLineResult"] = Deferred()
+
+            def errback(failure: "Failure") -> None:
+                deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
+                self.logger.failure(
+                    "Exception threw while fetching METAR", failure=failure
+                )
 
             def sendMetar(metar: Optional["Metar"]) -> None:
                 assert self.client is not None
                 if metar is None:
                     self.sendError(FSDErrors.ERR_NOWEATHER, packet[3])
+                    deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
                 else:
                     self.sendLine(
                         makePacket(
@@ -649,34 +705,36 @@ class FSDClientProtocol(LineReceiver):
                             metar.code.encode("ascii"),
                         )
                     )
+                    deferred.callback(SUCCESS_RESULT)
 
             self.factory.fetch_metar(packet[3].decode(errors="ignore")).addCallback(
                 sendMetar
-            )
+            ).addErrback(errback)
+            return deferred
+        return SUCCESS_RESULT  # yep
 
-    def handleCq(self, packet: Tuple[bytes, ...]) -> None:
+    def handleCq(self, packet: Tuple[bytes, ...]) -> "PyFSDHandledLineResult":
         # Behavior may differ from FSD.
-        if len(packet) < 3:
-            self.sendError(FSDErrors.ERR_SYNTAX)
-        if self.client is None:
-            return
+        if (error := self.checkPacket(packet, 3)) is not None:
+            return error
+        assert self.client is not None
         if packet[1].upper() != b"SERVER":
-            self.handleCast(
+            return self.handleCast(
                 packet, FSDCLIENTPACKET.CQ, require_param=3, multicast_able=True
             )
-            return
         elif packet[2].lower() == b"fp":
             if len(packet) < 4:
                 self.sendError(FSDErrors.ERR_SYNTAX)
+                return FAILED_WITHOUT_PACKET_RESULT
             callsign = packet[3]
             if (client := self.factory.clients.get(callsign)) is None:
                 self.sendError(FSDErrors.ERR_NOSUCHCS, env=callsign)
-                return
+                return FAILED_WITHOUT_PACKET_RESULT
             if (plan := client.flight_plan) is None:
                 self.sendError(FSDErrors.ERR_NOFP)
-                return
+                return FAILED_WITHOUT_PACKET_RESULT
             if not self.client.type == "ATC":
-                return
+                return ALL_FAILED_RESULT
             self.sendLine(
                 makePacket(
                     FSDCLIENTPACKET.PLAN,
@@ -714,16 +772,20 @@ class FSDClientProtocol(LineReceiver):
                         b"%d" % client.rating,
                     )
                 )
+                return SUCCESS_RESULT
+            return FAILED_WITHOUT_PACKET_RESULT
+        return SUCCESS_RESULT
 
-    def handleKill(self, packet: Tuple[bytes, ...]) -> None:
+    def handleKill(self, packet: Tuple[bytes, ...]) -> "PyFSDHandledLineResult":
         if len(packet) < 3:
             self.sendError(FSDErrors.ERR_SYNTAX)
+            return ALL_FAILED_RESULT
         if self.client is None:
-            return
+            return ALL_FAILED_RESULT
         _, callsign_kill, reason = packet[:3]
         if callsign_kill not in self.factory.clients:
             self.sendError(FSDErrors.ERR_NOSUCHCS, env=callsign_kill)
-            return
+            return FAILED_WITHOUT_PACKET_RESULT
         if self.client.rating < 11:
             self.sendLine(
                 makePacket(
@@ -732,6 +794,7 @@ class FSDClientProtocol(LineReceiver):
                     b"You are not allowed to kill users!",
                 )
             )
+            return FAILED_WITHOUT_PACKET_RESULT
         else:
             self.sendLine(
                 makePacket(
@@ -747,51 +810,87 @@ class FSDClientProtocol(LineReceiver):
                 ),
             )
             self.factory.clients[callsign_kill].transport.loseConnection()
+            return SUCCESS_RESULT
 
     def lineReceived(self, byte_line: bytes) -> None:
         with self.line_lock:
             # Acquire without lock it (nearly)
             pass
 
-        def resultHandler(prevented: bool) -> None:
-            if not prevented:
+        def resultHandler(
+            result: "PluginHandledEventResult | ToHandledByPyFSDEventResult",
+        ) -> None:
+            if not result["handled_by_plugin"]:
                 with self.line_lock:
-                    self.lineReceived_impl(byte_line)
+                    self_result = self.lineReceived_impl(byte_line)
 
-        self.factory.triggerEvent(
-            "lineReceivedFromClient", (self, byte_line), {}, in_thread=False
+                def postResult(new_result: "PyFSDHandledLineResult") -> None:
+                    for handler in result["handlers"]:
+                        handler(new_result)
+                    self.factory.defer_event(
+                        "auditLineFromClient",
+                        (self, byte_line, new_result),
+                        {},
+                        False,
+                        False,
+                        True,
+                    )
+
+                if isinstance(self_result, dict):
+                    postResult(self_result)
+                else:
+                    self_result.addCallback(postResult)
+            else:
+                self.factory.defer_event(
+                    "auditLineFromClient",
+                    (self, byte_line, result),
+                    {},
+                    False,
+                    False,
+                    True,
+                )
+
+        self.factory.defer_event(
+            "lineReceivedFromClient", (self, byte_line), {}, False, False, False
         ).addCallback(resultHandler)
 
-    def lineReceived_impl(self, byte_line: bytes) -> None:
+    def lineReceived_impl(
+        self, byte_line: bytes
+    ) -> "Deferred[PyFSDHandledLineResult] | PyFSDHandledLineResult":
         if len(byte_line) == 0:
-            return
+            return SUCCESS_RESULT
         command, packet = breakPacket(byte_line, FSDCLIENTPACKET.client_used_command)
         if command is None:
             self.sendError(FSDErrors.ERR_SYNTAX)
+            return ALL_FAILED_RESULT
         elif command is FSDCLIENTPACKET.ADD_ATC or command is FSDCLIENTPACKET.ADD_PILOT:
-            self.handleAddClient(
+            return self.handleAddClient(
                 packet, "ATC" if command is FSDCLIENTPACKET.ADD_ATC else "PILOT"
             )
         elif command is FSDCLIENTPACKET.PLAN:
-            self.handlePlan(packet)
+            return self.handlePlan(packet)
         elif (
             command is FSDCLIENTPACKET.REMOVE_ATC
             or command is FSDCLIENTPACKET.REMOVE_PILOT
         ):
-            self.handleRemoveClient(packet)
+            return self.handleRemoveClient(packet)
         elif command is FSDCLIENTPACKET.PILOT_POSITION:
-            self.handlePilotPositionUpdate(packet)
+            return self.handlePilotPositionUpdate(packet)
         elif command is FSDCLIENTPACKET.ATC_POSITION:
-            self.handleATCPositionUpdate(packet)
+            return self.handleATCPositionUpdate(packet)
         elif command is FSDCLIENTPACKET.PONG:
-            self.handleCast(packet, command, require_param=2, multicast_able=True)
+            return self.handleCast(
+                packet, command, require_param=2, multicast_able=True
+            )
         elif command is FSDCLIENTPACKET.PING:
             if len(packet) > 1 and packet[1].lower() == b"server":
-                self.handleServerPing(packet)
+                return self.handleServerPing(packet)
             else:
-                self.handleCast(packet, command, require_param=2, multicast_able=True)
+                return self.handleCast(
+                    packet, command, require_param=2, multicast_able=True
+                )
         elif command is FSDCLIENTPACKET.MESSAGE:
-            self.handleCast(
+            return self.handleCast(
                 packet,
                 command=command,
                 require_param=3,
@@ -802,25 +901,36 @@ class FSDClientProtocol(LineReceiver):
             command is FSDCLIENTPACKET.REQUEST_HANDOFF
             or command is FSDCLIENTPACKET.AC_HANDOFF
         ):
-            self.handleCast(packet, command, require_param=3, multicast_able=False)
+            return self.handleCast(
+                packet, command, require_param=3, multicast_able=False
+            )
         elif command is FSDCLIENTPACKET.SB or command is FSDCLIENTPACKET.PC:
-            self.handleCast(packet, command, require_param=2, multicast_able=False)
+            return self.handleCast(
+                packet, command, require_param=2, multicast_able=False
+            )
         elif command is FSDCLIENTPACKET.WEATHER:
-            self.handleWeather(packet)
+            return self.handleWeather(packet)
         elif command is FSDCLIENTPACKET.REQUEST_COMM:
-            self.handleCast(packet, command, require_param=2, multicast_able=False)
+            return self.handleCast(
+                packet, command, require_param=2, multicast_able=False
+            )
         elif command is FSDCLIENTPACKET.REPLY_COMM:
-            self.handleCast(packet, command, require_param=3, multicast_able=False)
+            return self.handleCast(
+                packet, command, require_param=3, multicast_able=False
+            )
         elif command is FSDCLIENTPACKET.REQUEST_ACARS:
-            self.handleAcars(packet)
+            return self.handleAcars(packet)
         elif command is FSDCLIENTPACKET.CR:
-            self.handleCast(packet, command, require_param=4, multicast_able=False)
+            return self.handleCast(
+                packet, command, require_param=4, multicast_able=False
+            )
         elif command is FSDCLIENTPACKET.CQ:
-            self.handleCq(packet)
+            return self.handleCq(packet)
         elif command is FSDCLIENTPACKET.KILL:
-            self.handleKill(packet)
+            return self.handleKill(packet)
         else:
             self.sendError(FSDErrors.ERR_SYNTAX)
+            return ALL_FAILED_RESULT
 
     def connectionLost(self, _: Optional["Failure"] = None) -> None:
         if self.timeoutKiller.active():
@@ -840,7 +950,9 @@ class FSDClientProtocol(LineReceiver):
                 ),
                 from_client=self.client,
             )
-            self.factory.triggerEvent("clientDisconnected", (self, self.client), {})
+            self.factory.defer_event(
+                "clientDisconnected", (self, self.client), {}, False, False, True
+            )
             del self.factory.clients[self.client.callsign]
             self.client = None
         else:

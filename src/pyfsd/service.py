@@ -3,11 +3,13 @@ from typing import (
     TYPE_CHECKING,
     Callable,
     Dict,
-    Iterator,
+    Iterable,
     List,
+    Mapping,
     Optional,
     Tuple,
     TypedDict,
+    Union,
 )
 
 from alchimia.engine import TwistedEngine
@@ -16,6 +18,8 @@ from sqlalchemy.schema import CreateTable
 from twisted.application.internet import TCPServer
 from twisted.application.service import Service
 from twisted.cred.portal import Portal
+from twisted.internet.defer import succeed
+from twisted.internet.threads import deferToThread
 from twisted.logger import Logger
 from twisted.plugin import getPlugins
 
@@ -27,12 +31,14 @@ from .define.config_check import LiteralValue, MayExist, verifyConfigStruct
 from .define.utils import iterCallable
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
-from .plugin import BasePyFSDPlugin, IPyFSDPlugin, IServiceBuilder
+from .plugin import BasePyFSDPlugin, IPyFSDPlugin, IServiceBuilder, PreventEvent
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
     from twisted.application.service import IService
     from twisted.internet.defer import Deferred
+
+    from .plugin import PluginHandledEventResult, ToHandledByPyFSDEventResult
 
 
 def formatPlugin(plugin: IPyFSDPlugin) -> str:
@@ -50,7 +56,7 @@ config: Optional[dict] = None
 
 class PluginDict(TypedDict):
     all: Tuple[IPyFSDPlugin, ...]
-    tagged: Dict[str, List[Callable]]
+    tagged: Dict[str, List[IPyFSDPlugin]]
 
 
 class PyFSDService(Service):
@@ -159,7 +165,7 @@ class PyFSDService(Service):
         self.client_factory = FSDClientFactory(
             self.portal,
             self.fetch_metar,
-            self.iterHandlerByEventName,
+            self.deferEvent,
             self.config["pyfsd"]["client"]["blacklist"],
             self.config["pyfsd"]["client"]["motd"]
             .encode(self.config["pyfsd"]["client"]["motd_encoding"])
@@ -196,7 +202,7 @@ class PyFSDService(Service):
 
     def pickPlugins(self) -> None:
         all_plugins = []
-        event_handlers: Dict[str, List[Callable]] = dict(
+        event_handlers: Dict[str, List[IPyFSDPlugin]] = dict(
             (name, []) for name in PLUGIN_EVENTS
         )
         for plugin in getPlugins(IPyFSDPlugin, plugins):
@@ -218,12 +224,77 @@ class PyFSDService(Service):
                         if hasattr(plugin, event) and getattr(
                             type(plugin), event
                         ) is not getattr(BasePyFSDPlugin, event):
-                            event_handlers[event].append(getattr(plugin, event))
+                            event_handlers[event].append(plugin)
 
         self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
+        print(self.plugins)
 
-    def iterHandlerByEventName(self, event_name: str) -> Iterator[Callable]:
+    def iterPluginByEventName(self, event_name: str) -> Iterable[IPyFSDPlugin]:
         assert self.plugins is not None, "plugin not loaded"
         if event_name not in PLUGIN_EVENTS:
             raise ValueError(f"Invaild event {event_name}")
         return iter(self.plugins["tagged"][event_name])
+
+    def iterHandlerByEventName(self, event_name: str) -> Iterable[Callable]:
+        return (
+            getattr(plugin, event_name)
+            for plugin in self.iterPluginByEventName(event_name)
+        )
+
+    def triggerEvent(
+        self,
+        event_name: str,
+        args: Iterable,
+        kwargs: Mapping,
+        prevent_able: bool = False,
+        handle_able: bool = False,
+    ) -> Union["PluginHandledEventResult", "ToHandledByPyFSDEventResult",]:
+        handlers: List[Callable] = []
+        for plugin in self.iterPluginByEventName(event_name):
+            try:
+                handler = getattr(plugin, event_name)(*args, **kwargs)
+            except PreventEvent:
+                if not prevent_able:
+                    Logger(source=plugin).error(f"Cannot prevent event: {event_name}")
+                else:
+                    result: PluginHandledEventResult = {
+                        "handled_by_plugin": True,
+                        "plugin": plugin,
+                    }
+                    for handler in handlers:
+                        handler(result)
+                    return result
+            except BaseException:
+                Logger(source=plugin).failure("Error happened during call plugin")
+            else:
+                if handler is not None:
+                    if handle_able:
+                        handlers.append(handler)
+                    else:
+                        Logger(source=plugin).error(
+                            f"Cannot handle event: {event_name}"
+                        )
+        return {"handled_by_plugin": False, "handlers": handlers}
+
+    def deferEvent(
+        self,
+        event_name: str,
+        args: Iterable,
+        kwargs: Mapping,
+        prevent_able: bool = False,
+        handle_able: bool = False,
+        in_thread: bool = False,
+    ) -> """Deferred[
+        Union[
+            "PluginHandledEventResult",
+            "ToHandledByPyFSDEventResult",
+        ]
+    ]""":
+        if in_thread:
+            return deferToThread(  # type: ignore[no-any-return]
+                self.triggerEvent, event_name, args, kwargs, prevent_able, handle_able
+            )
+        else:
+            return succeed(
+                self.triggerEvent(event_name, args, kwargs, prevent_able, handle_able)
+            )

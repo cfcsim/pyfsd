@@ -6,7 +6,7 @@ groups = ["default", "dev", "docs"]
 cross_platform = true
 static_urls = false
 lock_version = "4.3"
-content_hash = "sha256:4efcbde5c127d055e53c487616dcc0100a707c0a34922eae75832cbf27e80099"
+content_hash = "sha256:c111a5b1482017747da609eb1cd50a780c74da4a7a1ee0c9b3bbcf9e104372df"
 
 [[package]]
 name = "alchimia"

@@ -1,5 +1,13 @@
 # pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
-from typing import TYPE_CHECKING, Optional
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    Literal,
+    Optional,
+    TypedDict,
+    Union,
+)
 
 from zope.interface import Attribute, Interface, implementer
 
@@ -11,8 +19,70 @@ if TYPE_CHECKING:
     from .service import PyFSDService
 
 
+class PluginHandledEventResult(TypedDict):
+    """A result handled by plugin.
+    This means a plugin raised `pyfsd.plugin.PreventEvent`.
+
+    Attributes:
+        handled_by_plugin: Event handled by plugin or not.
+        plugin: The plugin.
+    """
+
+    handled_by_plugin: Literal[True]
+    plugin: "IPyFSDPlugin"
+
+
+class PyFSDHandledEventResult(TypedDict):
+    """A result handled by PyFSD.
+
+    Attributes:
+        handled_by_plugin: Event handled by plugin or not.
+        success: The event successfully handled or not.
+    """
+
+    handled_by_plugin: Literal[False]
+    success: bool
+
+
+class PyFSDHandledLineResult(PyFSDHandledEventResult):
+    """A lineReceivedFromClient result handled by PyFSD.
+
+    Attributes:
+        handled_by_plugin: Event handled by plugin or not.
+        success: The event successfully handled or not.
+        packet_ok: The packet is correct or not.
+        has_result: Succeed in generating result or not.
+    """
+
+    packet_ok: bool
+    has_result: bool
+
+
+class ToHandledByPyFSDEventResult(TypedDict):
+    """A result to handled by pyfsd.
+
+    Attributes:
+        handled_by_plugin: Event handled by plugin or not.
+        handlers: Handler from the plugins.
+    """
+
+    handled_by_plugin: Literal[False]
+    handlers: Iterable[
+        Callable[[Union[PluginHandledEventResult, PyFSDHandledEventResult]], None]
+    ]
+
+
 class PreventEvent(BaseException):
-    """Prevent a PyFSD plugin event."""
+    """Prevent a PyFSD plugin event.
+
+    Attributes:
+        result: The event result reported by plugin.
+    """
+
+    result: Optional[dict]
+
+    def __init__(self, result: Optional[dict] = None) -> None:
+        self.result = result
 
 
 class IPyFSDPlugin(Interface):
@@ -52,20 +122,42 @@ class IPyFSDPlugin(Interface):
             protocol: Protocol of the client which created.
         """
 
-    def lineReceivedFromClient(protocol: "FSDClientProtocol", line: bytes) -> None:
+    def lineReceivedFromClient(
+        protocol: "FSDClientProtocol", line: bytes
+    ) -> Optional[
+        Callable[[Union[PluginHandledEventResult, PyFSDHandledLineResult]], None]
+    ]:
         """Called when line received from client.
 
         Args:
             protocol: Protocol of the connection which received line.
             line: Line data.
 
+        Returns:
+            Event result handler or None.
+
         Raises:
             PreventEvent: Prevent the event.
         """
 
+    def auditLineFromClient(
+        protocol: "FSDClientProtocol",
+        line: bytes,
+        result: Union[PyFSDHandledLineResult, PluginHandledEventResult],
+    ) -> None:
+        """Called when line received from client (after lineReceivedFromClient).
+        Note that this event cannot be prevented.
+
+        Args:
+            protocol: Protocol of the connection which received line.
+            line: Line data.
+            result: The lineReceivedFromClient event result.
+
+        """
+
     def clientDisconnected(
         protocol: "FSDClientProtocol", client: Optional["Client"]
-    ) -> bool:
+    ) -> None:
         """Called when connection disconnected.
 
         Args:
@@ -98,7 +190,7 @@ class IServiceBuilder(Interface):
 @implementer(IPyFSDPlugin)
 class BasePyFSDPlugin:
     plugin_name = "<plugin name missing>"
-    api = 1
+    api = 2
 
     def beforeStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         ...
@@ -114,10 +206,15 @@ class BasePyFSDPlugin:
 
     def lineReceivedFromClient(
         self, protocol: "FSDClientProtocol", line: bytes
-    ) -> None:
+    ) -> Optional[
+        Callable[[Union[PluginHandledEventResult, PyFSDHandledEventResult]], None]
+    ]:
+        ...
+
+    def auditLineFromClient(self, protocol: "FSDClientProtocol", line: bytes) -> None:
         ...
 
     def clientDisconnected(  # type: ignore[empty-body]
         self, protocol: "FSDClientProtocol", client: Optional["Client"]
-    ) -> bool:
+    ) -> None:
         ...

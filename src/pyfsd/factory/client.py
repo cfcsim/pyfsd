@@ -1,15 +1,12 @@
 from random import randint
 from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Mapping, Optional
 
-from twisted.internet.defer import succeed
 from twisted.internet.protocol import Factory
 from twisted.internet.task import LoopingCall
-from twisted.internet.threads import deferToThread
 
 from ..auth import IUserInfo, UsernameSHA256Password
 from ..define.packet import FSDCLIENTPACKET, concat, makePacket
 from ..define.utils import joinLines
-from ..plugin import PreventEvent
 from ..protocol.client import FSDClientProtocol
 
 if TYPE_CHECKING:
@@ -21,6 +18,7 @@ if TYPE_CHECKING:
 
     from ..define.broadcast import BroadcastChecker
     from ..object.client import Client
+    from ..plugin import PluginHandledEventResult, ToHandledByPyFSDEventResult
 
 __all__ = ["FSDClientFactory"]
 
@@ -32,6 +30,10 @@ class FSDClientFactory(Factory):
     blacklist: list
     motd: List[bytes]
     protocol = FSDClientProtocol
+    defer_event: Callable[
+        [str, Iterable, Mapping, bool, bool, bool],
+        "Deferred[PluginHandledEventResult | ToHandledByPyFSDEventResult]",
+    ]
     fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
     handler_finder: Callable[[str], Iterable[Callable]]
 
@@ -39,14 +41,17 @@ class FSDClientFactory(Factory):
         self,
         portal: "Portal",
         fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"],
-        handler_finder: Callable[[str], Iterable[Callable]],
+        defer_event: Callable[
+            [str, Iterable, Mapping, bool, bool, bool],
+            "Deferred[PluginHandledEventResult | ToHandledByPyFSDEventResult]",
+        ],
         blacklist: list,
         motd: List[bytes],
     ) -> None:
         self.clients = {}
         self.portal = portal
         self.fetch_metar = fetch_metar
-        self.event_handler_finder = handler_finder
+        self.defer_event = defer_event
         self.blacklist = blacklist
         self.motd = motd
 
@@ -57,9 +62,6 @@ class FSDClientFactory(Factory):
     def stopFactory(self) -> None:
         if self.heartbeater.running:
             self.heartbeater.stop()
-
-    #   for client in self.clients.values():
-    #       client.transport.loseConnection()
 
     def heartbeat(self) -> None:
         random_int: int = randint(-214743648, 2147483647)
@@ -83,14 +85,17 @@ class FSDClientFactory(Factory):
         check_func: "BroadcastChecker" = lambda _, __: True,
         auto_newline: bool = True,
         from_client: Optional["Client"] = None,
-    ) -> None:
+    ) -> bool:
+        have_one = False
         data = joinLines(*lines, newline=auto_newline)
         for client in self.clients.values():
             if client == from_client:
                 continue
             if not check_func(from_client, client):
                 continue
+            have_one = True
             client.transport.write(data)  # pyright: ignore
+        return have_one
 
     def sendTo(self, callsign: bytes, *lines: bytes, auto_newline: bool = True) -> bool:
         data = joinLines(*lines, newline=auto_newline)
@@ -104,26 +109,3 @@ class FSDClientFactory(Factory):
         return self.portal.login(  # type: ignore[no-any-return]
             UsernameSHA256Password(username, password), None, IUserInfo
         )
-
-    def triggerEvent(
-        self,
-        event_name: str,
-        args: Iterable,
-        kwargs: Mapping,
-        in_thread: bool = True,
-        prevent_able: bool = True,
-    ) -> "Deferred[bool]":
-        def trigger() -> bool:
-            for handler in self.event_handler_finder(event_name):
-                try:
-                    handler(*args, **kwargs)
-                except PreventEvent:
-                    if not prevent_able:
-                        raise
-                    return True
-            return False
-
-        if in_thread:
-            return deferToThread(trigger)  # type: ignore[no-any-return]
-        else:
-            return succeed(trigger())
