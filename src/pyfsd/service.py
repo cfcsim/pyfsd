@@ -227,7 +227,6 @@ class PyFSDService(Service):
                             event_handlers[event].append(plugin)
 
         self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
-        print(self.plugins)
 
     def iterPluginByEventName(self, event_name: str) -> Iterable[IPyFSDPlugin]:
         assert self.plugins is not None, "plugin not loaded"
