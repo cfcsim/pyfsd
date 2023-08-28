@@ -1,11 +1,7 @@
 # flake8: noqa
 """This tool can convert users database in other format into PyFSD format."""
-try:
-    import tomllib  # type: ignore[import]
-except ModuleNotFoundError:
-    import tomli as tomllib
-
 from hashlib import sha256
+from sys import version_info
 from typing import TYPE_CHECKING, Generator, NoReturn, Optional
 
 from alchimia import wrap_engine
@@ -18,6 +14,11 @@ from twisted.python.usage import Options, UsageError
 from ...db_tables import users as usersTable
 from ...define.config_check import verifyConfigStruct
 from .formats import formats
+
+if version_info >= (3, 11):
+    import tomllib  # type: ignore[import, unused-ignore]
+else:
+    import tomli as tomllib  # type: ignore[import, no-redef, unused-ignore]
 
 if TYPE_CHECKING:
     from twisted.internet.interfaces import IReactorCore

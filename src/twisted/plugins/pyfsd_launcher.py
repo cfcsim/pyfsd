@@ -1,8 +1,4 @@
-try:
-    import tomllib  # type: ignore[import]
-except ModuleNotFoundError:
-    import tomli as tomllib
-
+from sys import version_info
 from typing import NoReturn
 
 from twisted.application.service import IServiceMaker, MultiService
@@ -12,6 +8,12 @@ from zope.interface import implementer
 
 from pyfsd.service import PyFSDService
 from pyfsd.setup_loguru import setupLoguru
+
+if version_info >= (3, 11):
+    import tomllib  # type: ignore[import, unused-ignore]
+else:
+    import tomli as tomllib  # type: ignore[import, no-redef, unused-ignore]
+
 
 DEFAULT_CONFIG = """[pyfsd.database]
 url = "sqlite:///pyfsd.db"
