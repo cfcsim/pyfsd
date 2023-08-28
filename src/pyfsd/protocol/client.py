@@ -737,8 +737,7 @@ class FSDClientProtocol(LineReceiver):
                 return ALL_FAILED_RESULT
             self.sendLine(
                 makePacket(
-                    FSDCLIENTPACKET.PLAN,
-                    callsign,
+                    concat(FSDCLIENTPACKET.PLAN, callsign),
                     self.client.callsign,
                     plan.type,
                     plan.aircraft,
@@ -758,13 +757,12 @@ class FSDClientProtocol(LineReceiver):
                 )
             )
         elif packet[2].upper() == b"RN":
-            # This part won't execute except a client named 'server'
+            # XXX Is the implemention correct?
             callsign = packet[1]
             if (client := self.factory.clients.get(callsign)) is not None:
                 self.sendLine(
                     makePacket(
-                        FSDCLIENTPACKET.CR,
-                        callsign,
+                        concat(FSDCLIENTPACKET.CR, callsign),
                         self.client.callsign,
                         b"RN",
                         client.realname,
