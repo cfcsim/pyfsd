@@ -20,6 +20,7 @@ def createBroadcastRangeChecker(visual_range: int) -> BroadcastChecker:
     Returns:
         The broadcast checker.
     """
+
     def checker(from_client: Optional[Client], to_client: Client) -> bool:
         assert from_client is not None
         if not from_client.position_ok or not to_client.position_ok:
@@ -92,6 +93,7 @@ def broadcastCheckers(*checkers: BroadcastChecker) -> BroadcastChecker:
     Returns:
         The broadcast checker.
     """
+
     def checker(from_client: Optional[Client], to_client: Client) -> bool:
         for checker in checkers:
             if not checker(from_client, to_client):

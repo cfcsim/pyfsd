@@ -11,7 +11,7 @@ Fork and clone the repository, then:
 
 ```bash
 cd pyfsd
-make setup
+pdm install -d
 ```
 
 > NOTE:
@@ -36,19 +36,6 @@ You can run the application with `pdm run pyfsd [ARGS...]`.
 
 Run `make help` to see all the available actions!
 
-## Tasks
-
-This project uses [duty](https://github.com/pawamoy/duty) to run tasks.
-A Makefile is also provided. The Makefile will try to run certain tasks
-on multiple Python versions. If for some reason you don't want to run the task
-on multiple Python versions, you run the task directly with `pdm run duty TASK`.
-
-The Makefile detects if a virtual environment is activated,
-so `make` will work the same with the virtualenv activated or not.
-
-If you work in VSCode,
-[see examples of tasks and run configurations](https://pawamoy.github.io/copier-pdm/work/#vscode-setup).
-
 ## Development
 
 As usual:
@@ -58,11 +45,11 @@ As usual:
 
 **Before committing:**
 
-1. run `make format` to auto-format the code
-1. run `make check` to check everything (fix any warning)
-1. run `make test` to run the tests (fix any issue)
+1. run `isort . && black .` to auto-format the code
+1. run `mypy . && flake8 .` to check everything (fix any warning)
+1. run `python -m unittest` to run the tests (fix any issue)
 1. if you updated the documentation or the project dependencies:
-    1. run `make docs`
+    1. run `mkdocs serve`
     1. go to http://localhost:8000 and check that everything looks good
 1. follow our [commit message convention](#commit-message-convention)
 
@@ -139,7 +126,7 @@ git commit --fixup=SHA
 Once all the changes are approved, you can squash your commits:
 
 ```bash
-git rebase -i --autosquash main
+git rebase -i --autosquash early-dev
 ```
 
 And force-push:
