@@ -27,7 +27,7 @@ jobs:
       - uses: pdm-project/setup-pdm@v3
         with:
           python-version: 3.11
-          cache: true
+          cache: false
       - name: Install dependencies
         run: pdm install -G docs
       - name: Build
