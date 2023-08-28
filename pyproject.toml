@@ -45,7 +45,6 @@ Discussions = "https://github.com/cfcsim/pyfsd/discussions"
 
 [tool.pdm.build]
 package-dir = "src"
-editable-backend = "editables"
 includes = ["src/pyfsd/", "src/twisted/", "src/pyfsd/plugins/__init__.py"]
 excludes = ["src/pyfsd/plugins/*", "src/twisted/plugins/dropin.cache"]
 
