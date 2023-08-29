@@ -74,7 +74,7 @@ class MetarManager:
             except (NotImplementedError, MetarNotAvailableError):
                 failed_fetchers.append(fetcher)
         fetcher_info["failed"] = tuple(failed_fetchers)
-        self.fetcher_info = fetcher_info
+        self.cron_fetcher_info = fetcher_info
         self.logger.info(
             f"Fetched {len(self.metar_cache)} METARs."  # with {len(warn)} warnings."
         )
@@ -99,6 +99,7 @@ class MetarManager:
     def query(self, icao: str, ignore_case: bool = True) -> Optional["Metar"]:
         if ignore_case:
             icao = icao.upper()
+
         def queryEach(to_skip: Iterable[IMetarFetcher] = ()) -> Optional["Metar"]:
             for fetcher in self.fetchers:
                 if fetcher in to_skip:
@@ -122,9 +123,10 @@ class MetarManager:
             if result is None:
                 if fallback_mode == "once":
                     return queryEach(
-                        to_skip=(self.fetcher_info["succeed"],)
+                        to_skip=(self.cron_fetcher_info["succeed"],)
                         if self.config["skip_previous_fetcher"]
-                        and self.fetcher_info["succeed"] is not None
+                        and self.cron_fetcher_info is not None
+                        and self.cron_fetcher_info["succeed"] is not None
                         else ()
                     )
                 else:

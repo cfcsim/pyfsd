@@ -138,7 +138,11 @@ class FSDClientProtocol(LineReceiver):
         self.sendLines(*motd_lines)
 
     def checkPacket(
-        self, packet: Tuple[bytes, ...], require_param: int = 0, need_login: bool = True
+        self,
+        packet: Tuple[bytes, ...],
+        require_param: int,
+        callsign_position: int = 0,
+        need_login: bool = True,
     ) -> "PyFSDHandledLineResult | None":
         if len(packet) < require_param:
             self.sendError(FSDErrors.ERR_SYNTAX)
@@ -146,7 +150,7 @@ class FSDClientProtocol(LineReceiver):
         if need_login:
             if self.client is None:
                 return ALL_FAILED_RESULT
-            if self.client.callsign != packet[0]:
+            if self.client.callsign != packet[callsign_position]:
                 self.sendError(FSDErrors.ERR_SRCINVALID, env=packet[0])
                 return ALL_FAILED_RESULT
         return None
@@ -458,7 +462,7 @@ class FSDClientProtocol(LineReceiver):
     def handlePilotPositionUpdate(
         self, packet: Tuple[bytes, ...]
     ) -> "PyFSDHandledLineResult":
-        if (error := self.checkPacket(packet, 10)) is not None:
+        if (error := self.checkPacket(packet, 10, callsign_position=1)) is not None:
             return error
         assert self.client is not None
         (
