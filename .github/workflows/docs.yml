@@ -29,7 +29,7 @@ jobs:
           python-version: 3.11
           cache: false
       - name: Install dependencies
-        run: pdm install -G docs
+        run: pdm install -G docs || echo $(pwd)/src > .venv/lib/python3.10/site-packages/pyfsd.pth || true
       - name: Build
         run: |
           source .venv/bin/activate
