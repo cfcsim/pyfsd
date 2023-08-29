@@ -27,9 +27,9 @@ jobs:
       - uses: pdm-project/setup-pdm@v3
         with:
           python-version: 3.11
-          cache: false
+          cache: true
       - name: Install dependencies
-        run: pdm install -G docs || echo $(pwd)/src > .venv/lib/python3.10/site-packages/pyfsd.pth || true
+        run: pdm install -G docs || echo $(pwd)/src > .venv/lib/python3.11/site-packages/pyfsd.pth || true
       - name: Build
         run: |
           source .venv/bin/activate
