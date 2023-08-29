@@ -133,7 +133,7 @@ class PyFSDService(Service):
         if metar_cfg["mode"] == "cron" or fallback_mode == "cron":
             if "cron_time" not in metar_cfg:
                 raise KeyError("pyfsd.metar.cron_time")
-            elif fallback_mode == "cron" and "skip_previous_fetcher" not in metar_cfg:
+            elif fallback_mode == "once" and "skip_previous_fetcher" not in metar_cfg:
                 raise KeyError("pyfsd.metar.skip_previous_fetcher")
         for key, value in self.config["plugin"].items():
             if not isinstance(value, dict):

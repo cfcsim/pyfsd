@@ -96,7 +96,9 @@ class MetarManager:
         if self.cron_task is not None and self.cron_task.running:
             self.cron_task.stop()
 
-    def query(self, icao: str) -> Optional["Metar"]:
+    def query(self, icao: str, ignore_case: bool = True) -> Optional["Metar"]:
+        if ignore_case:
+            icao = icao.upper()
         def queryEach(to_skip: Iterable[IMetarFetcher] = ()) -> Optional["Metar"]:
             for fetcher in self.fetchers:
                 if fetcher in to_skip:
