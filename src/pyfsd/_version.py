@@ -1,6 +1,6 @@
 # Will replaced by pdm while building wheel
 __all__ = ["version"]
-DEFAULT_VERSION = "0.0.1.dev"
+DEFAULT_VERSION = "0.0.1.1.dev0"
 PackageNotFoundError = Exception
 version: str
 
