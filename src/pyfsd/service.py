@@ -135,7 +135,7 @@ class PyFSDService(Service):
                 raise KeyError("pyfsd.metar.cron_time")
             elif fallback_mode == "once" and "skip_previous_fetcher" not in metar_cfg:
                 raise KeyError("pyfsd.metar.skip_previous_fetcher")
-        for key, value in self.config["plugin"].items():
+        for key, value in self.config.get("plugin", {}).items():
             if not isinstance(value, dict):
                 raise TypeError(f"plugin.{key}' must be section")
 
