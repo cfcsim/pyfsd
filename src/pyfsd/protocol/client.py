@@ -23,13 +23,17 @@ from ..define.broadcast import (
     isMulticast,
 )
 from ..define.errors import FSDErrors
-from ..define.packet import FSDCLIENTPACKET, breakPacket, concat, makePacket
+from ..define.packet import (
+    CLIENT_USED_COMMAND,
+    FSDCLIENTPACKET,
+    breakPacket,
+    makePacket,
+)
 from ..define.utils import isCallsignVaild, joinLines, strToFloat, strToInt
 from ..metar.profile import WeatherProfile
 from ..object.client import Client, ClientType
 
 if TYPE_CHECKING:
-    from constantly import ValueConstant
     from metar.Metar import Metar
     from twisted.internet.base import DelayedCall
     from twisted.python.failure import Failure
@@ -106,7 +110,7 @@ class FSDClientProtocol(LineReceiver):
         err_bytes = FSDErrors.error_names[errno].encode("ascii")
         self.sendLine(
             makePacket(
-                concat(FSDCLIENTPACKET.ERROR, b"server"),
+                FSDCLIENTPACKET.ERROR + b"server",
                 self.client.callsign if self.client is not None else b"unknown",
                 f"{errno:03d}".encode(),  # = str(errno).rjust(3, "0")
                 env,
@@ -127,10 +131,8 @@ class FSDClientProtocol(LineReceiver):
         ]
         for line in self.factory.motd:
             motd_lines.append(
-                # AnyStr | ValueConstant(not yet typed == Any) doesn't work in mypy,
-                # ignore it temporary
-                makePacket(  # type: ignore[arg-type]
-                    concat(FSDCLIENTPACKET.MESSAGE, b"server"),
+                makePacket(
+                    FSDCLIENTPACKET.MESSAGE + b"server",
                     self.client.callsign,
                     line,
                 )
@@ -192,7 +194,7 @@ class FSDClientProtocol(LineReceiver):
     def handleCast(
         self,
         packet: Tuple[bytes, ...],
-        command: "ValueConstant",
+        command: FSDCLIENTPACKET,
         require_param: int = 2,
         multicast_able: bool = True,
         custom_at_checker: Optional[BroadcastChecker] = None,
@@ -203,19 +205,18 @@ class FSDClientProtocol(LineReceiver):
         # This won't happen because checkPacket function checked it.
         assert self.client is not None
         to_callsign = packet[1]
-        maycast_tocs = to_callsign.decode("ascii", "replace")
+        to_callsign_str = to_callsign.decode("ascii", "replace")
         to_packet = makePacket(
-            concat(command, self.client.callsign),
+            command + self.client.callsign,
             to_callsign,
             *packet[2:] if packet_len > 2 else [b""],
         )
         packet_ok = True
-        if isMulticast(maycast_tocs):
+        if isMulticast(to_callsign_str):
             if multicast_able:
                 success = self.multicast(
-                    maycast_tocs,
-                    # Mypy bug, to_packet is bytes
-                    to_packet,  # type: ignore[arg-type]
+                    to_callsign_str,
+                    to_packet,
                     custom_at_checker=custom_at_checker,
                 )
             else:
@@ -224,8 +225,7 @@ class FSDClientProtocol(LineReceiver):
         else:
             success = self.factory.sendTo(
                 to_callsign,
-                # Mypy bug, to_packet is bytes
-                to_packet,  # type: ignore[arg-type]
+                to_packet,
             )
         return {
             "handled_by_plugin": False,
@@ -335,9 +335,8 @@ class FSDClientProtocol(LineReceiver):
             if client_type == "PILOT":
                 self.factory.broadcast(
                     # two times of req_rating --- not a typo
-                    # mypy bug
-                    makePacket(  # type: ignore[arg-type]
-                        concat(FSDCLIENTPACKET.ADD_PILOT, callsign),
+                    makePacket(
+                        FSDCLIENTPACKET.ADD_PILOT + callsign,
                         b"SERVER",
                         cid,
                         b"",
@@ -349,8 +348,8 @@ class FSDClientProtocol(LineReceiver):
                 )
             else:
                 self.factory.broadcast(
-                    makePacket(  # type: ignore[arg-type]
-                        concat(FSDCLIENTPACKET.ADD_ATC, callsign),
+                    makePacket(
+                        FSDCLIENTPACKET.ADD_ATC + callsign,
                         b"SERVER",
                         realname,
                         cid,
@@ -429,14 +428,14 @@ class FSDClientProtocol(LineReceiver):
             route,
         )
         self.factory.broadcast(
-            makePacket(  # type: ignore[arg-type]
-                concat(FSDCLIENTPACKET.PLAN, self.client.callsign),
+            makePacket(
+                FSDCLIENTPACKET.PLAN + self.client.callsign,
                 b"*A",
                 b"",
             )
             if plan_type is None
             else makePacket(
-                concat(FSDCLIENTPACKET.PLAN, self.client.callsign),
+                FSDCLIENTPACKET.PLAN + self.client.callsign,
                 b"*A",
                 plan_type,
                 aircraft,
@@ -507,8 +506,8 @@ class FSDClientProtocol(LineReceiver):
         )
         self.timeoutKiller.reset(800)
         self.factory.broadcast(
-            makePacket(  # type: ignore[arg-type]
-                concat(FSDCLIENTPACKET.PILOT_POSITION, mode),
+            makePacket(
+                FSDCLIENTPACKET.PILOT_POSITION + mode,
                 self.client.callsign,
                 transponder,
                 b"%d" % self.client.rating,
@@ -566,8 +565,8 @@ class FSDClientProtocol(LineReceiver):
         )
         self.timeoutKiller.reset(800)
         self.factory.broadcast(
-            makePacket(  # type: ignore[arg-type]
-                concat(FSDCLIENTPACKET.ATC_POSITION, self.client.callsign),
+            makePacket(
+                FSDCLIENTPACKET.ATC_POSITION + self.client.callsign,
                 frequency,
                 facility_type,
                 visual_range,
@@ -587,7 +586,7 @@ class FSDClientProtocol(LineReceiver):
         assert self.client is not None
         self.sendLine(
             makePacket(
-                concat(FSDCLIENTPACKET.PONG, b"server"),
+                FSDCLIENTPACKET.PONG + b"server",
                 self.client.callsign,
                 *packet[2:] if len(packet) > 2 else [b""],
             )
@@ -621,7 +620,7 @@ class FSDClientProtocol(LineReceiver):
                     temps.append(b"%d:%d" % (temp.ceiling, temp.temp))
                 packets.append(
                     makePacket(
-                        concat(FSDCLIENTPACKET.TEMP_DATA, b"server"),
+                        FSDCLIENTPACKET.TEMP_DATA + b"server",
                         self.client.callsign,
                         *temps,
                         b"%d" % profile.barometer,
@@ -643,7 +642,7 @@ class FSDClientProtocol(LineReceiver):
                     )
                 packets.append(
                     makePacket(
-                        concat(FSDCLIENTPACKET.WIND_DATA, b"server"),
+                        FSDCLIENTPACKET.WIND_DATA + b"server",
                         self.client.callsign,
                         *winds,
                     )
@@ -663,15 +662,14 @@ class FSDClientProtocol(LineReceiver):
                     )
                 packets.append(
                     makePacket(
-                        concat(FSDCLIENTPACKET.CLOUD_DATA, b"server"),
+                        FSDCLIENTPACKET.CLOUD_DATA + b"server",
                         self.client.callsign,
                         *clouds,
                         b"%.2f" % profile.visibility,
                     )
                 )
 
-                # Mypy bug
-                self.sendLines(*packets)  # type: ignore
+                self.sendLines(*packets)
                 deferred.callback(SUCCESS_RESULT)
 
         self.factory.fetch_metar(packet[2].decode("ascii", "ignore")).addCallback(
@@ -703,7 +701,7 @@ class FSDClientProtocol(LineReceiver):
                 else:
                     self.sendLine(
                         makePacket(
-                            concat(FSDCLIENTPACKET.REPLY_ACARS, b"server"),
+                            FSDCLIENTPACKET.REPLY_ACARS + b"server",
                             self.client.callsign,
                             b"METAR",
                             metar.code.encode("ascii"),
@@ -741,7 +739,7 @@ class FSDClientProtocol(LineReceiver):
                 return ALL_FAILED_RESULT
             self.sendLine(
                 makePacket(
-                    concat(FSDCLIENTPACKET.PLAN, callsign),
+                    FSDCLIENTPACKET.PLAN + callsign,
                     self.client.callsign,
                     plan.type,
                     plan.aircraft,
@@ -766,7 +764,7 @@ class FSDClientProtocol(LineReceiver):
             if (client := self.factory.clients.get(callsign)) is not None:
                 self.sendLine(
                     makePacket(
-                        concat(FSDCLIENTPACKET.CR, callsign),
+                        FSDCLIENTPACKET.CR + callsign,
                         self.client.callsign,
                         b"RN",
                         client.realname,
@@ -791,7 +789,7 @@ class FSDClientProtocol(LineReceiver):
         if self.client.rating < 11:
             self.sendLine(
                 makePacket(
-                    concat(FSDCLIENTPACKET.MESSAGE, b"server"),
+                    FSDCLIENTPACKET.MESSAGE + b"server",
                     self.client.callsign,
                     b"You are not allowed to kill users!",
                 )
@@ -800,16 +798,14 @@ class FSDClientProtocol(LineReceiver):
         else:
             self.sendLine(
                 makePacket(
-                    concat(FSDCLIENTPACKET.MESSAGE, b"server"),
+                    FSDCLIENTPACKET.MESSAGE + b"server",
                     self.client.callsign,
                     b"Attempting to kill %s" % callsign_kill,
                 )
             )
             self.factory.sendTo(
                 callsign_kill,
-                makePacket(  # type: ignore[arg-type]
-                    concat(FSDCLIENTPACKET.KILL, b"SERVER"), callsign_kill, reason
-                ),
+                makePacket(FSDCLIENTPACKET.KILL + b"SERVER", callsign_kill, reason),
             )
             self.factory.clients[callsign_kill].transport.loseConnection()
             return SUCCESS_RESULT
@@ -824,7 +820,12 @@ class FSDClientProtocol(LineReceiver):
         ) -> None:
             if not result["handled_by_plugin"]:
                 with self.line_lock:
-                    self_result = self.lineReceived_impl(byte_line)
+                    try:
+                        self_result = self.lineReceived_impl(byte_line)
+                    except BaseException:
+                        # XXX DEBUG ONLY
+                        self.logger.failure("Err happen")
+                        return
 
                 def postResult(new_result: "PyFSDHandledLineResult") -> None:
                     for handler in result["handlers"]:
@@ -861,7 +862,7 @@ class FSDClientProtocol(LineReceiver):
     ) -> "Deferred[PyFSDHandledLineResult] | PyFSDHandledLineResult":
         if len(byte_line) == 0:
             return SUCCESS_RESULT
-        command, packet = breakPacket(byte_line, FSDCLIENTPACKET.client_used_command)
+        command, packet = breakPacket(byte_line, CLIENT_USED_COMMAND)
         if command is None:
             self.sendError(FSDErrors.ERR_SYNTAX)
             return ALL_FAILED_RESULT
@@ -944,10 +945,13 @@ class FSDClientProtocol(LineReceiver):
                 "disconnected."
             )
             self.factory.broadcast(
-                makePacket(  # type: ignore[arg-type]
-                    concat(FSDCLIENTPACKET.REMOVE_ATC, self.client.callsign)
-                    if self.client.type == "ATC"
-                    else concat(FSDCLIENTPACKET.REMOVE_PILOT, self.client.callsign),
+                makePacket(
+                    (
+                        FSDCLIENTPACKET.REMOVE_ATC
+                        if self.client.type == "ATC"
+                        else FSDCLIENTPACKET.REMOVE_PILOT
+                    )
+                    + self.client.callsign,
                     self.client.cid.encode(),
                 ),
                 from_client=self.client,

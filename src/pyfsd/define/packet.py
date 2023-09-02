@@ -1,81 +1,263 @@
+from collections.abc import Sequence
+from enum import Enum
 from typing import AnyStr, Iterable, List, Optional, Tuple, Type, Union, cast, overload
 
-from constantly import ValueConstant, Values
+from twisted.python.deprecate import deprecated
 
-from .utils import constToAnyStr
+from .utils import asciiOnly
 
-__all__ = ["concat", "makePacket", "breakPacket", "FSDCLIENTPACKET"]
+__all__ = [
+    "concat",
+    "makePacket",
+    "breakPacket",
+    "FSDCLIENTPACKET",
+    "CLIENT_USED_COMMAND",
+    "CompatibleString",
+    "SPLIT_SIGN",
+]
 
 
-def concat(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
-    temp_part: str = ""
-    result: Optional[AnyStr] = None
-    result_type: Optional[Union[Type[str], Type[bytes]]] = None
-    for item in items:
-        is_const = isinstance(item, ValueConstant)
-        if result is None or result_type is None:
-            if is_const:
-                temp_part += item.value  # type: ignore[union-attr]
-                continue
-            else:
-                result_type = type(item)
-                assert result_type in (str, bytes), "Invaild type: {result_type!r}"
-                result = cast(
-                    AnyStr,
-                    result_type(
-                        temp_part  # type: ignore[arg-type]
-                        if result_type is str
-                        else temp_part.encode("ascii")
-                    ),
-                )
-        if is_const:
-            if result_type is str:
-                result += item.value  # type: ignore[union-attr]
-            else:
-                result += item.value.encode("ascii")  # type: ignore[union-attr]
+class CompatibleString:
+    value: str
+
+    def __init__(self, value: str) -> None:
+        assert asciiOnly(value), "String can only contain ASCII characters"
+        self.value = value
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return f'CompatibleString("{self.value}")'
+
+    def __int__(self) -> int:
+        return int(self.value)
+
+    def __float__(self) -> float:
+        return float(self.value)
+
+    def __complex__(self) -> complex:
+        return complex(self.value)
+
+    def __bytes__(self) -> bytes:
+        return self.value.encode()
+
+    def __hash__(self) -> int:
+        return hash(self.value)
+
+    def __getnewargs__(self) -> Tuple[str]:
+        return (self.value[:],)
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, CompatibleString):
+            return self.value == value.value
+        elif isinstance(value, str):
+            return self.value == value
+        elif isinstance(value, bytes):
+            return self.value.encode() == value
         else:
-            result += item  # pyright: ignore
-    if result is None:
-        return temp_part  # type: ignore[return-value]
-    else:
-        return result  # pyright: ignore
+            return NotImplemented
 
-
-def makePacket(*items: Union[AnyStr, ValueConstant]) -> AnyStr:
-    temp_part: str = ""
-    result: Optional[AnyStr] = None
-    result_type: Optional[Union[Type[str], Type[bytes]]] = None
-    for item in items:
-        is_const = isinstance(item, ValueConstant)
-        if result is None or result_type is None:
-            if is_const:
-                temp_part += item.value + ":"  # type: ignore[union-attr]
-                continue
-            else:
-                result_type = type(item)
-                assert result_type in (str, bytes), "Invaild type: {result_type!r}"
-                result = cast(
-                    AnyStr,
-                    result_type(
-                        temp_part  # type: ignore[arg-type]
-                        if result_type is str
-                        else temp_part.encode("ascii")
-                    ),
-                )
-        if result_type is str:
-            if is_const:
-                result += item.value + ":"  # type: ignore[union-attr]
-            else:
-                result += item + ":"  # type: ignore[operator]
+    def __lt__(self, value: object) -> bool:
+        if isinstance(value, CompatibleString):
+            return self.value < value.value
+        elif isinstance(value, str):
+            return self.value < value
+        elif isinstance(value, bytes):
+            return self.value.encode() < value
         else:
-            if is_const:
-                result += item.value.encode("ascii") + b":"  # type: ignore[union-attr]
-            else:
-                result += item + b":"  # type: ignore[operator]
-    if result is None:
-        return temp_part[:-1]  # type: ignore[return-value]
-    else:
-        return result[:-1]  # pyright: ignore
+            return NotImplemented
+
+    def __le__(self, value: object) -> bool:
+        if isinstance(value, CompatibleString):
+            return self.value <= value.value
+        elif isinstance(value, str):
+            return self.value <= value
+        elif isinstance(value, bytes):
+            return self.value.encode() <= value
+        else:
+            return NotImplemented
+
+    def __gt__(self, value: object) -> bool:
+        if isinstance(value, CompatibleString):
+            return self.value > value.value
+        elif isinstance(value, str):
+            return self.value > value
+        elif isinstance(value, bytes):
+            return self.value.encode() > value
+        else:
+            return NotImplemented
+
+    def __ge__(self, value: object) -> bool:
+        if isinstance(value, CompatibleString):
+            return self.value >= value.value
+        elif isinstance(value, str):
+            return self.value >= value
+        elif isinstance(value, bytes):
+            return self.value.encode() >= value
+        else:
+            return NotImplemented
+
+    def __contains__(self, part: Union[str, bytes, "CompatibleString"]) -> bool:
+        if isinstance(part, CompatibleString):
+            return part.value in self.value
+        elif isinstance(part, str):
+            return part in self.value
+        elif isinstance(part, bytes):
+            return part in self.value.encode()
+        else:
+            raise TypeError(
+                "'in <CompatibleString>' requires string or bytes or "
+                f"CompatibleString as left operand, not {type(part).__name__}"
+            )
+
+    def __len__(self) -> int:
+        return len(self.value)
+
+    def __getitem__(self, index: Union[int, slice]) -> "CompatibleString":
+        return self.__class__(self.value[index])
+
+    @overload
+    def __add__(self, other: str) -> str:
+        ...
+
+    @overload
+    def __add__(self, other: bytes) -> bytes:
+        ...
+
+    @overload
+    def __add__(self, other: "CompatibleString") -> "CompatibleString":
+        ...
+
+    def __add__(self, other: object) -> object:
+        if isinstance(other, CompatibleString):
+            return CompatibleString(self.value + other.value)
+        elif isinstance(other, str):
+            return self.value + other
+        elif isinstance(other, bytes):
+            return self.value.encode() + other
+        else:
+            return NotImplemented
+
+    @overload
+    def __radd__(self, other: str) -> str:
+        ...
+
+    @overload
+    def __radd__(self, other: bytes) -> bytes:
+        ...
+
+    @overload
+    def __radd__(self, other: "CompatibleString") -> "CompatibleString":
+        ...
+
+    def __radd__(self, other: object) -> object:
+        if isinstance(other, CompatibleString):
+            return other.value + self.value
+        elif isinstance(other, str):
+            return other + self.value
+        elif isinstance(other, bytes):
+            return other + self.value.encode()
+        else:
+            return NotImplemented
+
+    def __mul__(self, n: int) -> "CompatibleString":
+        return self.__class__(self.value * n)
+
+    def __rmul__(self, n: int) -> "CompatibleString":
+        return self.__class__(self.value * n)
+
+    def __mod__(self, args: Union[tuple, object]) -> "CompatibleString":
+        return self.__class__(self.value % args)
+
+    @overload
+    def __rmod__(self, template: str) -> str:
+        ...
+
+    @overload
+    def __rmod__(self, template: bytes) -> bytes:
+        ...
+
+    @overload
+    def __rmod__(self, template: "CompatibleString") -> "CompatibleString":
+        ...
+
+    def __rmod__(self, template: object) -> object:
+        # Useless?
+        if isinstance(template, CompatibleString):
+            # ????
+            return template % self
+        elif isinstance(template, str):
+            return template % self.value
+        elif isinstance(template, bytes):
+            return template % self.value.encode()
+        else:
+            return NotImplemented
+
+    def asType(self, type_: Type[AnyStr]) -> AnyStr:
+        if type_ is str:
+            return self.value  # type: ignore[return-value]
+        elif type_ is bytes:
+            return self.value.encode()  # type: ignore[return-value]
+        else:
+            raise TypeError(f"Invaild string type: {type_}")
+
+
+Sequence.register(CompatibleString)
+SPLIT_SIGN = CompatibleString(":")
+
+
+class FSDCLIENTPACKET(CompatibleString, Enum):
+    __init__ = Enum.__init__  # type: ignore[assignment]
+    ADD_ATC = "#AA"
+    REMOVE_ATC = "#DA"
+    ADD_PILOT = "#AP"
+    REMOVE_PILOT = "#DP"
+    REQUEST_HANDOFF = "$HO"
+    MESSAGE = "#TM"
+    REQUEST_WEATHER = "#RW"
+    PILOT_POSITION = "@"
+    ATC_POSITION = "%"
+    PING = "$PI"
+    PONG = "$PO"
+    AC_HANDOFF = "$HA"
+    PLAN = "$FP"
+    SB = "#SB"
+    PC = "#PC"
+    WEATHER = "#WX"
+    CLOUD_DATA = "#CD"
+    WIND_DATA = "#WD"
+    TEMP_DATA = "#TD"
+    REQUEST_COMM = "$C?"
+    REPLY_COMM = "$CI"
+    REQUEST_ACARS = "$AX"
+    REPLY_ACARS = "$AR"
+    ERROR = "$ER"
+    CQ = "$CQ"
+    CR = "$CR"
+    KILL = "$!!"
+    WIND_DELTA = "#DL"
+
+
+@deprecated(
+    type("_dv", (), {"package": "pyfsd", "short": lambda: "0.0.2.dev0"}), "+ operator"
+)
+def concat(*items: Union[AnyStr, FSDCLIENTPACKET]) -> AnyStr:
+    result = items[0]
+    for item in items[1:]:
+        result += item  # type: ignore[assignment]
+    if isinstance(result, FSDCLIENTPACKET):
+        raise ValueError("Must contain str or bytes")
+    return cast(AnyStr, result)
+
+
+def makePacket(*items: Union[AnyStr, FSDCLIENTPACKET]) -> AnyStr:
+    result = CompatibleString("")
+    for item in items:
+        result += item + SPLIT_SIGN  # type: ignore[assignment]
+    if isinstance(result, FSDCLIENTPACKET):
+        raise ValueError("Must contain str or bytes")
+    return cast(AnyStr, result[:-1])
 
 
 @overload
@@ -87,94 +269,60 @@ def breakPacket(
 
 @overload
 def breakPacket(
-    packet: AnyStr, heads: Iterable[ValueConstant]
-) -> Tuple[Optional[ValueConstant], Tuple[AnyStr, ...]]:
+    packet: AnyStr, heads: Iterable[FSDCLIENTPACKET]
+) -> Tuple[Optional[FSDCLIENTPACKET], Tuple[AnyStr, ...]]:
     ...
 
 
 @overload
 def breakPacket(
-    packet: AnyStr, heads: Iterable[Union[AnyStr, ValueConstant]]
-) -> Tuple[Optional[Union[AnyStr, ValueConstant]], Tuple[AnyStr, ...]]:
+    packet: AnyStr, heads: Iterable[Union[AnyStr, FSDCLIENTPACKET]]
+) -> Tuple[Optional[Union[AnyStr, FSDCLIENTPACKET]], Tuple[AnyStr, ...]]:
     ...
 
 
 def breakPacket(
-    packet: AnyStr, heads: Iterable[Union[AnyStr, ValueConstant]]
-) -> Tuple[Optional[Union[AnyStr, ValueConstant]], Tuple[AnyStr, ...]]:
+    packet: AnyStr, heads: Iterable[Union[AnyStr, FSDCLIENTPACKET]]
+) -> Tuple[Optional[Union[AnyStr, FSDCLIENTPACKET]], Tuple[AnyStr, ...]]:
     packet_type = type(packet)
     assert packet_type in (str, bytes)
-    head: Optional[Union[AnyStr, ValueConstant]] = None
-    true_head: Optional[AnyStr] = None
+    head: Optional[Union[AnyStr, FSDCLIENTPACKET]] = None
     splited_packet: List[AnyStr]
     for may_head in heads:
-        if isinstance(may_head, ValueConstant):
-            true_head = constToAnyStr(packet_type, may_head)
+        true_head: AnyStr
+        if isinstance(may_head, FSDCLIENTPACKET):
+            true_head = may_head.asType(packet_type)
         else:
-            true_head = may_head
+            true_head = may_head  # type: ignore[assignment]
         if packet.startswith(true_head):
             head = may_head
             break
-    if packet_type is str:
-        splited_packet = packet.split(":")  # type: ignore[arg-type]
-    elif packet_type is bytes:
-        splited_packet = packet.split(b":")  # type: ignore[arg-type]
-    else:
-        raise TypeError(f"{packet_type!r}")
-    if head is not None and true_head is not None:
-        splited_packet[0] = splited_packet[0][len(true_head) :]
+    splited_packet = packet.split(SPLIT_SIGN.asType(packet_type))
+    if head is not None:
+        splited_packet[0] = splited_packet[0][len(head) :]
     return (head, tuple(splited_packet))
 
 
-class FSDCLIENTPACKET(Values):
-    ADD_ATC = ValueConstant("#AA")
-    REMOVE_ATC = ValueConstant("#DA")
-    ADD_PILOT = ValueConstant("#AP")
-    REMOVE_PILOT = ValueConstant("#DP")
-    REQUEST_HANDOFF = ValueConstant("$HO")
-    MESSAGE = ValueConstant("#TM")
-    REQUEST_WEATHER = ValueConstant("#RW")
-    PILOT_POSITION = ValueConstant("@")
-    ATC_POSITION = ValueConstant("%")
-    PING = ValueConstant("$PI")
-    PONG = ValueConstant("$PO")
-    AC_HANDOFF = ValueConstant("$HA")
-    PLAN = ValueConstant("$FP")
-    SB = ValueConstant("#SB")
-    PC = ValueConstant("#PC")
-    WEATHER = ValueConstant("#WX")
-    CLOUD_DATA = ValueConstant("#CD")
-    WIND_DATA = ValueConstant("#WD")
-    TEMP_DATA = ValueConstant("#TD")
-    REQUEST_COMM = ValueConstant("$C?")
-    REPLY_COMM = ValueConstant("$CI")
-    REQUEST_ACARS = ValueConstant("$AX")
-    REPLY_ACARS = ValueConstant("$AR")
-    ERROR = ValueConstant("$ER")
-    CQ = ValueConstant("$CQ")
-    CR = ValueConstant("$CR")
-    KILL = ValueConstant("$!!")
-    WIND_DELTA = ValueConstant("#DL")
-    client_used_command = [
-        ADD_ATC,
-        REMOVE_ATC,
-        ADD_PILOT,
-        REMOVE_PILOT,
-        REQUEST_HANDOFF,
-        PILOT_POSITION,
-        ATC_POSITION,
-        PING,
-        PONG,
-        MESSAGE,
-        AC_HANDOFF,
-        PLAN,
-        SB,
-        PC,
-        WEATHER,
-        REQUEST_COMM,
-        REPLY_COMM,
-        REQUEST_ACARS,
-        CQ,
-        CR,
-        KILL,
-    ]
+CLIENT_USED_COMMAND = [
+    FSDCLIENTPACKET.ADD_ATC,
+    FSDCLIENTPACKET.REMOVE_ATC,
+    FSDCLIENTPACKET.ADD_PILOT,
+    FSDCLIENTPACKET.REMOVE_PILOT,
+    FSDCLIENTPACKET.REQUEST_HANDOFF,
+    FSDCLIENTPACKET.PILOT_POSITION,
+    FSDCLIENTPACKET.ATC_POSITION,
+    FSDCLIENTPACKET.PING,
+    FSDCLIENTPACKET.PONG,
+    FSDCLIENTPACKET.MESSAGE,
+    FSDCLIENTPACKET.AC_HANDOFF,
+    FSDCLIENTPACKET.PLAN,
+    FSDCLIENTPACKET.SB,
+    FSDCLIENTPACKET.PC,
+    FSDCLIENTPACKET.WEATHER,
+    FSDCLIENTPACKET.REQUEST_COMM,
+    FSDCLIENTPACKET.REPLY_COMM,
+    FSDCLIENTPACKET.REQUEST_ACARS,
+    FSDCLIENTPACKET.CQ,
+    FSDCLIENTPACKET.CR,
+    FSDCLIENTPACKET.KILL,
+]
