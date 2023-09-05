@@ -18,7 +18,7 @@ class MetarService(Service):
 
     def startService(self) -> None:
         if self.metar_manager.cron:
-            self.metar_manager.startCache(in_thread=True)
+            self.metar_manager.startCache()
         super().startService()
 
     def query(self, icao: str) -> Deferred[Optional["Metar"]]:

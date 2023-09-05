@@ -1,10 +1,14 @@
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
-from urllib.error import ContentTooShortError, HTTPError, URLError
-from urllib.request import urlopen
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from metar.Metar import Metar
+from twisted.internet import reactor
+from twisted.internet.defer import Deferred
+from twisted.web.client import Agent, readBody
 from zope.interface import Attribute, Interface, implementer
+
+if TYPE_CHECKING:
+    from twisted.web.client import Response
 
 MetarInfoDict = Dict[str, Metar]
 
@@ -29,7 +33,7 @@ class IMetarFetcher(Interface):
 
     metar_source: str = Attribute("metar_source", "Name of this fetcher")
 
-    def fetch(config: dict, icao: str) -> Optional[Metar]:
+    def fetch(config: dict, icao: str) -> Deferred[Optional[Metar]]:
         """Fetch the METAR of the specified airport.
 
         Args:
@@ -40,7 +44,7 @@ class IMetarFetcher(Interface):
             The METAR of the specified airport.
         """
 
-    def fetchAll(config: dict) -> MetarInfoDict:
+    def fetchAll(config: dict) -> Deferred[MetarInfoDict]:
         """Fetch METAR for all airports.
 
         Args:
@@ -57,6 +61,7 @@ class IMetarFetcher(Interface):
 @implementer(IMetarFetcher)
 class NOAAMetarFetcher:
     metar_source = "NOAA"
+    agent = Agent(reactor)
 
     @staticmethod
     def parseMetar(metar_lines: List[str]) -> Metar:
@@ -72,36 +77,57 @@ class NOAAMetarFetcher:
         )
         return metar
 
-    def fetch(self, _: dict, icao: str) -> Optional[Metar]:
-        try:
-            with urlopen(
-                "https://tgftp.nws.noaa.gov/data/observations/metar/stations/"
-                f"{icao}.TXT"
-            ) as metar_file:
-                metar_str = (
-                    metar_file.read().decode("ascii", "backslashreplace").splitlines()
-                )
-                return self.parseMetar(metar_str)
-        except (ContentTooShortError, HTTPError, URLError):
-            return None
+    def fetch(self, _: dict, icao: str) -> Deferred[Optional[Metar]]:
+        metar_deferred: Deferred[Optional[Metar]] = Deferred()
 
-    def fetchAll(self, _: dict) -> MetarInfoDict:
-        all_metar: MetarInfoDict = {}
+        def parse(data: bytes, response: "Response") -> None:
+            if response.code != 200:
+                metar_deferred.errback(None)
+            else:
+                metar_deferred.callback(
+                    self.parseMetar(
+                        data.decode("ascii", "backslashreplace").splitlines()
+                    )
+                )
+
+        self.agent.request(
+            b"GET",
+            b"https://tgftp.nws.noaa.gov/data/observations/metar/stations/%s.TXT"
+            % icao.encode(),
+        ).addCallback(
+            lambda request: readBody(request).addCallback(parse, request)
+        ).addErrback(
+            lambda _: metar_deferred.callback(None)
+        )
+
+        return metar_deferred
+
+    def fetchAll(self, _: dict) -> Deferred[MetarInfoDict]:
         utc_hour = datetime.now(timezone.utc).hour
-        try:
-            with urlopen(
-                "https://tgftp.nws.noaa.gov/data/observations/metar/cycles/"
-                f"{utc_hour:02d}Z.TXT"
-            ) as metar_file:
-                content = metar_file.read()
-                metar_blocks = content.decode("ascii", "backslashreplace").split("\n\n")
-                for block in metar_blocks:
-                    blocklines = block.splitlines()
-                    if len(blocklines) < 2:
-                        continue
-                    current_metar = self.parseMetar(blocklines)
-                    if current_metar.station_id is not None:
-                        all_metar[current_metar.station_id] = current_metar
-        except (ContentTooShortError, HTTPError, URLError):
-            raise MetarNotAvailableError
-        return all_metar
+        metar_deferred: Deferred[MetarInfoDict] = Deferred()
+
+        def parse(data: bytes, response: "Response") -> None:
+            if response.code != 200:
+                metar_deferred.errback(MetarNotAvailableError())
+                return
+            all_metar: MetarInfoDict = {}
+            metar_blocks = data.decode("ascii", "backslashreplace").split("\n\n")
+            for block in metar_blocks:
+                blocklines = block.splitlines()
+                if len(blocklines) < 2:
+                    continue
+                current_metar = self.parseMetar(blocklines)
+                if current_metar.station_id is not None:
+                    all_metar[current_metar.station_id] = current_metar
+            metar_deferred.callback(all_metar)
+
+        self.agent.request(
+            b"GET",
+            b"https://tgftp.nws.noaa.gov/data/observations/metar/cycles/%02dZ.TXT"
+            % utc_hour,
+        ).addCallback(
+            lambda response: readBody(response).addCallback(parse, response)
+        ).addErrback(
+            lambda _: metar_deferred.errback(MetarNotAvailableError())
+        )
+        return metar_deferred
