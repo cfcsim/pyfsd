@@ -103,6 +103,17 @@ def warningCapturer(
         _warnings_showwarning(message, category, filename, lineno, file, line)
 
 
+def setupLoguruOnStandardError() -> None:
+    logger.remove()
+    logger.add(sys.__stderr__)
+    globalLogBeginner._publisher._observers = []
+    globalLogBeginner.beginLoggingTo(
+        [loguruLogObserver], redirectStandardIO=False  # pyright: ignore
+    )
+    setattr(globalLogBeginner, "beginLoggingTo", lambda *_, **__: None)
+    warnings.showwarning = warningCapturer
+
+
 def setupLoguru() -> None:
     logger.remove()
     _beginLoggingTo = globalLogBeginner.beginLoggingTo
@@ -112,6 +123,7 @@ def setupLoguru() -> None:
         discardBuffer: bool = False,
         redirectStandardIO: bool = True,
     ):
+        other_observers: List[ILogObserver] = []
         have_file = False
         # Catch log file
         for observer in observers:
@@ -123,18 +135,14 @@ def setupLoguru() -> None:
                 logger.add(file)
                 have_file = True
             else:
-                _beginLoggingTo(
-                    observers,
-                    discardBuffer=discardBuffer,
-                    redirectStandardIO=redirectStandardIO,
-                )
+                other_observers.append(observer)
         # Setup loguru
+        _beginLoggingTo(
+            [loguruLogObserver, *other_observers] if have_file else other_observers,
+            discardBuffer=discardBuffer,
+            redirectStandardIO=False,
+        )
         if have_file:
-            _beginLoggingTo(
-                [loguruLogObserver],
-                discardBuffer=discardBuffer,
-                redirectStandardIO=False,
-            )
             warnings.showwarning = warningCapturer
 
     # Avoid adding other observers

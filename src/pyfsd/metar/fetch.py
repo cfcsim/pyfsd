@@ -7,6 +7,8 @@ from twisted.internet.defer import Deferred
 from twisted.web.client import Agent, readBody
 from zope.interface import Attribute, Interface, implementer
 
+from ..define.utils import QuietHTTPConnectionPool
+
 if TYPE_CHECKING:
     from twisted.web.client import Response
 
@@ -61,7 +63,7 @@ class IMetarFetcher(Interface):
 @implementer(IMetarFetcher)
 class NOAAMetarFetcher:
     metar_source = "NOAA"
-    agent = Agent(reactor)
+    agent = Agent(reactor, pool=QuietHTTPConnectionPool(reactor))
 
     @staticmethod
     def parseMetar(metar_lines: List[str]) -> Metar:

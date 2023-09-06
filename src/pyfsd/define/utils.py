@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, AnyStr, Callable, Iterable, Type, Union, cast
 # Not yet typed
 from haversine import Unit, haversine
 
+from twisted.web.client import _HTTP11ClientFactory, HTTPConnectionPool
+
 if TYPE_CHECKING:
     from constantly import ValueConstant
 
@@ -20,6 +22,7 @@ __all__ = [
     "assertNoDuplicate",
     "iterCallable",
     "MRand",
+    "QuietHTTPConnectionPool",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
 __bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
@@ -132,3 +135,9 @@ class MRand:
 
     def srand(self, seed: int) -> None:
         self.mrandseed = seed
+
+
+class QuietHTTPConnectionPool(HTTPConnectionPool):
+    _factory = type(  # type: ignore[assignment]
+        "QuietHTTP11ClientFactory", (_HTTP11ClientFactory,), {"noisy": False}
+    )

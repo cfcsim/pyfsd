@@ -22,9 +22,4 @@ class MetarService(Service):
         super().startService()
 
     def query(self, icao: str) -> Deferred[Optional["Metar"]]:
-        if self.metar_manager.cron:
-            return succeed(self.metar_manager.query(icao))
-        else:
-            return deferToThread(  # type: ignore[no-any-return]
-                self.metar_manager.query, icao
-            )
+        return self.metar_manager.query(icao)
