@@ -157,7 +157,7 @@ class PyFSDService(Service):
 
     def makePortal(self) -> None:
         assert self.db_engine is not None, "Must connect database first."
-        self.portal = Portal(Realm, (CredentialsChecker(self.db_engine.execute),))
+        self.portal = Portal(Realm(), (CredentialsChecker(self.db_engine.execute),))
 
     def getClientService(self) -> TCPServer:
         assert self.fetch_metar is not None, "Must start metar service first"

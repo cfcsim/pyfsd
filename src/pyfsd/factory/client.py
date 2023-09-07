@@ -106,6 +106,6 @@ class FSDClientFactory(Factory):
             return False
 
     def login(self, username: str, password: str) -> "Deferred":
-        return self.portal.login(  # type: ignore[no-any-return]
+        return self.portal.login(
             UsernameSHA256Password(username, password), None, IUserInfo
         )
