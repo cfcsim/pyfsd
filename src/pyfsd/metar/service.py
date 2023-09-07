@@ -1,13 +1,12 @@
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from twisted.application.service import Service
-from twisted.internet.defer import Deferred, succeed
-from twisted.internet.threads import deferToThread
 
 from .manager import MetarManager
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
+    from twisted.internet.defer import Deferred
 
 
 class MetarService(Service):
@@ -21,5 +20,5 @@ class MetarService(Service):
             self.metar_manager.startCache()
         super().startService()
 
-    def query(self, icao: str) -> Deferred[Optional["Metar"]]:
+    def query(self, icao: str) -> "Deferred[Metar | None]":
         return self.metar_manager.query(icao)

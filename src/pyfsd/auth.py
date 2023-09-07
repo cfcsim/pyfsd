@@ -88,7 +88,9 @@ class CredentialsChecker:
             hashed_password = result[0][1]
             if IUsernameHashedPassword.providedBy(credentials):
                 if credentials.checkPassword(hashed_password):
-                    deferred.callback((credentials.username, result[0][2]))
+                    deferred.callback(
+                        b"%s:%d" % (credentials.username.encode(), result[0][2])
+                    )
                 else:
                     deferred.errback(UnauthorizedLogin("Password mismatch"))
             else:
@@ -104,9 +106,13 @@ class CredentialsChecker:
 class Realm:
     @staticmethod
     def requestAvatar(
-        result: Tuple[str, int], _: None, *interfaces: Type[Interface]
+        result: "bytes | Tuple[()]", _: object, *interfaces: Type[Interface]
     ) -> Tuple[Type[IUserInfo], UserInfo, Callable]:
         if IUserInfo in interfaces:
-            return IUserInfo, UserInfo(*result), lambda: None
+            if isinstance(result, bytes):
+                username, rating = result.decode().rsplit(":", 1)
+            else:
+                raise NotImplementedError("invaild result")
+            return IUserInfo, UserInfo(username, int(rating)), lambda: None
         else:
             raise NotImplementedError("no interface")

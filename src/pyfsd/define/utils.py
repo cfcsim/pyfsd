@@ -3,8 +3,7 @@ from typing import TYPE_CHECKING, AnyStr, Callable, Iterable, Type, Union, cast
 
 # Not yet typed
 from haversine import Unit, haversine
-
-from twisted.web.client import _HTTP11ClientFactory, HTTPConnectionPool
+from twisted.web.client import HTTPConnectionPool, _HTTP11ClientFactory
 
 if TYPE_CHECKING:
     from constantly import ValueConstant
