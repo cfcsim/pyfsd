@@ -31,7 +31,13 @@ from .define.config_check import LiteralValue, MayExist, verifyConfigStruct
 from .define.utils import iterCallable
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
-from .plugin import BasePyFSDPlugin, IPyFSDPlugin, IServiceBuilder, PreventEvent
+from .plugin import (
+    API_LEVEL,
+    BasePyFSDPlugin,
+    IPyFSDPlugin,
+    IServiceBuilder,
+    PreventEvent,
+)
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -49,7 +55,6 @@ def formatService(plugin: IServiceBuilder) -> str:
     return f"{plugin.service_name} ({getfile(type(plugin))})"
 
 
-MAX_API = BasePyFSDPlugin.api
 PLUGIN_EVENTS = tuple(func.__name__ for func in iterCallable(BasePyFSDPlugin))
 config: Optional[dict] = None
 
@@ -212,13 +217,19 @@ class PyFSDService(Service):
                     plugin=formatPlugin(plugin),
                 )
             else:
-                if plugin.api > MAX_API:
+                if not isinstance(plugin.api, int) or plugin.api > API_LEVEL:
                     self.logger.error(
                         "{plugin} needs API {api}, try update PyFSD",
                         api=plugin.api,
                         plugin=formatPlugin(plugin),
                     )
                 else:
+                    if plugin.api != API_LEVEL:
+                        self.logger.error(
+                            "{plugin} using outdated API {api}, may cause some problem",
+                            api=plugin.api,
+                            plugin=formatPlugin(plugin),
+                        )
                     all_plugins.append(plugin)
                     for event in PLUGIN_EVENTS:
                         if hasattr(plugin, event) and getattr(

@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from .service import PyFSDService
 
 
+API_LEVEL = 3
+
+
 class PluginHandledEventResult(TypedDict):
     """A result handled by plugin.
     This means a plugin raised `pyfsd.plugin.PreventEvent`.
@@ -193,7 +196,7 @@ class BasePyFSDPlugin:
     """(A?)Base class of PyFSD Plugin."""
 
     plugin_name = "<plugin name missing>"
-    api = 2
+    api = -1
 
     def beforeStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         ...
