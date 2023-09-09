@@ -1,31 +1,32 @@
 ---
-name: Bug反馈
-about: 反馈BUG来帮助我们改进
+name: Bug report
+about: Create a report to help us improve
 title: ''
 labels: unconfirmed
 assignees: 'gamecss'
 
 ---
 
-**描述BUG**
-对BUG清晰简洁的描述。
+**Describe the bug**
+A clear and concise description of what the bug is.
 
-**复现**
-复现BUG的方法:
-1. 运行命令'...'
-2. 客户端连接后...
-3. 发生错误
+**To Reproduce**
+Steps to reproduce the behavior:
+1. Go to '...'
+2. Run command '...'
+3. Scroll down to '...'
+4. See error
 
-**预期行为**
-对预期清晰简洁的描述。
+**Expected behavior**
+A clear and concise description of what you expected to happen.
 
-**截图**
-如果适用，请添加屏幕截图以帮助解释您的问题。
+**Screenshots**
+If applicable, add screenshots to help explain your problem.
 
-**系统（请填写以下信息）**
-- `pyfsd`版本: [例: 0.0.1.dev0]
-- Python版本: [例: 3.8]
-- 操作系统: [Windows/Linux]
+**System (please complete the following information):**
+- `pyfsd` version: [e.g. 0.0.2.dev0]
+- Python version: [e.g. 3.8]
+- OS: [Windows/Linux]
 
-**额外信息**
-填写你觉得可能对问题有帮助的信息。
+**Additional context**
+Add any other context about the problem here.

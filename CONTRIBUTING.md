@@ -27,14 +27,11 @@ pdm install -d
 > pipx install pdm
 > ```
 >
-> Now you can try running `make setup` again,
-> or simply `pdm install`.
+> Now you can try running `pdm install -d` again.
 
 You now have the dependencies installed.
 
-You can run the application with `pdm run pyfsd [ARGS...]`.
-
-Run `make help` to see all the available actions!
+You can run the application with `twistd pyfsd [ARGS...]`.
 
 ## Development
 
