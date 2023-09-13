@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Type
 
 from twisted.cred.error import UnauthorizedLogin
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, maybeDeferred
 from twisted.internet.interfaces import ITransport
 from twisted.logger import Logger
 from twisted.protocols.basic import LineReceiver
@@ -40,11 +40,7 @@ if TYPE_CHECKING:
 
     from ..auth import UserInfo
     from ..factory.client import FSDClientFactory
-    from ..plugin import (
-        PluginHandledEventResult,
-        PyFSDHandledLineResult,
-        ToHandledByPyFSDEventResult,
-    )
+    from ..plugin import PluginHandledEventResult, PyFSDHandledLineResult
 
 __all__ = ["FSDClientProtocol"]
 
@@ -88,9 +84,7 @@ class FSDClientProtocol(LineReceiver):
             "New connection from {ip}.",
             ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
         )
-        self.factory.defer_event(
-            "newConnectionEstablished", (self,), {}, False, False, True
-        )
+        self.factory.defer_event("newConnectionEstablished", (self,), {}, False, True)
 
     def sendLines(
         self, *lines: bytes, auto_newline: bool = True, togerher: bool = True
@@ -365,9 +359,7 @@ class FSDClientProtocol(LineReceiver):
                 cid=cid_str,
                 ip=self.transport.getPeer().host,  # type: ignore[attr-defined]
             )
-            self.factory.defer_event(
-                "newClientCreated", (self,), {}, False, False, True
-            )
+            self.factory.defer_event("newClientCreated", (self,), {}, False, True)
             result_deferred.callback(SUCCESS_RESULT)
 
         self.factory.login(cid_str, pwd_str).addCallback(onResult).addErrback(onFail)
@@ -816,45 +808,37 @@ class FSDClientProtocol(LineReceiver):
             pass
 
         def resultHandler(
-            result: "PluginHandledEventResult | ToHandledByPyFSDEventResult",
+            event_result: "PluginHandledEventResult | None",
         ) -> None:
-            if not result["handled_by_plugin"]:
-                with self.line_lock:
-                    try:
-                        self_result = self.lineReceived_impl(byte_line)
-                    except BaseException:
-                        # XXX DEBUG ONLY
-                        self.logger.failure("Err happen")
-                        return
-
-                def postResult(new_result: "PyFSDHandledLineResult") -> None:
-                    for handler in result["handlers"]:
-                        handler(new_result)
-                    self.factory.defer_event(
-                        "auditLineFromClient",
-                        (self, byte_line, new_result),
-                        {},
-                        False,
-                        False,
-                        True,
-                    )
-
-                if isinstance(self_result, dict):
-                    postResult(self_result)
-                else:
-                    self_result.addCallback(postResult)
-            else:
+            def reportResult(
+                result: "PyFSDHandledLineResult | PluginHandledEventResult",
+            ) -> None:
                 self.factory.defer_event(
                     "auditLineFromClient",
                     (self, byte_line, result),
                     {},
                     False,
                     False,
-                    True,
                 )
 
+            # XXX REMOVE AFTER FOUND BUG
+            def reportError(failure: "Failure") -> None:
+                self.logger.failure(
+                    "Error happend in lineReceived. Please report this.",
+                    failure=failure,
+                )
+
+            if event_result is None:
+                with self.line_lock:
+                    # TODO: Wrong type warning or not?
+                    maybeDeferred(self.lineReceived_impl, byte_line).addCallback(
+                        reportResult
+                    ).addErrback(reportError)
+            else:
+                reportResult(event_result)
+
         self.factory.defer_event(
-            "lineReceivedFromClient", (self, byte_line), {}, False, False, False
+            "lineReceivedFromClient", (self, byte_line), {}, False, False
         ).addCallback(resultHandler)
 
     def lineReceived_impl(
@@ -957,7 +941,7 @@ class FSDClientProtocol(LineReceiver):
                 from_client=self.client,
             )
             self.factory.defer_event(
-                "clientDisconnected", (self, self.client), {}, False, False, True
+                "clientDisconnected", (self, self.client), {}, False, True
             )
             del self.factory.clients[self.client.callsign]
             self.client = None

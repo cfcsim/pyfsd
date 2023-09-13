@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
     from ..define.broadcast import BroadcastChecker
     from ..object.client import Client
-    from ..plugin import PluginHandledEventResult, ToHandledByPyFSDEventResult
+    from ..plugin import PluginHandledEventResult
 
 __all__ = ["FSDClientFactory"]
 
@@ -31,8 +31,8 @@ class FSDClientFactory(Factory):
     motd: List[bytes]
     protocol = FSDClientProtocol
     defer_event: Callable[
-        [str, Iterable, Mapping, bool, bool, bool],
-        "Deferred[PluginHandledEventResult | ToHandledByPyFSDEventResult]",
+        [str, Iterable, Mapping, bool, bool],
+        "Deferred[PluginHandledEventResult | None]",
     ]
     fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"]
     handler_finder: Callable[[str], Iterable[Callable]]
@@ -42,8 +42,8 @@ class FSDClientFactory(Factory):
         portal: "Portal",
         fetch_metar: Callable[[str], "Deferred[Optional[Metar]]"],
         defer_event: Callable[
-            [str, Iterable, Mapping, bool, bool, bool],
-            "Deferred[PluginHandledEventResult | ToHandledByPyFSDEventResult]",
+            [str, Iterable, Mapping, bool, bool],
+            "Deferred[PluginHandledEventResult | None]",
         ],
         blacklist: list,
         motd: List[bytes],

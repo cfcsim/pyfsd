@@ -1,14 +1,6 @@
 # pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
 """PyFSD plugin architecture."""
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Iterable,
-    Literal,
-    Optional,
-    TypedDict,
-    Union,
-)
+from typing import TYPE_CHECKING, Literal, Optional, TypedDict, Union
 
 from zope.interface import Attribute, Interface, implementer
 
@@ -62,20 +54,6 @@ class PyFSDHandledLineResult(PyFSDHandledEventResult):
     has_result: bool
 
 
-class ToHandledByPyFSDEventResult(TypedDict):
-    """A result to handled by pyfsd.
-
-    Attributes:
-        handled_by_plugin: Event handled by plugin or not.
-        handlers: Handler from the plugins.
-    """
-
-    handled_by_plugin: Literal[False]
-    handlers: Iterable[
-        Callable[[Union[PluginHandledEventResult, PyFSDHandledEventResult]], None]
-    ]
-
-
 class PreventEvent(BaseException):
     """Prevent a PyFSD plugin event.
 
@@ -83,9 +61,9 @@ class PreventEvent(BaseException):
         result: The event result reported by plugin.
     """
 
-    result: Optional[dict]
+    result: dict
 
-    def __init__(self, result: Optional[dict] = None) -> None:
+    def __init__(self, result: dict = {}) -> None:
         self.result = result
 
 
@@ -126,19 +104,12 @@ class IPyFSDPlugin(Interface):
             protocol: Protocol of the client which created.
         """
 
-    def lineReceivedFromClient(
-        protocol: "FSDClientProtocol", line: bytes
-    ) -> Optional[
-        Callable[[Union[PluginHandledEventResult, PyFSDHandledLineResult]], None]
-    ]:
+    def lineReceivedFromClient(protocol: "FSDClientProtocol", line: bytes) -> None:
         """Called when line received from client.
 
         Args:
             protocol: Protocol of the connection which received line.
             line: Line data.
-
-        Returns:
-            Event result handler or None.
 
         Raises:
             PreventEvent: Prevent the event.
@@ -212,9 +183,7 @@ class BasePyFSDPlugin:
 
     def lineReceivedFromClient(
         self, protocol: "FSDClientProtocol", line: bytes
-    ) -> Optional[
-        Callable[[Union[PluginHandledEventResult, PyFSDHandledEventResult]], None]
-    ]:
+    ) -> None:
         ...
 
     def auditLineFromClient(

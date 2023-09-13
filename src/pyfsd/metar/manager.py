@@ -26,6 +26,11 @@ class CronFetcherInfo(TypedDict):
     succeed: Optional[IMetarFetcher]
 
 
+class NotImplementedInfo(TypedDict):
+    cron: List[IMetarFetcher]
+    once: List[IMetarFetcher]
+
+
 class MetarManager:
     fetchers: List[IMetarFetcher]
     metar_cache: MetarInfoDict = {}
@@ -33,6 +38,7 @@ class MetarManager:
     config: dict
     cron_time: Optional[float]
     cron_fetcher_info: Optional[CronFetcherInfo] = None
+    not_implemented_info: NotImplementedInfo = {"cron": [], "once": []}
     cron_task: Optional[LoopingCall] = None
     logger = Logger()
 
@@ -86,6 +92,10 @@ class MetarManager:
 
             fetcher = fetchers.pop(0)
 
+            if fetcher in self.not_implemented_info["cron"]:
+                tryNext()
+                return
+
             def callback(metars: MetarInfoDict) -> None:
                 fetcher_info["succeed"] = fetcher
                 giveResult(metars)
@@ -101,6 +111,8 @@ class MetarManager:
             try:
                 fetcher.fetchAll(self.config).addCallback(callback).addErrback(errback)
             except NotImplementedError:
+                if fetcher not in self.not_implemented_info["cron"]:
+                    self.not_implemented_info["cron"].append(fetcher)
                 tryNext()
 
         tryNext()
@@ -127,6 +139,7 @@ class MetarManager:
             icao = icao.upper()
 
         fetchers = self.fetchers.copy()
+
         for to_skip_fetcher in to_skip_fetchers:
             fetchers.remove(to_skip_fetcher)
 
@@ -142,6 +155,10 @@ class MetarManager:
 
             fetcher = fetchers.pop(0)
 
+            if fetcher in self.not_implemented_info["once"]:
+                tryNext()
+                return
+
             def callback(metar: Optional["Metar"]) -> None:
                 giveResult(metar)
 
@@ -156,6 +173,8 @@ class MetarManager:
                     errback
                 )
             except NotImplementedError:
+                if fetcher not in self.not_implemented_info["once"]:
+                    self.not_implemented_info["once"].append(fetcher)
                 tryNext()
 
         tryNext()

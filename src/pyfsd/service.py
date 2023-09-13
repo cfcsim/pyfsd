@@ -9,7 +9,6 @@ from typing import (
     Optional,
     Tuple,
     TypedDict,
-    Union,
 )
 
 from alchimia.engine import TwistedEngine
@@ -44,7 +43,7 @@ if TYPE_CHECKING:
     from twisted.application.service import IService
     from twisted.internet.defer import Deferred
 
-    from .plugin import PluginHandledEventResult, ToHandledByPyFSDEventResult
+    from .plugin import PluginHandledEventResult
 
 
 def formatPlugin(plugin: IPyFSDPlugin) -> str:
@@ -257,34 +256,22 @@ class PyFSDService(Service):
         args: Iterable,
         kwargs: Mapping,
         prevent_able: bool = False,
-        handle_able: bool = False,
-    ) -> Union["PluginHandledEventResult", "ToHandledByPyFSDEventResult",]:
-        handlers: List[Callable] = []
+    ) -> Optional[PluginHandledEventResult]:
         for plugin in self.iterPluginByEventName(event_name):
             try:
-                handler = getattr(plugin, event_name)(*args, **kwargs)
-            except PreventEvent:
+                getattr(plugin, event_name)(*args, **kwargs)
+            except PreventEvent as prevent_result:
                 if not prevent_able:
                     Logger(source=plugin).error(f"Cannot prevent event: {event_name}")
                 else:
-                    result: PluginHandledEventResult = {
+                    return {  # type: ignore[return-value]
+                        **prevent_result.result,  # type: ignore[misc]
                         "handled_by_plugin": True,
                         "plugin": plugin,
                     }
-                    for handler in handlers:
-                        handler(result)
-                    return result
             except BaseException:
                 Logger(source=plugin).failure("Error happened during call plugin")
-            else:
-                if handler is not None:
-                    if handle_able:
-                        handlers.append(handler)
-                    else:
-                        Logger(source=plugin).error(
-                            f"Cannot handle event: {event_name}"
-                        )
-        return {"handled_by_plugin": False, "handlers": handlers}
+        return None
 
     def deferEvent(
         self,
@@ -292,19 +279,11 @@ class PyFSDService(Service):
         args: Iterable,
         kwargs: Mapping,
         prevent_able: bool = False,
-        handle_able: bool = False,
         in_thread: bool = False,
-    ) -> """Deferred[
-        Union[
-            "PluginHandledEventResult",
-            "ToHandledByPyFSDEventResult",
-        ]
-    ]""":
+    ) -> "Deferred[PluginHandledEventResult | None]":
         if in_thread:
             return deferToThread(  # type: ignore[no-any-return]
-                self.triggerEvent, event_name, args, kwargs, prevent_able, handle_able
+                self.triggerEvent, event_name, args, kwargs, prevent_able
             )
         else:
-            return succeed(
-                self.triggerEvent(event_name, args, kwargs, prevent_able, handle_able)
-            )
+            return succeed(self.triggerEvent(event_name, args, kwargs, prevent_able))
