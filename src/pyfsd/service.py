@@ -256,7 +256,7 @@ class PyFSDService(Service):
         args: Iterable,
         kwargs: Mapping,
         prevent_able: bool = False,
-    ) -> Optional[PluginHandledEventResult]:
+    ) -> "PluginHandledEventResult | None":
         for plugin in self.iterPluginByEventName(event_name):
             try:
                 getattr(plugin, event_name)(*args, **kwargs)
