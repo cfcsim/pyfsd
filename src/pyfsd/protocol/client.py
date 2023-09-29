@@ -832,7 +832,7 @@ class FSDClientProtocol(LineReceiver):
                 with self.line_lock:
                     # TODO: Wrong type warning or not?
                     maybeDeferred(self.lineReceived_impl, byte_line).addCallback(
-                        reportResult
+                        reportResult  # type: ignore[arg-type]
                     ).addErrback(reportError)
             else:
                 reportResult(event_result)

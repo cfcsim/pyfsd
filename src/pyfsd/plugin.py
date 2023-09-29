@@ -1,6 +1,6 @@
 # pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
 """PyFSD plugin architecture."""
-from typing import TYPE_CHECKING, Literal, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Literal, Optional, Tuple, TypedDict, Union
 
 from zope.interface import Attribute, Interface, implementer
 
@@ -73,10 +73,14 @@ class IPyFSDPlugin(Interface):
     Attributes:
         plugin_name: Name of this plugin.
         api: API level of this plugin.
+        version: int and human readable version of this plugin.
     """
 
     plugin_name: str = Attribute("plugin_name", "Name of this plugin.")
     api: int = Attribute("API Level", "API level of this plugin.")
+    version: Tuple[int, str] = Attribute(
+        "Version", "int and human readable version of this plugin."
+    )
 
     def beforeStart(pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         """Called when service `pyfsd.service.PyFSDService` starting.
@@ -168,6 +172,7 @@ class BasePyFSDPlugin:
 
     plugin_name = "<plugin name missing>"
     api = -1
+    version = (-1, "<plugin version missing>")
 
     def beforeStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         ...

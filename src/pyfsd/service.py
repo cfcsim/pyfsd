@@ -46,8 +46,12 @@ if TYPE_CHECKING:
     from .plugin import PluginHandledEventResult
 
 
-def formatPlugin(plugin: IPyFSDPlugin) -> str:
-    return f"{plugin.plugin_name} ({getfile(type(plugin))})"
+def formatPlugin(plugin: IPyFSDPlugin, with_version: bool = False) -> str:
+    return (
+        f"{plugin.plugin_name}"
+        + (f" {plugin.version[1]} ({plugin.version[0]}) " if with_version else "")
+        + f"({getfile(type(plugin))})"
+    )
 
 
 def formatService(plugin: IServiceBuilder) -> str:
@@ -85,18 +89,11 @@ class PyFSDService(Service):
         self.pickPlugins()
 
     def startService(self) -> None:
-        self.logger.info("PyFSD {version}", version=self.version)
-        root_plugin_config = self.config.get("plugin", {})
-        if self.plugins is not None:
-            for plugin in self.plugins["all"]:
-                self.logger.info(
-                    "Loading plugin {plugin}",
-                    plugin=formatPlugin(plugin),
-                )
-                plugin.beforeStart(
-                    self, root_plugin_config.get(plugin.plugin_name, None)
-                )
-            super().startService()
+        self.logger.info(
+            "PyFSD {version} started with {count} plugins",
+            version=self.version,
+            count=len(self.plugins["all"]) if self.plugins is not None else 0,
+        )
 
     def stopService(self) -> None:
         if self.plugins is not None:
@@ -209,6 +206,7 @@ class PyFSDService(Service):
         event_handlers: Dict[str, List[IPyFSDPlugin]] = dict(
             (name, []) for name in PLUGIN_EVENTS
         )
+        root_plugin_config = self.config.get("plugin", {})
         for plugin in getPlugins(IPyFSDPlugin, plugins):
             if plugin in all_plugins:
                 self.logger.debug(
@@ -229,12 +227,19 @@ class PyFSDService(Service):
                             api=plugin.api,
                             plugin=formatPlugin(plugin),
                         )
+                    self.logger.info(
+                        "Loading plugin {plugin}",
+                        plugin=formatPlugin(plugin, with_version=True),
+                    )
                     all_plugins.append(plugin)
                     for event in PLUGIN_EVENTS:
                         if hasattr(plugin, event) and getattr(
                             type(plugin), event
                         ) is not getattr(BasePyFSDPlugin, event):
                             event_handlers[event].append(plugin)
+                    plugin.beforeStart(
+                        self, root_plugin_config.get(plugin.plugin_name, None)
+                    )
 
         self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
 
