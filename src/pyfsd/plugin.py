@@ -74,16 +74,31 @@ class IPyFSDPlugin(Interface):
         plugin_name: Name of this plugin.
         api: API level of this plugin.
         version: int and human readable version of this plugin.
+        expected_config: Configuration structure description.
+            structure parameter of pyfsd.define.config_check function.
+            None if this plugin doesn't need config. (disables config check)
     """
 
     plugin_name: str = Attribute("plugin_name", "Name of this plugin.")
-    api: int = Attribute("API Level", "API level of this plugin.")
+    api: int = Attribute("api", "API level of this plugin.")
     version: Tuple[int, str] = Attribute(
-        "Version", "int and human readable version of this plugin."
+        "version", "int and human readable version of this plugin."
+    )
+    expected_config: Optional[dict] = Attribute(
+        "expected_config", "Configuration structure description."
     )
 
     def beforeStart(pyfsd: "PyFSDService", config: Optional[dict]) -> None:
-        """Called when service `pyfsd.service.PyFSDService` starting.
+        """Called before services start.
+
+        Args:
+            pyfsd: PyFSD Service.
+            config: plugin.<plugin_name> section of PyFSD configure file.
+                None if the section doesn't exist.
+        """
+
+    def afterStart(pyfsd: "PyFSDService", config: Optional[dict]) -> None:
+        """Called while service `pyfsd.service.PyFSDService` starting.
 
         Args:
             pyfsd: PyFSD Service.
@@ -166,6 +181,21 @@ class IServiceBuilder(Interface):
         """
 
 
+class ICallAfterStartPlugin(Interface):
+    """Interface of call after start plugin.
+
+    Syntactic sugar of IPyFSDPlugin.afterStart
+    """
+
+    def __call__(pyfsd: "PyFSDService", all_config: dict) -> None:
+        """Called while service `pyfsd.service.PyFSDService` starting.
+
+        Args:
+            pyfsd: PyFSD Service.
+            all_config: PyFSD configure file.
+        """
+
+
 @implementer(IPyFSDPlugin)
 class BasePyFSDPlugin:
     """(A?)Base class of PyFSD Plugin."""
@@ -173,8 +203,12 @@ class BasePyFSDPlugin:
     plugin_name = "<plugin name missing>"
     api = -1
     version = (-1, "<plugin version missing>")
+    expected_config = None
 
     def beforeStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
+        ...
+
+    def afterStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         ...
 
     def beforeStop(self) -> None:

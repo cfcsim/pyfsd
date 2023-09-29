@@ -26,13 +26,19 @@ from . import plugins
 from ._version import version as pyfsd_version
 from .auth import CredentialsChecker, Realm
 from .db_tables import users
-from .define.config_check import LiteralValue, MayExist, verifyConfigStruct
+from .define.config_check import (
+    LiteralValue,
+    MayExist,
+    verifyAllConfigStruct,
+    verifyConfigStruct,
+)
 from .define.utils import iterCallable
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 from .plugin import (
     API_LEVEL,
     BasePyFSDPlugin,
+    ICallAfterStartPlugin,
     IPyFSDPlugin,
     IServiceBuilder,
     PreventEvent,
@@ -89,6 +95,12 @@ class PyFSDService(Service):
         self.pickPlugins()
 
     def startService(self) -> None:
+        assert self.plugins is not None
+        root_plugin_config = self.config.get("plugin", {})
+        for plugin in self.plugins["all"]:
+            plugin.beforeStart(self, root_plugin_config.get(plugin.plugin_name, None))
+        for cas_plugin in getPlugins(ICallAfterStartPlugin, plugins):
+            cas_plugin(self, self.config)
         self.logger.info(
             "PyFSD {version} started with {count} plugins",
             version=self.version,
@@ -208,12 +220,19 @@ class PyFSDService(Service):
         )
         root_plugin_config = self.config.get("plugin", {})
         for plugin in getPlugins(IPyFSDPlugin, plugins):
+            # Tell user loading plugin
+            self.logger.info(
+                "Loading plugin {plugin}",
+                plugin=formatPlugin(plugin, with_version=True),
+            )
             if plugin in all_plugins:
+                # Skip already loaded plugin
                 self.logger.debug(
                     "plugin {plugin} already loaded, skipping.",
                     plugin=formatPlugin(plugin),
                 )
             else:
+                # Check API
                 if not isinstance(plugin.api, int) or plugin.api > API_LEVEL:
                     self.logger.error(
                         "{plugin} needs API {api}, try update PyFSD",
@@ -221,16 +240,40 @@ class PyFSDService(Service):
                         plugin=formatPlugin(plugin),
                     )
                 else:
+                    # Check API again.....
                     if plugin.api != API_LEVEL:
                         self.logger.error(
                             "{plugin} using outdated API {api}, may cause some problem",
                             api=plugin.api,
                             plugin=formatPlugin(plugin),
                         )
-                    self.logger.info(
-                        "Loading plugin {plugin}",
-                        plugin=formatPlugin(plugin, with_version=True),
-                    )
+
+                    # Check config
+                    plugin_config = root_plugin_config.get(plugin.plugin_name, None)
+                    if plugin.expected_config is not None:
+                        if plugin_config is None:
+                            self.logger.error(
+                                "Cannot load plugin {name} because it needs config.",
+                                name=plugin.plugin_name,
+                            )
+                            return
+                        else:
+                            config_errors = verifyAllConfigStruct(
+                                plugin_config,
+                                plugin.expected_config,
+                                prefix=f"plugin.{plugin.plugin_name}.",
+                            )
+                            if config_errors:
+                                error_string = (
+                                    f"Cannot load plugin {plugin.plugin_name} "
+                                    "because of following config error:\n"
+                                )
+                                for config_error in config_errors:
+                                    error_string += str(config_error) + "\n"
+                                self.logger.error(error_string)
+                                return
+
+                    # Everything is ok, save it
                     all_plugins.append(plugin)
                     for event in PLUGIN_EVENTS:
                         if hasattr(plugin, event) and getattr(
