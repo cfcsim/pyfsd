@@ -1,12 +1,9 @@
 # pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
 """Interfaces of PyFSD plugin architecture."""
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Optional, Tuple, Union
 
-from zope.interface import Attribute, Interface
-
 if TYPE_CHECKING:
-    from twisted.application.service import IService
-
     from ..object.client import Client
     from ..protocol.client import FSDClientProtocol
     from ..service import PyFSDService
@@ -15,7 +12,11 @@ if TYPE_CHECKING:
 __all__ = ["IPyFSDPlugin", "ICallAfterStartPlugin", "IServiceBuilder"]
 
 
-class IPyFSDPlugin(Interface):
+class IPlugin(ABC):
+    """Base interface of plugin."""
+
+
+class IPyFSDPlugin(ABC):
     """Interface of PyFSD Plugin.
 
     Attributes:
@@ -27,14 +28,25 @@ class IPyFSDPlugin(Interface):
             None if this plugin doesn't need config. (disables config check)
     """
 
-    plugin_name: str = Attribute("plugin_name", "Name of this plugin.")
-    api: int = Attribute("api", "API level of this plugin.")
-    version: Tuple[int, str] = Attribute(
-        "version", "int and human readable version of this plugin."
-    )
-    expected_config: Optional[dict] = Attribute(
-        "expected_config", "Configuration structure description."
-    )
+    @property
+    @abstractmethod
+    def plugin_name() -> str:
+        """Name of this plugin."""
+
+    @property
+    @abstractmethod
+    def api() -> int:
+        """API level of this plugin."""
+
+    @property
+    @abstractmethod
+    def vesion() -> Tuple[int, str]:
+        """int + human readable version of this plugin."""
+
+    @property
+    @abstractmethod
+    def expected_config() -> Optional[dict]:
+        """Configuration structure description."""
 
     def beforeStart(pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         """Called before services start.
@@ -108,15 +120,19 @@ class IPyFSDPlugin(Interface):
         """
 
 
-class IServiceBuilder(Interface):
+class IServiceBuilder(ABC):
     """Interface of service builder, a object which can build a service.
 
     Attributes:
         service_name: Name of the to-build service.
     """
 
-    service_name: str = Attribute("service_name", "Name of the to-build service.")
+    @property
+    @abstractmethod
+    def service_name() -> str:
+        """Name of the to-build service."""
 
+    @abstractmethod
     def buildService(pyfsd: "PyFSDService", config: Optional[dict]) -> "IService":
         """Build a service.
 
@@ -129,12 +145,13 @@ class IServiceBuilder(Interface):
         """
 
 
-class ICallAfterStartPlugin(Interface):
+class ICallAfterStartPlugin(ABC):
     """Interface of call after start plugin.
 
     Syntactic sugar of IPyFSDPlugin.afterStart
     """
 
+    @abstractmethod
     def __call__(pyfsd: "PyFSDService", all_config: dict) -> None:
         """Called while service `pyfsd.service.PyFSDService` starting.
 

@@ -36,6 +36,7 @@ from .define.utils import iterCallable
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 from .plugin.manager import PyFSDPluginManager
+
 """
 from .plugin import (
     API_LEVEL,

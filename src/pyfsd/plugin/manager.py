@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 __all__ = ["formatPlugin", "PLUGIN_EVENTS", "PluginDict", "PyFSDPluginManager"]
 
+
 def formatPlugin(plugin: IPyFSDPlugin, with_version: bool = False) -> str:
     return (
         f"{plugin.plugin_name}"
