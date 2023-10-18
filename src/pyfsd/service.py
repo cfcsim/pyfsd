@@ -35,6 +35,8 @@ from .define.config_check import (
 from .define.utils import iterCallable
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
+from .plugin.manager import PyFSDPluginManager
+"""
 from .plugin import (
     API_LEVEL,
     BasePyFSDPlugin,
@@ -43,6 +45,7 @@ from .plugin import (
     IServiceBuilder,
     PreventEvent,
 )
+"""
 
 if TYPE_CHECKING:
     from metar.Metar import Metar
@@ -64,13 +67,7 @@ def formatService(plugin: IServiceBuilder) -> str:
     return f"{plugin.service_name} ({getfile(type(plugin))})"
 
 
-PLUGIN_EVENTS = tuple(func.__name__ for func in iterCallable(BasePyFSDPlugin))
 config: Optional[dict] = None
-
-
-class PluginDict(TypedDict):
-    all: Tuple[IPyFSDPlugin, ...]
-    tagged: Dict[str, List[IPyFSDPlugin]]
 
 
 class PyFSDService(Service):
@@ -78,7 +75,7 @@ class PyFSDService(Service):
     fetch_metar: Optional[Callable[[str], "Deferred[Optional[Metar]]"]] = None
     db_engine: Optional[TwistedEngine] = None
     portal: Optional[Portal] = None
-    plugins: Optional[PluginDict] = None
+    plugin_manager: Optional[PyFSDPluginManager] = None
     logger: Logger = Logger()
     config: dict
     version = pyfsd_version
@@ -92,7 +89,8 @@ class PyFSDService(Service):
         self.connectDatabase()
         self.checkAndInitDatabase()
         self.makePortal()
-        self.pickPlugins()
+        self.plugin_manager = PyFSDPluginManager()
+        self.plugin_manager.pickPlugins(this_config)
 
     def startService(self) -> None:
         assert self.plugins is not None

@@ -1,70 +1,18 @@
 # pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
-"""PyFSD plugin architecture."""
-from typing import TYPE_CHECKING, Literal, Optional, Tuple, TypedDict, Union
+"""Interfaces of PyFSD plugin architecture."""
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
-from zope.interface import Attribute, Interface, implementer
+from zope.interface import Attribute, Interface
 
 if TYPE_CHECKING:
     from twisted.application.service import IService
 
-    from .object.client import Client
-    from .protocol.client import FSDClientProtocol
-    from .service import PyFSDService
+    from ..object.client import Client
+    from ..protocol.client import FSDClientProtocol
+    from ..service import PyFSDService
+    from .types import PluginHandledEventResult, PyFSDHandledLineResult
 
-
-API_LEVEL = 3
-
-
-class PluginHandledEventResult(TypedDict):
-    """A result handled by plugin.
-    This means a plugin raised `pyfsd.plugin.PreventEvent`.
-
-    Attributes:
-        handled_by_plugin: Event handled by plugin or not.
-        plugin: The plugin.
-    """
-
-    handled_by_plugin: Literal[True]
-    plugin: "IPyFSDPlugin"
-
-
-class PyFSDHandledEventResult(TypedDict):
-    """A result handled by PyFSD.
-
-    Attributes:
-        handled_by_plugin: Event handled by plugin or not.
-        success: The event successfully handled or not.
-    """
-
-    handled_by_plugin: Literal[False]
-    success: bool
-
-
-class PyFSDHandledLineResult(PyFSDHandledEventResult):
-    """A lineReceivedFromClient result handled by PyFSD.
-
-    Attributes:
-        handled_by_plugin (Literal[False]): Event handled by plugin or not.
-        success (bool): The event successfully handled or not.
-        packet_ok: The packet is correct or not.
-        has_result: Succeed in generating result or not.
-    """
-
-    packet_ok: bool
-    has_result: bool
-
-
-class PreventEvent(BaseException):
-    """Prevent a PyFSD plugin event.
-
-    Attributes:
-        result: The event result reported by plugin.
-    """
-
-    result: dict
-
-    def __init__(self, result: dict = {}) -> None:
-        self.result = result
+__all__ = ["IPyFSDPlugin", "ICallAfterStartPlugin", "IServiceBuilder"]
 
 
 class IPyFSDPlugin(Interface):
@@ -194,46 +142,3 @@ class ICallAfterStartPlugin(Interface):
             pyfsd: PyFSD Service.
             all_config: PyFSD configure file.
         """
-
-
-@implementer(IPyFSDPlugin)
-class BasePyFSDPlugin:
-    """(A?)Base class of PyFSD Plugin."""
-
-    plugin_name = "<plugin name missing>"
-    api = -1
-    version = (-1, "<plugin version missing>")
-    expected_config = None
-
-    def beforeStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
-        ...
-
-    def afterStart(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
-        ...
-
-    def beforeStop(self) -> None:
-        ...
-
-    def newConnectionEstablished(self, protocol: "FSDClientProtocol") -> None:
-        ...
-
-    def newClientCreated(self, protocol: "FSDClientProtocol") -> None:
-        ...
-
-    def lineReceivedFromClient(
-        self, protocol: "FSDClientProtocol", line: bytes
-    ) -> None:
-        ...
-
-    def auditLineFromClient(
-        self,
-        protocol: "FSDClientProtocol",
-        line: bytes,
-        result: Union[PyFSDHandledLineResult, PluginHandledEventResult],
-    ) -> None:
-        ...
-
-    def clientDisconnected(
-        self, protocol: "FSDClientProtocol", client: Optional["Client"]
-    ) -> None:
-        ...

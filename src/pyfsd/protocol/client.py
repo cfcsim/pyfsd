@@ -294,7 +294,22 @@ class FSDClientProtocol(LineReceiver):
             assert interface is IUserInfo or IUserInfo in interface.__bases__
             if userinfo.rating == 0:
                 self.sendError(FSDErrors.ERR_CSSUSPEND, fatal=True)
-                result_deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
+                result_deferred.callback(
+                    {
+                        "handled_by_plugin": False,
+                        "success": False,
+                        "packet_ok": True,
+                        "has_result": False,
+                        "type": None,
+                        "cid": None,
+                        "password": None,
+                        "req_rating": None,
+                        "actually_rating": None,
+                        "protocol": None,
+                        "realname": None,
+                        "sim_type": None,
+                    }
+                )
 
             else:
                 if userinfo.rating < req_rating_int:
@@ -311,7 +326,14 @@ class FSDClientProtocol(LineReceiver):
             if not isinstance(f.value, UnauthorizedLogin):
                 self.logger.failure("Exception threw while authorizing", failure=f)
             self.sendError(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
-            result_deferred.callback(FAILED_WITHOUT_PACKET_RESULT)
+            result_deferred.callback(
+                {
+                    "handled_by_plugin": False,
+                    "success": False,
+                    "packet_ok": True,
+                    "has_result": False,
+                }
+            )
 
         def onSuccess() -> None:
             client = Client(
