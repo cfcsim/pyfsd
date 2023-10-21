@@ -2,7 +2,7 @@
 from typing import TYPE_CHECKING, Literal, TypedDict
 
 if TYPE_CHECKING:
-    from .interfaces import IPyFSDPlugin
+    from .interfaces import PyFSDPlugin
 
 __all__ = [
     "PluginHandledEventResult",
@@ -21,7 +21,7 @@ class PluginHandledEventResult(TypedDict):
     """
 
     handled_by_plugin: Literal[True]
-    plugin: "IPyFSDPlugin"
+    plugin: "PyFSDPlugin"
 
 
 class PyFSDHandledEventResult(TypedDict):

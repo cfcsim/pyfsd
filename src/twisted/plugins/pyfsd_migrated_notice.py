@@ -1,4 +1,5 @@
 from typing import NoReturn
+
 from twisted.application.service import IServiceMaker
 from twisted.plugin import IPlugin
 from twisted.python.usage import Options
@@ -12,7 +13,9 @@ class PyFSDServiceMaker:
     options = Options
 
     def makeService(self, _: Options) -> NoReturn:
-        print("PyFSD doesn't built on Twisted anymore, Please use `python -m pyfsd' instead.")
+        print(
+            "PyFSD doesn't built on Twisted anymore, Please use `python -m pyfsd' instead."
+        )
         exit(1)
 
 

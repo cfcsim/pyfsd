@@ -1,7 +1,3 @@
-from typing import List
+from pkgutil import extend_path
 
-from twisted.plugin import pluginPackagePaths
-
-__path__.extend(pluginPackagePaths(__name__))
-__all__: List[str] = []
-del pluginPackagePaths, List
+__path__ = extend_path(__path__, __name__)

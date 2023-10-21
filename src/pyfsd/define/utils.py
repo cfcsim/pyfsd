@@ -1,17 +1,13 @@
 from re import compile
-from typing import TYPE_CHECKING, AnyStr, Callable, Iterable, Type, Union, cast
+from typing import TYPE_CHECKING, AnyStr, Callable, Iterable, Union, cast
 
 # Not yet typed
 from haversine import Unit, haversine
-from twisted.web.client import HTTPConnectionPool, _HTTP11ClientFactory
 
 if TYPE_CHECKING:
-    from constantly import ValueConstant
-
     from ..object.client import Position
 
 __all__ = [
-    "constToAnyStr",
     "strToInt",
     "strToFloat",
     "isCallsignVaild",
@@ -21,24 +17,9 @@ __all__ = [
     "assertNoDuplicate",
     "iterCallable",
     "MRand",
-    "QuietHTTPConnectionPool",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
 __bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
-
-
-def constToAnyStr(
-    type_: Type[AnyStr],
-    value: "ValueConstant",
-    encoding: str = "ascii",
-    errors: str = "strict",
-) -> AnyStr:
-    if type_ is str:
-        return cast(AnyStr, value.value)
-    elif type_ is bytes:
-        return cast(AnyStr, value.value.encode(encoding, errors))
-    else:
-        raise TypeError
 
 
 def strToInt(string: Union[str, bytes], default_value: int = 0) -> int:
@@ -134,9 +115,3 @@ class MRand:
 
     def srand(self, seed: int) -> None:
         self.mrandseed = seed
-
-
-class QuietHTTPConnectionPool(HTTPConnectionPool):
-    _factory = type(  # type: ignore[assignment]
-        "QuietHTTP11ClientFactory", (_HTTP11ClientFactory,), {"noisy": False}
-    )
