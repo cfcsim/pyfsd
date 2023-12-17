@@ -25,7 +25,7 @@ class PyFSDPlugin(ABC):
         version: int and human readable version of this plugin.
         expected_config: Configuration structure description.
             structure parameter of pyfsd.define.config_check function.
-            None if this plugin doesn't need config. (disables config check)
+            None if this plugin requires no config. (disables config check)
     """
 
     @property

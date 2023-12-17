@@ -3,8 +3,6 @@ from math import sqrt
 from time import time
 from typing import Literal, Optional, Tuple
 
-from twisted.internet.interfaces import ITransport
-
 __all__ = ["Position", "FlightPlan", "Client", "ClientType"]
 
 Position = Tuple[float, float]
@@ -40,7 +38,7 @@ class Client:
     protocol: int
     realname: bytes
     sim_type: int
-    transport: ITransport
+    # transport: <>
     position: Position = (0, 0)
     transponder: int = 0
     altitude: int = 0
@@ -64,7 +62,7 @@ class Client:
     def frequency_ok(self) -> bool:
         return self.frequency != 0 and self.frequency < 100000
 
-    def updatePlan(
+    def update_plan(
         self,
         plan_type: bytes,
         aircraft: bytes,
@@ -107,7 +105,7 @@ class Client:
         )
         return revision
 
-    def updatePilotPosition(
+    def update_pilot_position(
         self,
         mode: bytes,
         transponder: int,
@@ -127,7 +125,7 @@ class Client:
         self.flags = flags
         self.last_updated = int(time())
 
-    def updateATCPosition(
+    def update_ATC_position(
         self,
         frequency: int,
         facility_type: int,
@@ -143,7 +141,7 @@ class Client:
         self.altitude = altitude
         self.last_updated = int(time())
 
-    def getRange(self) -> int:
+    def get_range(self) -> int:
         if self.type == "PILOT":
             altitude: int
             if self.altitude is None or self.altitude < 0:

@@ -48,7 +48,7 @@ def isCallsignVaild(callsign: Union[str, bytes]) -> bool:
         return False
     if (  # type: ignore[attr-defined]
         __str_invaild_char_regex
-        if type(callsign) is str
+        if isinstance(callsign, str)
         else __bytes_invaild_char_regex
     ).search(
         callsign  # pyright: ignore

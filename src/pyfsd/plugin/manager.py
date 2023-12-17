@@ -1,3 +1,9 @@
+"""PyFSD plugin manager.
+
+Attributes:
+    PLUGIN_EVENTS: All available PyFSD plugin events.
+"""
+
 from inspect import getfile
 from typing import Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypedDict
 
@@ -15,6 +21,15 @@ __all__ = ["format_plugin", "PLUGIN_EVENTS", "PluginDict", "PyFSDPluginManager"]
 
 
 def format_plugin(plugin: PyFSDPlugin, with_version: bool = False) -> str:
+    """Format a plugin into string.
+    
+    Args:
+        plugin: The plugin.
+        with_version: Append version to string or not.
+
+    Returns:
+        The formatted result.
+    """
     return (
         f"{plugin.plugin_name}"
         + (f" {plugin.version[1]} ({plugin.version[0]}) " if with_version else "")
@@ -23,6 +38,14 @@ def format_plugin(plugin: PyFSDPlugin, with_version: bool = False) -> str:
 
 
 def format_awaitable(plugin: AwaitableMaker) -> str:
+    """Format a awaitable maker into string.
+    
+    Args:
+        plugin: The maker.
+
+    Returns:
+        The formatted result.
+    """
     return f"{plugin.awaitable_name} ({getfile(type(plugin))})"
 
 
@@ -30,14 +53,30 @@ PLUGIN_EVENTS = tuple(func.__name__ for func in iterCallable(PyFSDPlugin))
 
 
 class PluginDict(TypedDict):
+    """Plugin set used by PyFSDPluginManager.
+
+    Attributes:
+        all: All plugins.
+        tagged: Plugins tagged by events.
+    """
     all: Tuple[PyFSDPlugin, ...]
     tagged: Dict[str, List[PyFSDPlugin]]
 
 
 class PyFSDPluginManager:
+    """PyFSD Plugin manager.
+
+    Attributes:
+        plugins: Plugin set.
+    """
     plugins: Optional[PluginDict] = None
 
     def pick_plugins(self, root_config: dict) -> None:
+        """Pick plugins into self.plugins.
+
+        Args:
+            root_config: 'plugin' section of config.
+        """
         all_plugins = []
         event_handlers: Dict[str, List[PyFSDPlugin]] = dict(
             (name, []) for name in PLUGIN_EVENTS
@@ -113,12 +152,28 @@ class PyFSDPluginManager:
         self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
 
     def iterPluginByEventName(self, event_name: str) -> Iterable[PyFSDPlugin]:
+        """Yields all plugins that handles specified event.
+
+        Args:
+            event_name: The event's name. Must be in PLUGIN_EVENTS
+
+        Returns:
+            The plugin.
+        """
         assert self.plugins is not None, "plugin not loaded"
         if event_name not in PLUGIN_EVENTS:
             raise ValueError(f"Invaild event {event_name}")
         return iter(self.plugins["tagged"][event_name])
 
     def iterHandlerByEventName(self, event_name: str) -> Iterable[Callable]:
+        """Yields event handler of all plugins that handles specified event.
+
+        Args:
+            event_name: The event's name. Must be in PLUGIN_EVENTS
+
+        Returns:
+            The event handler, {plugin}.{event_name}
+        """
         return (
             getattr(plugin, event_name)
             for plugin in self.iterPluginByEventName(event_name)
@@ -131,6 +186,7 @@ class PyFSDPluginManager:
         kwargs: Mapping,
         prevent_able: bool = False,
     ) -> "PluginHandledEventResult | None":
+        """Trigger a event and spread it to plugins."""
         for plugin in self.iterPluginByEventName(event_name):
             try:
                 await getattr(plugin, event_name)(*args, **kwargs)

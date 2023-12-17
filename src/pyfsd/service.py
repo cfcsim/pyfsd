@@ -8,7 +8,6 @@ from typing import (
     Mapping,
     Optional,
     Tuple,
-    TypedDict,
 )
 
 from alchimia.engine import TwistedEngine
@@ -32,7 +31,6 @@ from .define.config_check import (
     verifyAllConfigStruct,
     verifyConfigStruct,
 )
-from .define.utils import iterCallable
 from .factory.client import FSDClientFactory
 from .metar.service import MetarService
 from .plugin.manager import PyFSDPluginManager

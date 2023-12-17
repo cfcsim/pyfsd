@@ -11,7 +11,7 @@ from .utils import calcDistance
 BroadcastChecker = Callable[[Optional[Client], Client], bool]
 
 
-def createBroadcastRangeChecker(visual_range: int) -> BroadcastChecker:
+def create_broadcast_range_checker(visual_range: int) -> BroadcastChecker:
     """Create a broadcast checker which checks visual range.
 
     Paramaters:
@@ -31,7 +31,7 @@ def createBroadcastRangeChecker(visual_range: int) -> BroadcastChecker:
     return checker
 
 
-def broadcastPositionChecker(from_client: Optional[Client], to_client: Client) -> bool:
+def broadcast_position_checker(from_client: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which checks visual range while broadcasting position.
 
     Paramaters:
@@ -45,8 +45,8 @@ def broadcastPositionChecker(from_client: Optional[Client], to_client: Client) -
     if not from_client.position_ok or not to_client.position_ok:
         return False
     visual_range: int
-    x: int = to_client.getRange()
-    y: int = from_client.getRange()
+    x: int = to_client.get_range()
+    y: int = from_client.get_range()
     if to_client.type == "ATC":
         visual_range = to_client.visual_range
     elif from_client.type == "PILOT":
@@ -57,7 +57,7 @@ def broadcastPositionChecker(from_client: Optional[Client], to_client: Client) -
     return distance < visual_range
 
 
-def broadcastMessageChecker(from_client: Optional[Client], to_client: Client) -> bool:
+def broadcast_message_checker(from_client: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which checks visual range while broadcasting message.
 
     Paramaters:
@@ -71,8 +71,8 @@ def broadcastMessageChecker(from_client: Optional[Client], to_client: Client) ->
     if not from_client.position_ok or not to_client.position_ok:
         return False
     visual_range: int
-    x: int = to_client.getRange()
-    y: int = from_client.getRange()
+    x: int = to_client.get_range()
+    y: int = from_client.get_range()
     if from_client.type == "PILOT" and to_client.type == "PILOT":
         visual_range = x + y
     else:
@@ -84,7 +84,7 @@ def broadcastMessageChecker(from_client: Optional[Client], to_client: Client) ->
     return distance < visual_range
 
 
-def broadcastCheckers(*checkers: BroadcastChecker) -> BroadcastChecker:
+def broadcast_checkers(*checkers: BroadcastChecker) -> BroadcastChecker:
     """Create a set of broadcast.
 
     Paramaters:
@@ -103,7 +103,7 @@ def broadcastCheckers(*checkers: BroadcastChecker) -> BroadcastChecker:
     return checker
 
 
-def allATCChecker(_: Optional[Client], to_client: Client) -> bool:
+def all_ATC_checker(_: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which only broadcast to ATC.
 
     Paramaters:
@@ -116,7 +116,7 @@ def allATCChecker(_: Optional[Client], to_client: Client) -> bool:
     return to_client.type == "ATC"
 
 
-def allPilotChecker(_: Optional[Client], to_client: Client) -> bool:
+def all_pilot_checker(_: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which only broadcast to pilot.
 
     Paramaters:
@@ -129,7 +129,7 @@ def allPilotChecker(_: Optional[Client], to_client: Client) -> bool:
     return to_client.type == "ATC"
 
 
-def atChecker(from_client: Optional[Client], to_client: Client) -> bool:
+def at_checker(from_client: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which checks visual range when dest startswith @.
 
     Paramaters:
@@ -143,10 +143,10 @@ def atChecker(from_client: Optional[Client], to_client: Client) -> bool:
     if not from_client.position_ok or not to_client.position_ok:
         return False
     distance = calcDistance(from_client.position, to_client.position)
-    return distance < from_client.getRange()
+    return distance < from_client.get_range()
 
 
-def isMulticast(callsign: str) -> bool:
+def is_multicast(callsign: str) -> bool:
     """Determine if dest callsign is multicast sign.
 
     Paramaters:
