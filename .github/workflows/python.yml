@@ -4,8 +4,8 @@
 name: Python building
 
 on:
-  push:
-    branches: [ "async_dev" ]
+#  push:
+#    branches: [ "async_dev" ]
   pull_request:
     branches: [ "async_dev" ]
   workflow_dispatch:
