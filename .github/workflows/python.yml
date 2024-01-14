@@ -5,9 +5,9 @@ name: Python building
 
 on:
   push:
-    branches: [ "early-dev" ]
+    branches: [ "async_dev" ]
   pull_request:
-    branches: [ "early-dev" ]
+    branches: [ "async_dev" ]
   workflow_dispatch:
 
 jobs:
@@ -44,10 +44,10 @@ jobs:
       run: |
         source .venv/bin/activate
         mypy .
-    - name: Run flake8
+    - name: Run ruff
       run: |
         source .venv/bin/activate
-        flake8 . --count --show-source --statistics
+        ruff check . --show-source --show-fixes
     - name: Build package
       if: ${{ always() }}
       id: build
