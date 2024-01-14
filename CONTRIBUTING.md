@@ -42,8 +42,8 @@ As usual:
 
 **Before committing:**
 
-1. run `isort . && black .` to auto-format the code
-1. run `mypy . && flake8 .` to check everything (fix any warning)
+1. run `ruff --format .` to auto-format the code
+1. run `mypy . && ruff .` to check everything (fix any warning)
 1. run `python -m unittest` to run the tests (fix any issue)
 1. if you updated the documentation or the project dependencies:
     1. run `mkdocs serve`
