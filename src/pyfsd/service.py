@@ -130,7 +130,7 @@ class PyFSDService(Service):
                         "skip_previous_fetcher": MayExist(bool),
                     },
                     "plugin": MayExist(dict),
-                }
+                },
             },
         )
         # Metar
@@ -142,18 +142,22 @@ class PyFSDService(Service):
             ), "Metar fallback mode cannot be the same as normal mode."
         if metar_cfg["mode"] == "cron" or fallback_mode == "cron":
             if "cron_time" not in metar_cfg:
-                raise KeyError("pyfsd.metar.cron_time")
+                msg = "pyfsd.metar.cron_time"
+                raise KeyError(msg)
             elif fallback_mode == "once" and "skip_previous_fetcher" not in metar_cfg:
-                raise KeyError("pyfsd.metar.skip_previous_fetcher")
+                msg = "pyfsd.metar.skip_previous_fetcher"
+                raise KeyError(msg)
         for key, value in self.config.get("plugin", {}).items():
             if not isinstance(value, dict):
-                raise TypeError(f"plugin.{key}' must be section")
+                msg = f"plugin.{key}' must be section"
+                raise TypeError(msg)
 
     def connectDatabase(self) -> None:
         from twisted.internet import reactor
 
         self.db_engine = TwistedEngine.from_sqlalchemy_engine(
-            reactor, create_engine(self.config["pyfsd"]["database"]["url"])
+            reactor,
+            create_engine(self.config["pyfsd"]["database"]["url"]),
         )
 
     def checkAndInitDatabase(self) -> None:
@@ -182,7 +186,8 @@ class PyFSDService(Service):
             .splitlines(),
         )
         return TCPServer(
-            int(self.config["pyfsd"]["client"]["port"]), self.client_factory
+            int(self.config["pyfsd"]["client"]["port"]),
+            self.client_factory,
         )
 
     def getMetarService(self) -> MetarService:
@@ -205,16 +210,17 @@ class PyFSDService(Service):
         for creator in temp_plugin_creators:
             temp_plugins.append(
                 creator.buildService(
-                    self, root_plugin_config.get(creator.service_name, None)
-                )
+                    self,
+                    root_plugin_config.get(creator.service_name, None),
+                ),
             )
         return tuple(temp_plugins)
 
     def pickPlugins(self) -> None:
         all_plugins = []
-        event_handlers: Dict[str, List[IPyFSDPlugin]] = dict(
-            (name, []) for name in PLUGIN_EVENTS
-        )
+        event_handlers: Dict[str, List[IPyFSDPlugin]] = {
+            name: [] for name in PLUGIN_EVENTS
+        }
         root_plugin_config = self.config.get("plugin", {})
         for plugin in getPlugins(IPyFSDPlugin, plugins):
             # Tell user loading plugin
@@ -274,11 +280,13 @@ class PyFSDService(Service):
                     all_plugins.append(plugin)
                     for event in PLUGIN_EVENTS:
                         if hasattr(plugin, event) and getattr(
-                            type(plugin), event
+                            type(plugin),
+                            event,
                         ) is not getattr(BasePyFSDPlugin, event):
                             event_handlers[event].append(plugin)
                     plugin.beforeStart(
-                        self, root_plugin_config.get(plugin.plugin_name, None)
+                        self,
+                        root_plugin_config.get(plugin.plugin_name, None),
                     )
 
         self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
@@ -286,7 +294,8 @@ class PyFSDService(Service):
     def iterPluginByEventName(self, event_name: str) -> Iterable[IPyFSDPlugin]:
         assert self.plugins is not None, "plugin not loaded"
         if event_name not in PLUGIN_EVENTS:
-            raise ValueError(f"Invaild event {event_name}")
+            msg = f"Invaild event {event_name}"
+            raise ValueError(msg)
         return iter(self.plugins["tagged"][event_name])
 
     def iterHandlerByEventName(self, event_name: str) -> Iterable[Callable]:
@@ -328,7 +337,11 @@ class PyFSDService(Service):
     ) -> "Deferred[PluginHandledEventResult | None]":
         if in_thread:
             return deferToThread(  # type: ignore[no-any-return]
-                self.triggerEvent, event_name, args, kwargs, prevent_able
+                self.triggerEvent,
+                event_name,
+                args,
+                kwargs,
+                prevent_able,
             )
         else:
             return succeed(self.triggerEvent(event_name, args, kwargs, prevent_able))

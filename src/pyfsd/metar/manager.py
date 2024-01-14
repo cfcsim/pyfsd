@@ -103,7 +103,8 @@ class MetarManager:
             def errback(failure: "Failure") -> None:
                 if failure.type is not MetarNotAvailableError:
                     self.logger.failure(
-                        "Uncaught exception in metar fetcher", failure=failure
+                        "Uncaught exception in metar fetcher",
+                        failure=failure,
                     )
                 fetcher_info["failed"].append(fetcher)  # type: ignore[attr-defined]
                 tryNext()
@@ -119,9 +120,11 @@ class MetarManager:
 
     def startCache(self) -> None:
         if self.cron_time is None or not self.cron:
-            raise RuntimeError("No cron time specified")
+            msg = "No cron time specified"
+            raise RuntimeError(msg)
         if self.cron_task is not None and self.cron_task.running:
-            raise RuntimeError("Metar cache task already running")
+            msg = "Metar cache task already running"
+            raise RuntimeError(msg)
         self.cron_task = LoopingCall(self.cacheMetar)
         self.cron_task.start(self.cron_time)
 
@@ -164,13 +167,14 @@ class MetarManager:
 
             def errback(failure: "Failure") -> None:
                 self.logger.failure(
-                    "Uncaught exception in metar fetcher", failure=failure
+                    "Uncaught exception in metar fetcher",
+                    failure=failure,
                 )
                 tryNext()
 
             try:
                 fetcher.fetch(self.config, icao).addCallback(callback).addErrback(
-                    errback
+                    errback,
                 )
             except NotImplementedError:
                 if fetcher not in self.not_implemented_info["once"]:
@@ -190,9 +194,12 @@ class MetarManager:
                 if fallback_mode == "once":
                     return self.queryEach(icao, ignore_case=False)
                 else:
-                    raise RuntimeError(
+                    msg = (
                         "Metar cache not available because metar fetch task not "
                         "started. This shouldn't happen."
+                    )
+                    raise RuntimeError(
+                        msg,
                     )
             result = self.metar_cache.get(icao, None)
             if result is None:

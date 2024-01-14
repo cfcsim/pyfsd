@@ -22,7 +22,7 @@ __all__ = ["format_plugin", "PLUGIN_EVENTS", "PluginDict", "PyFSDPluginManager"]
 
 def format_plugin(plugin: PyFSDPlugin, with_version: bool = False) -> str:
     """Format a plugin into string.
-    
+
     Args:
         plugin: The plugin.
         with_version: Append version to string or not.
@@ -39,7 +39,7 @@ def format_plugin(plugin: PyFSDPlugin, with_version: bool = False) -> str:
 
 def format_awaitable(plugin: AwaitableMaker) -> str:
     """Format a awaitable maker into string.
-    
+
     Args:
         plugin: The maker.
 
@@ -59,6 +59,7 @@ class PluginDict(TypedDict):
         all: All plugins.
         tagged: Plugins tagged by events.
     """
+
     all: Tuple[PyFSDPlugin, ...]
     tagged: Dict[str, List[PyFSDPlugin]]
 
@@ -69,6 +70,7 @@ class PyFSDPluginManager:
     Attributes:
         plugins: Plugin set.
     """
+
     plugins: Optional[PluginDict] = None
 
     def pick_plugins(self, root_config: dict) -> None:
@@ -78,14 +80,14 @@ class PyFSDPluginManager:
             root_config: 'plugin' section of config.
         """
         all_plugins = []
-        event_handlers: Dict[str, List[PyFSDPlugin]] = dict(
-            (name, []) for name in PLUGIN_EVENTS
-        )
+        event_handlers: Dict[str, List[PyFSDPlugin]] = {
+            name: [] for name in PLUGIN_EVENTS
+        }
         for plugin in iter_submodule_plugins(
             plugins,
             PyFSDPlugin,  # type: ignore[type-abstract]
             error_handler=lambda name: logger.exception(
-                f"Error happened during load plugin {name}"
+                f"Error happened during load plugin {name}",
             ),
         ):
             # Tell user loading plugin
@@ -145,7 +147,8 @@ class PyFSDPluginManager:
                     all_plugins.append(plugin)
                     for event in PLUGIN_EVENTS:
                         if hasattr(plugin, event) and getattr(
-                            type(plugin), event
+                            type(plugin),
+                            event,
                         ) is not getattr(PyFSDPlugin, event):
                             event_handlers[event].append(plugin)
 
@@ -162,7 +165,8 @@ class PyFSDPluginManager:
         """
         assert self.plugins is not None, "plugin not loaded"
         if event_name not in PLUGIN_EVENTS:
-            raise ValueError(f"Invaild event {event_name}")
+            msg = f"Invaild event {event_name}"
+            raise ValueError(msg)
         return iter(self.plugins["tagged"][event_name])
 
     def iterHandlerByEventName(self, event_name: str) -> Iterable[Callable]:
@@ -193,7 +197,7 @@ class PyFSDPluginManager:
             except PreventEvent as prevent_result:
                 if not prevent_able:
                     logger.error(
-                        f"{plugin.plugin_name}: Cannot prevent event: {event_name}"
+                        f"{plugin.plugin_name}: Cannot prevent event: {event_name}",
                     )
                 else:
                     return {  # type: ignore[return-value]
@@ -203,6 +207,6 @@ class PyFSDPluginManager:
                     }
             except BaseException:
                 logger.exception(
-                    f"Error happened during call plugin {plugin.plugin_name}"
+                    f"Error happened during call plugin {plugin.plugin_name}",
                 )
         return None

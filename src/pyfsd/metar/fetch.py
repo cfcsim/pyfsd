@@ -71,13 +71,12 @@ class NOAAMetarFetcher:
             metar_datetime = datetime.fromisoformat(metar_lines[0].replace("/", "-"))
         except ValueError:
             metar_datetime = datetime.utcnow()
-        metar = Metar(
+        return Metar(
             metar_lines[1],
             strict=False,
             month=metar_datetime.month,
             year=metar_datetime.year,
         )
-        return metar
 
     def fetch(self, _: dict, icao: str) -> Deferred[Optional[Metar]]:
         metar_deferred: Deferred[Optional[Metar]] = Deferred()
@@ -88,8 +87,8 @@ class NOAAMetarFetcher:
             else:
                 metar_deferred.callback(
                     self.parseMetar(
-                        data.decode("ascii", "backslashreplace").splitlines()
-                    )
+                        data.decode("ascii", "backslashreplace").splitlines(),
+                    ),
                 )
 
         self.agent.request(
@@ -97,10 +96,8 @@ class NOAAMetarFetcher:
             b"https://tgftp.nws.noaa.gov/data/observations/metar/stations/%s.TXT"
             % icao.encode(),
         ).addCallback(
-            lambda request: readBody(request).addCallback(parse, request)
-        ).addErrback(
-            lambda _: metar_deferred.callback(None)
-        )
+            lambda request: readBody(request).addCallback(parse, request),
+        ).addErrback(lambda _: metar_deferred.callback(None))
 
         return metar_deferred
 
@@ -128,8 +125,6 @@ class NOAAMetarFetcher:
             b"https://tgftp.nws.noaa.gov/data/observations/metar/cycles/%02dZ.TXT"
             % utc_hour,
         ).addCallback(
-            lambda response: readBody(response).addCallback(parse, response)
-        ).addErrback(
-            lambda _: metar_deferred.errback(MetarNotAvailableError())
-        )
+            lambda response: readBody(response).addCallback(parse, response),
+        ).addErrback(lambda _: metar_deferred.errback(MetarNotAvailableError()))
         return metar_deferred

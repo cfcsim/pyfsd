@@ -1,4 +1,4 @@
-"""The core of PyFSD broadcast system -- broadcast checker
+"""The core of PyFSD broadcast system -- broadcast checker.
 
 Example:
     FSDClientFactory.broadcast(..., check_func=atChecker)
@@ -6,7 +6,7 @@ Example:
 from typing import Callable, Optional
 
 from ..object.client import Client
-from .utils import calcDistance
+from .utils import calc_distance
 
 BroadcastChecker = Callable[[Optional[Client], Client], bool]
 
@@ -25,13 +25,16 @@ def create_broadcast_range_checker(visual_range: int) -> BroadcastChecker:
         assert from_client is not None
         if not from_client.position_ok or not to_client.position_ok:
             return False
-        distance = calcDistance(from_client.position, to_client.position)
+        distance = calc_distance(from_client.position, to_client.position)
         return distance < visual_range
 
     return checker
 
 
-def broadcast_position_checker(from_client: Optional[Client], to_client: Client) -> bool:
+def broadcast_position_checker(
+    from_client: Optional[Client],
+    to_client: Client,
+) -> bool:
     """A broadcast checker which checks visual range while broadcasting position.
 
     Paramaters:
@@ -53,7 +56,7 @@ def broadcast_position_checker(from_client: Optional[Client], to_client: Client)
         visual_range = x + y
     else:
         visual_range = max(x, y)
-    distance = calcDistance(from_client.position, to_client.position)
+    distance = calc_distance(from_client.position, to_client.position)
     return distance < visual_range
 
 
@@ -76,11 +79,8 @@ def broadcast_message_checker(from_client: Optional[Client], to_client: Client) 
     if from_client.type == "PILOT" and to_client.type == "PILOT":
         visual_range = x + y
     else:
-        if x > y:
-            visual_range = x
-        else:
-            visual_range = y
-    distance = calcDistance(from_client.position, to_client.position)
+        visual_range = x if x > y else y
+    distance = calc_distance(from_client.position, to_client.position)
     return distance < visual_range
 
 
@@ -95,10 +95,7 @@ def broadcast_checkers(*checkers: BroadcastChecker) -> BroadcastChecker:
     """
 
     def checker(from_client: Optional[Client], to_client: Client) -> bool:
-        for checker in checkers:
-            if not checker(from_client, to_client):
-                return False
-        return True
+        return all(checker(from_client, to_client) for checker in checkers)
 
     return checker
 
@@ -142,7 +139,7 @@ def at_checker(from_client: Optional[Client], to_client: Client) -> bool:
     assert from_client is not None
     if not from_client.position_ok or not to_client.position_ok:
         return False
-    distance = calcDistance(from_client.position, to_client.position)
+    distance = calc_distance(from_client.position, to_client.position)
     return distance < from_client.get_range()
 
 

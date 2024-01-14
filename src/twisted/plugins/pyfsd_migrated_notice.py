@@ -14,7 +14,7 @@ class PyFSDServiceMaker:
 
     def makeService(self, _: Options) -> NoReturn:
         print(
-            "PyFSD doesn't built on Twisted anymore, Please use `python -m pyfsd' instead."
+            "PyFSD doesn't built on Twisted anymore, Please use `python -m pyfsd' instead.",
         )
         exit(1)
 

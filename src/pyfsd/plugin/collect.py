@@ -70,7 +70,8 @@ def iter_submodule_plugins(
         objects that implemented plugin_abc.
     """
     for module in iter_submodules(
-        root_module.__path__, root_module.__name__, error_handler
+        root_module.__path__,
+        root_module.__name__,
+        error_handler,
     ):
-        for plugin in iter_plugins(module, plugin_abc):
-            yield plugin
+        yield from iter_plugins(module, plugin_abc)

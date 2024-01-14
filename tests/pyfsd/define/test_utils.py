@@ -1,7 +1,6 @@
 from unittest import TestCase
 
 from constantly import ValueConstant
-
 from pyfsd.define.utils import (
     asciiOnly,
     assertNoDuplicate,

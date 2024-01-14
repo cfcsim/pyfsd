@@ -1,5 +1,6 @@
 """Python implemented fsd/wprofile."""
 
+import contextlib
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from math import fabs, pi, sin
@@ -64,7 +65,8 @@ def getSeason(month: int, swap: bool) -> int:
     elif month in [9, 10, 11]:
         return 1
     else:
-        raise ValueError(f"Invaild month {month}")
+        msg = f"Invaild month {month}"
+        raise ValueError(msg)
 
 
 @dataclass
@@ -110,7 +112,7 @@ class WeatherProfile:
             WindLayer(10400, 2500),
             WindLayer(22600, 10400),
             WindLayer(90000, 20700),
-        )
+        ),
     )
     temps: Tuple[TempLayer, TempLayer, TempLayer, TempLayer] = field(
         default_factory=lambda: (
@@ -118,10 +120,10 @@ class WeatherProfile:
             TempLayer(10000),
             TempLayer(18000),
             TempLayer(35000),
-        )
+        ),
     )
     clouds: Tuple[CloudLayer, CloudLayer] = field(
-        default_factory=lambda: (CloudLayer(-1, -1), CloudLayer(-1, -1))
+        default_factory=lambda: (CloudLayer(-1, -1), CloudLayer(-1, -1)),
     )
     tstorm: CloudLayer = field(default_factory=lambda: CloudLayer(-1, -1))
 
@@ -134,7 +136,7 @@ class WeatherProfile:
         self.active = True
 
     def feedMetar(self, metar: "Metar") -> None:
-        """Warning: Lots of unreadable code"""
+        """Warning: Lots of unreadable code."""
         # Wind
         if metar.wind_speed is not None and metar.wind_dir is not None:
             if metar.wind_gust is not None:
@@ -172,10 +174,8 @@ class WeatherProfile:
         }
         for i, sky in enumerate(metar.sky[:2]):
             sky_status, distance, _ = sky
-            try:
+            with contextlib.suppress(KeyError):
                 self.clouds[i].coverage = sky_coverage[sky_status]
-            except KeyError:
-                pass
             if distance is not None:
                 self.clouds[i].floor = int(distance.value())
         if len(metar.sky) >= 2:
@@ -239,18 +239,18 @@ class WeatherProfile:
         lat_var = getVariation(VAR_MIDDIRECTION, 10, 45)
         coriolis_var = getVariation(VAR_MIDCOR, 10, 30)
         self.winds[2].direction = round(
-            6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var
+            6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var,
         )
         self.winds[2].direction = (self.winds[2].direction + 360) % 360
 
         self.winds[2].speed = int(
-            (self.winds[3].speed * (getVariation(VAR_MIDSPEED, 500, 800) / 1000.0))
+            self.winds[3].speed * (getVariation(VAR_MIDSPEED, 500, 800) / 1000.0),
         )
         # ------
         coriolis_var_low = coriolis_var + getVariation(VAR_LOWCOR, 10, 30)
         lat_var = getVariation(VAR_LOWDIRECTION, 10, 45)
         self.winds[1].direction = round(
-            6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var_low
+            6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var_low,
         )
         self.winds[1].direction = (self.winds[1].direction + 360) % 360
 

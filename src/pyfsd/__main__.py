@@ -1,7 +1,7 @@
 from asyncio import run
 
 
-async def main():
+async def main() -> None:
     pass
 
 

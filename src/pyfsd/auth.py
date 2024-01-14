@@ -68,7 +68,7 @@ class CredentialsChecker:
             )
 
         self.runQuery(
-            users.select(users.c.callsign == credentials.username)
+            users.select(users.c.callsign == credentials.username),
         ).addCallbacks(
             callback,
             self._ebAuthenticate,
@@ -89,7 +89,7 @@ class CredentialsChecker:
             if IUsernameHashedPassword.providedBy(credentials):
                 if credentials.checkPassword(hashed_password):
                     deferred.callback(
-                        b"%s:%d" % (credentials.username.encode(), result[0][2])
+                        b"%s:%d" % (credentials.username.encode(), result[0][2]),
                     )
                 else:
                     deferred.errback(UnauthorizedLogin("Password mismatch"))
@@ -97,7 +97,10 @@ class CredentialsChecker:
                 deferred.errback(UnhandledCredentials())
 
     def _ebAuthenticate(
-        self, message: str, _: UsernameSHA256Password, deferred: Deferred
+        self,
+        message: str,
+        _: UsernameSHA256Password,
+        deferred: Deferred,
     ) -> None:
         deferred.errback(LoginFailed(message))
 
@@ -106,13 +109,17 @@ class CredentialsChecker:
 class Realm:
     @staticmethod
     def requestAvatar(
-        result: "bytes | Tuple[()]", _: object, *interfaces: Type[Interface]
+        result: "bytes | Tuple[()]",
+        _: object,
+        *interfaces: Type[Interface],
     ) -> Tuple[Type[IUserInfo], UserInfo, Callable]:
         if IUserInfo in interfaces:
             if isinstance(result, bytes):
                 username, rating = result.decode().rsplit(":", 1)
             else:
-                raise NotImplementedError("invaild result")
+                msg = "invaild result"
+                raise NotImplementedError(msg)
             return IUserInfo, UserInfo(username, int(rating)), lambda: None
         else:
-            raise NotImplementedError("no interface")
+            msg = "no interface"
+            raise NotImplementedError(msg)

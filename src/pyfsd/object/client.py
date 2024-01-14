@@ -81,10 +81,7 @@ class Client:
         route: bytes,
     ) -> int:
         revision: int
-        if self.flight_plan is not None:
-            revision = self.flight_plan.revision + 1
-        else:
-            revision = 0
+        revision = self.flight_plan.revision + 1 if self.flight_plan is not None else 0
         self.flight_plan = FlightPlan(
             revision,
             plan_type,

@@ -2,14 +2,19 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import AnyStr, Iterable, List, Optional, Tuple, Type, Union, cast, overload
 
-from twisted.python.deprecate import deprecated
 
-from .utils import asciiOnly
+# from twisted.python.deprecate import deprecated
+def deprecated(a):
+    return a
+
+
+from .utils import ascii_only
 
 __all__ = [
     "concat",
     "makePacket",
     "breakPacket",
+    "join_lines",
     "FSDCLIENTPACKET",
     "CLIENT_USED_COMMAND",
     "CompatibleString",
@@ -21,7 +26,7 @@ class CompatibleString:
     value: str
 
     def __init__(self, value: str) -> None:
-        assert asciiOnly(value), "String can only contain ASCII characters"
+        assert ascii_only(value), "String can only contain ASCII characters"
         self.value = value
 
     def __str__(self) -> str:
@@ -106,9 +111,12 @@ class CompatibleString:
         elif isinstance(part, bytes):
             return part in self.value.encode()
         else:
-            raise TypeError(
+            msg = (
                 "'in <CompatibleString>' requires string or bytes or "
                 f"CompatibleString as left operand, not {type(part).__name__}"
+            )
+            raise TypeError(
+                msg,
             )
 
     def __len__(self) -> int:
@@ -118,11 +126,7 @@ class CompatibleString:
         return self.__class__(self.value[index])
 
     @overload
-    def __add__(self, other: str) -> str:
-        ...
-
-    @overload
-    def __add__(self, other: bytes) -> bytes:
+    def __add__(self, other: AnyStr) -> AnyStr:
         ...
 
     @overload
@@ -200,7 +204,8 @@ class CompatibleString:
         elif type_ is bytes:
             return self.value.encode()  # type: ignore[return-value]
         else:
-            raise TypeError(f"Invaild string type: {type_}")
+            msg = f"Invaild string type: {type_}"
+            raise TypeError(msg)
 
 
 Sequence.register(CompatibleString)
@@ -240,14 +245,16 @@ class FSDCLIENTPACKET(CompatibleString, Enum):
 
 
 @deprecated(
-    type("_dv", (), {"package": "pyfsd", "short": lambda: "0.0.2.dev0"}), "+ operator"
+    type("_dv", (), {"package": "pyfsd", "short": lambda: "0.0.2.dev0"}),
+    "+ operator",
 )
 def concat(*items: Union[AnyStr, FSDCLIENTPACKET]) -> AnyStr:
     result = items[0]
     for item in items[1:]:
         result += item  # type: ignore[assignment]
     if isinstance(result, FSDCLIENTPACKET):
-        raise ValueError("Must contain str or bytes")
+        msg = "Must contain str or bytes"
+        raise ValueError(msg)
     return cast(AnyStr, result)
 
 
@@ -256,33 +263,38 @@ def makePacket(*items: Union[AnyStr, FSDCLIENTPACKET]) -> AnyStr:
     for item in items:
         result += item + SPLIT_SIGN  # type: ignore[assignment]
     if isinstance(result, FSDCLIENTPACKET):
-        raise ValueError("Must contain str or bytes")
+        msg = "Must contain str or bytes"
+        raise ValueError(msg)
     return cast(AnyStr, result[:-1])
 
 
 @overload
 def breakPacket(
-    packet: AnyStr, heads: Iterable[AnyStr]
+    packet: AnyStr,
+    heads: Iterable[AnyStr],
 ) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]:
     ...
 
 
 @overload
 def breakPacket(
-    packet: AnyStr, heads: Iterable[FSDCLIENTPACKET]
+    packet: AnyStr,
+    heads: Iterable[FSDCLIENTPACKET],
 ) -> Tuple[Optional[FSDCLIENTPACKET], Tuple[AnyStr, ...]]:
     ...
 
 
 @overload
 def breakPacket(
-    packet: AnyStr, heads: Iterable[Union[AnyStr, FSDCLIENTPACKET]]
+    packet: AnyStr,
+    heads: Iterable[Union[AnyStr, FSDCLIENTPACKET]],
 ) -> Tuple[Optional[Union[AnyStr, FSDCLIENTPACKET]], Tuple[AnyStr, ...]]:
     ...
 
 
 def breakPacket(
-    packet: AnyStr, heads: Iterable[Union[AnyStr, FSDCLIENTPACKET]]
+    packet: AnyStr,
+    heads: Iterable[Union[AnyStr, FSDCLIENTPACKET]],
 ) -> Tuple[Optional[Union[AnyStr, FSDCLIENTPACKET]], Tuple[AnyStr, ...]]:
     packet_type = type(packet)
     assert packet_type in (str, bytes)
@@ -301,6 +313,24 @@ def breakPacket(
     if head is not None:
         splited_packet[0] = splited_packet[0][len(head) :]
     return (head, tuple(splited_packet))
+
+
+def join_lines(*lines: AnyStr, newline: bool = True) -> AnyStr:
+    r"""Join lines together.
+
+    Args:
+        lines: The lines.
+        newline: Append '\r\n' to every line or not.
+
+    Returns:
+        The result.
+    """
+    result = CompatibleString("")
+    split_sign = CompatibleString("\r\n")
+    for line in lines:
+        # Ignore type errors. Just let it raise.
+        result += line + split_sign if newline else line  # type: ignore[assignment]
+    return cast(AnyStr, result)
 
 
 CLIENT_USED_COMMAND = [

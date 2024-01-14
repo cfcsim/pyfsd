@@ -71,7 +71,7 @@ class FSDClientFactory(Factory):
                 "*",
                 f"{random_int % 11 - 5}",
                 f"{random_int % 21 - 10}",
-            ).encode("ascii")
+            ).encode("ascii"),
         )
 
     def buildProtocol(self, addr: "IAddress") -> Optional["Protocol"]:
@@ -107,5 +107,7 @@ class FSDClientFactory(Factory):
 
     def login(self, username: str, password: str) -> "Deferred":
         return self.portal.login(
-            UsernameSHA256Password(username, password), None, IUserInfo
+            UsernameSHA256Password(username, password),
+            None,
+            IUserInfo,
         )

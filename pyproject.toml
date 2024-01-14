@@ -32,6 +32,7 @@ dependencies = [
     "metar>=1.10.0",
     "sqlalchemy>=2.0.22",
     "aiohttp>=3.8.6",
+    "typing-extensions>=4.0.0; python_version < \"3.11\"",
 ]
 
 [project.urls]
@@ -72,9 +73,6 @@ source = "scm"
 write_to = "pyfsd/_version.py"
 write_template = "version = \"{}\"\n"
 
-[tool.isort]
-profile = "black"
-
 [tool.pyright]
 exclude = [
     "**/__pycache__",
@@ -82,3 +80,34 @@ exclude = [
     ".venv",
     ".git",
 ]
+
+[tool.ruff]
+select = [
+    "E",
+    "F",
+    "W",
+    "I",
+    "N",
+    "D",
+    "UP",
+    "ASYNC",
+    "S",
+    "B",
+    "A",
+    "C4",
+    "EM",
+    "PIE",
+    "Q",
+    "RET",
+    "SIM",
+    "FIX",
+    "RUF"
+]
+fixable = ["ALL"]
+exclude = [".venv"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true

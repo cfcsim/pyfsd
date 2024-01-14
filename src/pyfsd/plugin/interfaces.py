@@ -41,7 +41,7 @@ class PyFSDPlugin(ABC):
     @property
     @abstractmethod
     def version(self) -> Tuple[int, str]:
-        """int + human readable version of this plugin."""
+        """Int + human readable version of this plugin."""
 
     @property
     @abstractmethod
@@ -84,7 +84,9 @@ class PyFSDPlugin(ABC):
         """
 
     async def line_received_from_client(
-        self, protocol: "FSDClientProtocol", line: bytes
+        self,
+        protocol: "FSDClientProtocol",
+        line: bytes,
     ) -> None:
         """Called when line received from client.
 
@@ -113,7 +115,9 @@ class PyFSDPlugin(ABC):
         """
 
     async def client_disconnected(
-        self, protocol: "FSDClientProtocol", client: Optional["Client"]
+        self,
+        protocol: "FSDClientProtocol",
+        client: Optional["Client"],
     ) -> None:
         """Called when connection disconnected.
 
@@ -139,7 +143,9 @@ class AwaitableMaker(ABC):
 
     @abstractmethod
     async def __call__(
-        self, pyfsd: "PyFSDService", config: Optional[dict]
+        self,
+        pyfsd: "PyFSDService",
+        config: Optional[dict],
     ) -> Awaitable:
         """Make a awaitable object.
 
