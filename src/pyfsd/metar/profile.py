@@ -1,4 +1,14 @@
-"""Python implemented fsd/wprofile."""
+"""Python implemented fsd/wprofile.
+
+Note:
+    I don't know what variation means, it was copied from FSD.
+
+Attributes:
+    last_update_variation_hour: Last hour that we updated variation.
+    variation: ?
+    VAR_*: ?
+    mrand: Basically a random number generator, used to compatible with FSD's.
+"""
 
 import contextlib
 from dataclasses import dataclass, field
@@ -29,7 +39,12 @@ VAR_MIDTEMP = 8
 VAR_LOWTEMP = 9
 
 
-def updateVariationIfOutdated() -> bool:
+def check_variation() -> bool:
+    """Check and update variation if it's outdated.
+
+    Returns:
+        Updated variation or not.
+    """
     global variation
 
     now = datetime.now(timezone.utc)
@@ -51,26 +66,36 @@ def updateVariationIfOutdated() -> bool:
     return False
 
 
-def getVariation(num: int, min_: int, max_: int) -> int:
+def get_variation(num: int, min_: int, max_: int) -> int:
+    """Get variation."""
     return (abs(variation[num]) % (max_ - min_ + 1)) + min_
 
 
-def getSeason(month: int, swap: bool) -> int:
+def get_season(month: int, swap: bool) -> int:
+    """Get season by month.
+
+    Args:
+        month: The month.
+        swap: Swap spring and autumn or not.
+
+    Returns:
+        season: The season. Note it starts from 0.
+    """
     if month in [12, 1, 2]:
         return 2 if swap else 0
-    elif month in [3, 4, 5]:
+    if month in [3, 4, 5]:
         return 1
-    elif month in [6, 7, 8]:
+    if month in [6, 7, 8]:
         return 0 if swap else 2
-    elif month in [9, 10, 11]:
+    if month in [9, 10, 11]:
         return 1
-    else:
-        msg = f"Invaild month {month}"
-        raise ValueError(msg)
+    raise ValueError(f"Invaild month {month}")
 
 
 @dataclass
 class CloudLayer:
+    """This dataclass describes a cloud layer."""
+
     ceiling: int
     floor: int
     coverage: int = 0
@@ -80,6 +105,14 @@ class CloudLayer:
 
 @dataclass
 class WindLayer:
+    """This dataclass describes a wind layer.
+
+    Attributes:
+        gusting: The wind is gusting or not.
+        speed: Windspeed.
+        direction: Direction of the wind.
+    """
+
     ceiling: int
     floor: int
     direction: int = 0
@@ -90,17 +123,36 @@ class WindLayer:
 
 @dataclass
 class TempLayer:
+    """This dataclass describes a temperature layer.
+
+    Attributes:
+        temp: The temperature.
+    """
+
     ceiling: int
     temp: int = 0
 
 
 @dataclass
 class WeatherProfile:
+    """Profile of weather.
+
+    Attributes:
+        creation: Create time of the profile.
+        origin: The profile's source, used in multi-server
+        metar: The parsed metar.
+        name: Metar station.
+        season: Season of the metar's time.
+        active: The profile is activate or not.
+        dew_point: Dew point.
+        visibility: Visibility, in MI (maybe)
+        barometer: Barometer.
+    """
+
     creation: int
     origin: Optional[str]
     metar: "Metar"
     name: Optional[str] = None
-    raw_code: Optional[str] = None
     season: int = 0
     active: bool = False
     dew_point: int = 0
@@ -128,15 +180,18 @@ class WeatherProfile:
     tstorm: CloudLayer = field(default_factory=lambda: CloudLayer(-1, -1))
 
     def __post_init__(self) -> None:
+        """Initialize this dataclass from metar."""
         if self.metar.station_id is not None:
             self.name = self.metar.station_id
-        self.feedMetar(self.metar)
+        self.feed_metar(self.metar)
 
-    def activate(self) -> None:
-        self.active = True
+    def feed_metar(self, metar: "Metar") -> None:
+        """Parse metar.
 
-    def feedMetar(self, metar: "Metar") -> None:
-        """Warning: Lots of unreadable code."""
+        Note:
+            I don't know what does ceiling or floor stands for,
+            these code are heavily based on FSD.
+        """
         # Wind
         if metar.wind_speed is not None and metar.wind_dir is not None:
             if metar.wind_gust is not None:
@@ -218,11 +273,12 @@ class WeatherProfile:
         # Visibility fix: nothing
 
     def fix(self, position: "Position") -> None:
+        """Fix this profile at a point."""
         a1 = position[0]
         a2 = fabs(position[1] / 18)
-        season = getSeason(datetime.now().month, a1 < 0)
-        updateVariationIfOutdated()
-        lat_var = getVariation(VAR_UPDIRECTION, -25, 25)
+        season = get_season(datetime.now().month, a1 < 0)
+        check_variation()
+        lat_var = get_variation(VAR_UPDIRECTION, -25, 25)
         self.winds[3].direction = round(6 if a1 > 0 else -6 * a1 + lat_var + a2)
         self.winds[3].direction = (self.winds[3].direction + 360) % 360
 
@@ -236,19 +292,19 @@ class WeatherProfile:
 
         self.winds[3].speed = round(fabs(sin(a1 * pi / 180.0)) * max_velocity)
         # ------
-        lat_var = getVariation(VAR_MIDDIRECTION, 10, 45)
-        coriolis_var = getVariation(VAR_MIDCOR, 10, 30)
+        lat_var = get_variation(VAR_MIDDIRECTION, 10, 45)
+        coriolis_var = get_variation(VAR_MIDCOR, 10, 30)
         self.winds[2].direction = round(
             6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var,
         )
         self.winds[2].direction = (self.winds[2].direction + 360) % 360
 
         self.winds[2].speed = int(
-            self.winds[3].speed * (getVariation(VAR_MIDSPEED, 500, 800) / 1000.0),
+            self.winds[3].speed * (get_variation(VAR_MIDSPEED, 500, 800) / 1000.0),
         )
         # ------
-        coriolis_var_low = coriolis_var + getVariation(VAR_LOWCOR, 10, 30)
-        lat_var = getVariation(VAR_LOWDIRECTION, 10, 45)
+        coriolis_var_low = coriolis_var + get_variation(VAR_LOWCOR, 10, 30)
+        lat_var = get_variation(VAR_LOWDIRECTION, 10, 45)
         self.winds[1].direction = round(
             6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var_low,
         )
@@ -256,6 +312,6 @@ class WeatherProfile:
 
         self.winds[1].speed = (self.winds[0].speed + self.winds[1].speed) // 2
         # ------
-        self.temps[3].temp = -57 + getVariation(VAR_UPTEMP, -4, 4)
-        self.temps[2].temp = -21 + getVariation(VAR_MIDTEMP, -7, 7)
-        self.temps[1].temp = -5 + getVariation(VAR_LOWTEMP, -12, 12)
+        self.temps[3].temp = -57 + get_variation(VAR_UPTEMP, -4, 4)
+        self.temps[2].temp = -21 + get_variation(VAR_MIDTEMP, -7, 7)
+        self.temps[1].temp = -5 + get_variation(VAR_LOWTEMP, -12, 12)

@@ -166,7 +166,7 @@ class TestCheckEict(TestCase):
                 },
                 (
                     VerifyKeyError("dict_obj", "a", "missing"),
-                    VerifyKeyError("dict_obj", "e", "leftover")
+                    VerifyKeyError("dict_obj", "e", "leftover"),
                 ),
                 False,
             ),

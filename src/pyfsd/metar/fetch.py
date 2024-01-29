@@ -1,41 +1,35 @@
+"""Metar fetcher defines.
+
+Attributes:
+    MetarInfoDict: Type of a dict that describes all airports' metar.
+"""
+from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
+from aiohttp import ClientSession
 from metar.Metar import Metar
-from twisted.internet import reactor
-from twisted.internet.defer import Deferred
-from twisted.web.client import Agent, readBody
-from zope.interface import Attribute, Interface, implementer
-
-from ..define.utils import QuietHTTPConnectionPool
-
-if TYPE_CHECKING:
-    from twisted.web.client import Response
 
 MetarInfoDict = Dict[str, Metar]
 
 __all__ = [
     "MetarInfoDict",
-    "MetarNotAvailableError",
-    "IMetarFetcher",
+    "MetarFetcher",
     "NOAAMetarFetcher",
 ]
 
 
-class MetarNotAvailableError(Exception):
-    """Raise when a metar fetcher cannot provide metar."""
-
-
-class IMetarFetcher(Interface):
+class MetarFetcher(ABC):
     """Metar fetcher.
 
     Attributes:
         metar_source: Name of the METAR source.
     """
 
-    metar_source: str = Attribute("metar_source", "Name of this fetcher")
+    metar_source: ClassVar[str]
 
-    def fetch(config: dict, icao: str) -> Deferred[Optional[Metar]]:
+    @abstractmethod
+    async def fetch(self, config: dict, icao: str) -> Optional[Metar]:
         """Fetch the METAR of the specified airport.
 
         Args:
@@ -43,30 +37,42 @@ class IMetarFetcher(Interface):
             icao: The ICAO of the airport.
 
         Returns:
-            The METAR of the specified airport.
+            The METAR of the specified airport. None if fetch failed.
+
+        Raises:
+            NotImplemented: When fetch a single airport isn't supported.
         """
 
-    def fetchAll(config: dict) -> Deferred[MetarInfoDict]:
+    @abstractmethod
+    async def fetch_all(self, config: dict) -> Optional[MetarInfoDict]:
         """Fetch METAR for all airports.
 
         Args:
             config: pyfsd.metar section of PyFSD configure file.
 
         Returns:
-            All METAR.
+            All METAR. None if fetch failed.
 
         Raises:
-            MetarNotAvailableError: Metar not available.
+            NotImplemented: When fetch all isn't supported.
         """
 
 
-@implementer(IMetarFetcher)
-class NOAAMetarFetcher:
+class NOAAMetarFetcher(MetarFetcher):
+    """Fetch metar from NOAA (tgftp.nws.noaa.gov)."""
+
     metar_source = "NOAA"
-    agent = Agent(reactor, pool=QuietHTTPConnectionPool(reactor))
 
     @staticmethod
-    def parseMetar(metar_lines: List[str]) -> Metar:
+    def parse_metar(metar_lines: List[str]) -> Metar:
+        """Parse a metar block from NOAA.
+
+        Args:
+            metar_lines: Metar block, splitted into lines.
+
+        Returns:
+            The parsed metar.
+        """
         try:
             metar_datetime = datetime.fromisoformat(metar_lines[0].replace("/", "-"))
         except ValueError:
@@ -78,53 +84,32 @@ class NOAAMetarFetcher:
             year=metar_datetime.year,
         )
 
-    def fetch(self, _: dict, icao: str) -> Deferred[Optional[Metar]]:
-        metar_deferred: Deferred[Optional[Metar]] = Deferred()
+    async def fetch(self, _: dict, icao: str) -> Optional[Metar]:
+        """Fetch single airport's metar."""
+        async with ClientSession() as session, session.get(
+            f"https://tgftp.nws.noaa.gov/data/observations/metar/stations/{icao}.TXT"
+        ) as resp:
+            if resp.status != 200:
+                return None
+            return self.parse_metar((await resp.text()).splitlines())
 
-        def parse(data: bytes, response: "Response") -> None:
-            if response.code != 200:
-                metar_deferred.errback(None)
-            else:
-                metar_deferred.callback(
-                    self.parseMetar(
-                        data.decode("ascii", "backslashreplace").splitlines(),
-                    ),
-                )
-
-        self.agent.request(
-            b"GET",
-            b"https://tgftp.nws.noaa.gov/data/observations/metar/stations/%s.TXT"
-            % icao.encode(),
-        ).addCallback(
-            lambda request: readBody(request).addCallback(parse, request),
-        ).addErrback(lambda _: metar_deferred.callback(None))
-
-        return metar_deferred
-
-    def fetchAll(self, _: dict) -> Deferred[MetarInfoDict]:
+    async def fetch_all(self, _: dict) -> Optional[MetarInfoDict]:
+        """Fetch all airports' metar."""
         utc_hour = datetime.now(timezone.utc).hour
-        metar_deferred: Deferred[MetarInfoDict] = Deferred()
 
-        def parse(data: bytes, response: "Response") -> None:
-            if response.code != 200:
-                metar_deferred.errback(MetarNotAvailableError())
-                return
+        async with ClientSession() as session, session.get(
+            "https://tgftp.nws.noaa.gov/data/observations/metar/cycles/"
+            f"{utc_hour:02d}Z.TXT"
+        ) as resp:
+            if resp.status != 200:
+                return None
             all_metar: MetarInfoDict = {}
-            metar_blocks = data.decode("ascii", "backslashreplace").split("\n\n")
+            metar_blocks = (await resp.text()).split("\n\n")
             for block in metar_blocks:
                 blocklines = block.splitlines()
                 if len(blocklines) < 2:
                     continue
-                current_metar = self.parseMetar(blocklines)
+                current_metar = self.parse_metar(blocklines)
                 if current_metar.station_id is not None:
                     all_metar[current_metar.station_id] = current_metar
-            metar_deferred.callback(all_metar)
-
-        self.agent.request(
-            b"GET",
-            b"https://tgftp.nws.noaa.gov/data/observations/metar/cycles/%02dZ.TXT"
-            % utc_hour,
-        ).addCallback(
-            lambda response: readBody(response).addCallback(parse, response),
-        ).addErrback(lambda _: metar_deferred.errback(MetarNotAvailableError()))
-        return metar_deferred
+            return all_metar

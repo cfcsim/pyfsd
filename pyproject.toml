@@ -1,5 +1,5 @@
 [build-system]
-requires = ["pdm-backend"]
+requires = ["pdm-backend", "versioneer[toml]>=0.29" ]
 build-backend = "pdm.backend"
 
 [project]
@@ -95,7 +95,6 @@ select = [
     "B",
     "A",
     "C4",
-    "EM",
     "PIE",
     "Q",
     "RET",
@@ -111,3 +110,11 @@ convention = "google"
 
 [tool.ruff.lint.pyupgrade]
 keep-runtime-typing = true
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "NONE"
+versionfile_build = "NONE"
+tag_prefix = ""
+parentdir_prefix = "pyfsd-"

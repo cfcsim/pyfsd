@@ -1,7 +1,7 @@
 # pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
 """Interfaces of PyFSD plugin architecture."""
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Awaitable, Optional, Tuple
+from typing import TYPE_CHECKING, Awaitable, ClassVar, Optional, Tuple, Type, TypedDict
 
 if TYPE_CHECKING:
     from ..object.client import Client
@@ -23,30 +23,15 @@ class PyFSDPlugin(ABC):
         plugin_name: Name of this plugin.
         api: API level of this plugin.
         version: int and human readable version of this plugin.
-        expected_config: Configuration structure description.
-            structure parameter of pyfsd.define.config_check function.
+        expected_config: Configuration structure description, TypedDict.
+            structure parameter of pyfsd.define.check_dict function.
             None if this plugin requires no config. (disables config check)
     """
 
-    @property
-    @abstractmethod
-    def plugin_name(self) -> str:
-        """Name of this plugin."""
-
-    @property
-    @abstractmethod
-    def api(self) -> int:
-        """API level of this plugin."""
-
-    @property
-    @abstractmethod
-    def version(self) -> Tuple[int, str]:
-        """Int + human readable version of this plugin."""
-
-    @property
-    @abstractmethod
-    def expected_config(self) -> Optional[dict]:
-        """Configuration structure description."""
+    plugin_name: ClassVar[str]
+    api: ClassVar[int]
+    version: ClassVar[Tuple[int, str]]
+    expected_config: ClassVar[Optional[Type[TypedDict]]]  # type: ignore[valid-type]
 
     async def before_start(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
         """Called before services start.
@@ -136,10 +121,7 @@ class AwaitableMaker(ABC):
         awaitable_name: Name of the to-make awaitable object.
     """
 
-    @property
-    @abstractmethod
-    def awaitable_name(self) -> str:
-        """Name of the to-make awaitable object."""
+    awaitable_name: ClassVar[str]
 
     @abstractmethod
     async def __call__(

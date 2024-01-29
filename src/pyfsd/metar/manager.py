@@ -1,15 +1,26 @@
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, TypedDict
+"""PyFSD metar manager.
 
-from twisted.internet.defer import Deferred, succeed
-from twisted.internet.task import LoopingCall
-from twisted.logger import Logger
-from twisted.plugin import getPlugins
+See .MetarManager
+"""
+from asyncio import create_task
+from asyncio import sleep as asleep
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterable,
+    List,
+    NoReturn,
+    Optional,
+    Tuple,
+)
+
+from loguru import logger
 
 from .. import plugins
+from ..plugin.collect import iter_submodule_plugins
 from .fetch import (
-    IMetarFetcher,
+    MetarFetcher,
     MetarInfoDict,
-    MetarNotAvailableError,
     NOAAMetarFetcher,
 )
 
@@ -17,217 +28,166 @@ from .fetch import (
 
 
 if TYPE_CHECKING:
+    from asyncio import Task
+
     from metar.Metar import Metar
-    from twisted.python.failure import Failure
-
-
-class CronFetcherInfo(TypedDict):
-    failed: Iterable[IMetarFetcher]
-    succeed: Optional[IMetarFetcher]
-
-
-class NotImplementedInfo(TypedDict):
-    cron: List[IMetarFetcher]
-    once: List[IMetarFetcher]
 
 
 class MetarManager:
-    fetchers: List[IMetarFetcher]
-    metar_cache: MetarInfoDict = {}
-    cron: bool = False
+    """The PyFSD metar manager.
+
+    Note:
+        Mode explain:
+        cron: Fetch all airports' metar (cached).
+        once: Fetch specified airport's metar.
+
+    Attributes:
+        fetchers: All fetchers.
+        metar_cache: Metars fetched in cron mode.
+        config: pyfsd.metar section of config.
+        cron_time: Interval time between every two cron fetch. None if not in cron mode.
+    """
+
+    fetchers: Tuple[MetarFetcher, ...]
+    metar_cache: MetarInfoDict
     config: dict
     cron_time: Optional[float]
-    cron_fetcher_info: Optional[CronFetcherInfo] = None
-    not_implemented_info: NotImplementedInfo = {"cron": [], "once": []}
-    cron_task: Optional[LoopingCall] = None
-    logger = Logger()
+    cron_task: "Task[NoReturn] | None"
 
     def __init__(self, config: dict) -> None:
-        self.cron_time = (
-            config["cron_time"]
-            if config["mode"] == "cron" or config.get("fallback", None) == "cron"
-            else None
-        )
-        self.cron = self.cron_time is not None
-        self.config = config
-        self.pickFetchers(config["fetchers"])
+        """Create a MetarManager instance.
 
-    def pickFetchers(self, enabled_fetchers: Iterable[str]) -> int:
+        Args:
+            config: pyfsd.metar section of config.
+        """
+        self.cron_time = config["cron_time"] if config["mode"] == "cron" else None
+        self.config = config
+        self.metar_cache = {}
+        self.pick_fetchers(config["fetchers"])
+
+    def pick_fetchers(self, enabled_fetchers: Iterable[str]) -> int:
+        """Try to pick all specified metar fetchers according config.
+
+        Args:
+            enabled_fetchers: Fetchers(name) to be load.
+
+        Returns:
+            How much fetchers were loaded.
+        """
         count = 1
-        temp_fetchers: Dict[str, IMetarFetcher] = {}
-        fetchers = []
-        temp_fetchers[NOAAMetarFetcher.metar_source] = IMetarFetcher(NOAAMetarFetcher())
-        for fetcher in getPlugins(IMetarFetcher, package=plugins):
+        temp_fetchers: Dict[str, MetarFetcher] = {
+            NOAAMetarFetcher.metar_source: NOAAMetarFetcher()
+        }
+        fetchers: List[MetarFetcher] = []
+        for fetcher in iter_submodule_plugins(
+            plugins,
+            MetarFetcher,  # type: ignore[type-abstract]
+            error_handler=logger.exception,
+        ):
             count += 1
             temp_fetchers[fetcher.metar_source] = fetcher
         for need_fetcher in enabled_fetchers:
             if need_fetcher not in temp_fetchers:
-                self.logger.error(f"No such METAR fetcher: {need_fetcher}")
+                logger.error(f"No such METAR fetcher: {need_fetcher}")
             else:
                 fetchers.append(temp_fetchers[need_fetcher])
-        self.fetchers = fetchers
+        self.fetchers = tuple(fetchers)
         return count
 
-    def cacheMetar(self) -> None:
-        self.logger.info("Fetching METAR")
-        fetcher_info: CronFetcherInfo = {"failed": [], "succeed": None}
-        fetchers = self.fetchers.copy()
+    async def cache_metar(self) -> None:
+        """Perform a cron fetch.
 
-        def giveResult(metars: MetarInfoDict) -> None:
-            if fetcher_info["succeed"] is None:
-                self.logger.error("No metar fetched")
-                # self.metar_cache is not empty mean previous fetch succeeded, keep it
-                if not self.metar_cache:
-                    self.cron_fetcher_info = fetcher_info
-            else:
-                # Only overwrite metar_cache if fetch succeed.
-                self.logger.info(f"Fetched {len(metars)} METARs.")
-                self.metar_cache = metars
-                self.cron_fetcher_info = fetcher_info
+        Raises:
+            RuntimeError: if not in cron mode.
+        """
+        logger.info("Fetching METAR")
 
-        def tryNext() -> None:
-            if len(fetchers) == 0:
-                giveResult({})
-                return
-
-            fetcher = fetchers.pop(0)
-
-            if fetcher in self.not_implemented_info["cron"]:
-                tryNext()
-                return
-
-            def callback(metars: MetarInfoDict) -> None:
-                fetcher_info["succeed"] = fetcher
-                giveResult(metars)
-
-            def errback(failure: "Failure") -> None:
-                if failure.type is not MetarNotAvailableError:
-                    self.logger.failure(
-                        "Uncaught exception in metar fetcher",
-                        failure=failure,
-                    )
-                fetcher_info["failed"].append(fetcher)  # type: ignore[attr-defined]
-                tryNext()
-
+        for fetcher in self.fetchers:
             try:
-                fetcher.fetchAll(self.config).addCallback(callback).addErrback(errback)
+                metars = await fetcher.fetch_all(self.config)
             except NotImplementedError:
-                if fetcher not in self.not_implemented_info["cron"]:
-                    self.not_implemented_info["cron"].append(fetcher)
-                tryNext()
+                continue
+            else:
+                if metars is not None:
+                    logger.info(f"Fetched {len(metars)} metars.")
+                    self.metar_cache = metars
+                    return
+                continue
+        logger.error("No metar was fetched. All metar fetcher failed.")
 
-        tryNext()
+    def get_cron_task(self) -> Task[NoReturn]:
+        """Get cron fetching task.
 
-    def startCache(self) -> None:
-        if self.cron_time is None or not self.cron:
-            msg = "No cron time specified"
-            raise RuntimeError(msg)
-        if self.cron_task is not None and self.cron_task.running:
-            msg = "Metar cache task already running"
-            raise RuntimeError(msg)
-        self.cron_task = LoopingCall(self.cacheMetar)
-        self.cron_task.start(self.cron_time)
+        Raises:
+            RuntimeError: if not in cron mode.
+        """
+        if self.cron_time is None:
+            raise RuntimeError("Not in cron mode")
+        if self.cron_task is not None:
+            return self.cron_task
 
-    def stopCache(self) -> None:
-        if self.cron_task is not None and self.cron_task.running:
-            self.cron_task.stop()
+        async def runner() -> NoReturn:
+            if self.cron_time is None:
+                raise RuntimeError("***BUG cron_time become None")
+            while True:
+                await self.cache_metar()
+                await asleep(self.cron_time)
 
-    def queryEach(
+        self.cron_task = create_task(runner(), name="cron_metar_fetcher")
+        return self.cron_task
+
+    async def fetch_once(
         self,
         icao: str,
-        to_skip_fetchers: Iterable[IMetarFetcher] = (),
+        ignored_sources: Iterable[str] = (),
         ignore_case: bool = True,
-    ) -> Deferred[Optional["Metar"]]:
+    ) -> "Metar | None":
+        """Try to fetch metar from fetchers by MetarFetcher.fetch.
+
+        Args:
+            icao: ICAO of the airport.
+            ignored_sources: Ignored metar sources, won't be used in this fetch.
+            ignore_case: Ignore ICAO case.
+
+        Returns:
+            The parsed Metar or None if nothing fetched.
+        """
+        ignored_sources_tuple = tuple(ignored_sources)
         if ignore_case:
             icao = icao.upper()
 
-        fetchers = self.fetchers.copy()
-
-        for to_skip_fetcher in to_skip_fetchers:
-            fetchers.remove(to_skip_fetcher)
-
-        result_deferred: Deferred[Optional["Metar"]] = Deferred()
-
-        def giveResult(metar: Optional["Metar"]) -> None:
-            result_deferred.callback(metar)
-
-        def tryNext() -> None:
-            if len(fetchers) == 0:
-                giveResult(None)
-                return
-
-            fetcher = fetchers.pop(0)
-
-            if fetcher in self.not_implemented_info["once"]:
-                tryNext()
-                return
-
-            def callback(metar: Optional["Metar"]) -> None:
-                giveResult(metar)
-
-            def errback(failure: "Failure") -> None:
-                self.logger.failure(
-                    "Uncaught exception in metar fetcher",
-                    failure=failure,
-                )
-                tryNext()
-
+        for fetcher in self.fetchers:
+            if fetcher.metar_source in ignored_sources_tuple:
+                continue
             try:
-                fetcher.fetch(self.config, icao).addCallback(callback).addErrback(
-                    errback,
-                )
+                metar = await fetcher.fetch(self.config, icao)
+                if metar is not None:
+                    return metar
             except NotImplementedError:
-                if fetcher not in self.not_implemented_info["once"]:
-                    self.not_implemented_info["once"].append(fetcher)
-                tryNext()
+                continue
+        return None
 
-        tryNext()
-        return result_deferred
+    async def fetch(self, icao: str, ignore_case: bool = True) -> Optional["Metar"]:
+        """Try to fetch metar.
 
-    def query(self, icao: str, ignore_case: bool = True) -> Deferred[Optional["Metar"]]:
+        If in cron mode, we'll try to get metar from cron cache.
+        If specified airport not found in cache and config['fallback_once'],
+        we'll try to fetch by MetarFetcher.fetch.
+
+        Args:
+            icao: ICAO of the airport.
+            ignore_case: Ignore ICAO case.
+        """
         if ignore_case:
             icao = icao.upper()
 
-        fallback_mode = self.config.get("fallback", None)
-        if self.cron:
-            if self.cron_task is None:
-                if fallback_mode == "once":
-                    return self.queryEach(icao, ignore_case=False)
-                else:
-                    msg = (
-                        "Metar cache not available because metar fetch task not "
-                        "started. This shouldn't happen."
-                    )
-                    raise RuntimeError(
-                        msg,
-                    )
-            result = self.metar_cache.get(icao, None)
-            if result is None:
-                if fallback_mode == "once":
-                    return self.queryEach(
-                        icao,
-                        ignore_case=False,
-                        to_skip_fetchers=(self.cron_fetcher_info["succeed"],)
-                        if self.config["skip_previous_fetcher"]
-                        and self.cron_fetcher_info is not None
-                        and self.cron_fetcher_info["succeed"] is not None
-                        else (),
-                    )
-                else:
-                    return succeed(None)
-            else:
-                return succeed(result)
-        else:
-            if fallback_mode != "cron":
-                return self.queryEach(icao, ignore_case=False)
-            else:
-                result_deferred: Deferred[Optional["Metar"]] = Deferred()
+        fallback_once = self.config.get("fallback_once", None)
 
-                def handleResult(result: Optional["Metar"]) -> None:
-                    if result is None:
-                        result_deferred.callback(self.metar_cache.get(icao, None))
-                    else:
-                        result_deferred.callback(result)
-
-                self.queryEach(icao, ignore_case=False).addCallback(handleResult)
-                return result_deferred
+        if self.cron_time is not None:
+            if icao in self.metar_cache:
+                return self.metar_cache[icao]
+            if fallback_once:
+                # Already uppercased
+                return await self.fetch_once(icao, ignore_case=False)
+            return None
+        return await self.fetch_once(icao, ignore_case=False)

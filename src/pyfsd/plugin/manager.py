@@ -10,8 +10,8 @@ from typing import Callable, Dict, Iterable, List, Mapping, Optional, Tuple, Typ
 from loguru import logger
 
 from .. import plugins
-from ..define.config_check import verifyAllConfigStruct
-from ..define.utils import iterCallable
+from ..define.check_dict import check_dict
+from ..define.utils import iter_callable
 from . import API_LEVEL, PreventEvent
 from .collect import iter_submodule_plugins
 from .interfaces import AwaitableMaker, PyFSDPlugin
@@ -49,7 +49,7 @@ def format_awaitable(plugin: AwaitableMaker) -> str:
     return f"{plugin.awaitable_name} ({getfile(type(plugin))})"
 
 
-PLUGIN_EVENTS = tuple(func.__name__ for func in iterCallable(PyFSDPlugin))
+PLUGIN_EVENTS = tuple(func.__name__ for func in iter_callable(PyFSDPlugin))
 
 
 class PluginDict(TypedDict):
@@ -127,21 +127,21 @@ class PyFSDPluginManager:
                                 name=plugin.plugin_name,
                             )
                             return
-                        else:
-                            config_errors = verifyAllConfigStruct(
-                                plugin_config,
-                                plugin.expected_config,
-                                prefix=f"plugin.{plugin.plugin_name}.",
+                        config_errors = check_dict(
+                            plugin_config,
+                            plugin.expected_config,
+                            name=f"plugin[{plugin.plugin_name!r}]",
+                            allow_unexpected_key=True,
+                        )
+                        if config_errors:
+                            error_string = (
+                                f"Cannot load plugin {plugin.plugin_name} "
+                                "because of following config error:\n"
                             )
-                            if config_errors:
-                                error_string = (
-                                    f"Cannot load plugin {plugin.plugin_name} "
-                                    "because of following config error:\n"
-                                )
-                                for config_error in config_errors:
-                                    error_string += str(config_error) + "\n"
-                                logger.error(error_string)
-                                return
+                            for config_error in config_errors:
+                                error_string += str(config_error) + "\n"
+                            logger.error(error_string)
+                            return
 
                     # Everything is ok, save it
                     all_plugins.append(plugin)
@@ -154,7 +154,7 @@ class PyFSDPluginManager:
 
         self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
 
-    def iterPluginByEventName(self, event_name: str) -> Iterable[PyFSDPlugin]:
+    def iter_plugin_by_event_name(self, event_name: str) -> Iterable[PyFSDPlugin]:
         """Yields all plugins that handles specified event.
 
         Args:
@@ -163,13 +163,14 @@ class PyFSDPluginManager:
         Returns:
             The plugin.
         """
-        assert self.plugins is not None, "plugin not loaded"
+        if self.plugins is None:
+            raise RuntimeError("Plugin not loaded")
         if event_name not in PLUGIN_EVENTS:
             msg = f"Invaild event {event_name}"
             raise ValueError(msg)
-        return iter(self.plugins["tagged"][event_name])
+        yield from self.plugins["tagged"][event_name]
 
-    def iterHandlerByEventName(self, event_name: str) -> Iterable[Callable]:
+    def iter_handler_by_event_name(self, event_name: str) -> Iterable[Callable]:
         """Yields event handler of all plugins that handles specified event.
 
         Args:
@@ -180,10 +181,10 @@ class PyFSDPluginManager:
         """
         return (
             getattr(plugin, event_name)
-            for plugin in self.iterPluginByEventName(event_name)
+            for plugin in self.iter_plugin_by_event_name(event_name)
         )
 
-    async def triggerEvent(
+    async def trigger_event(
         self,
         event_name: str,
         args: Iterable,
@@ -191,7 +192,7 @@ class PyFSDPluginManager:
         prevent_able: bool = False,
     ) -> "PluginHandledEventResult | None":
         """Trigger a event and spread it to plugins."""
-        for plugin in self.iterPluginByEventName(event_name):
+        for plugin in self.iter_plugin_by_event_name(event_name):
             try:
                 await getattr(plugin, event_name)(*args, **kwargs)
             except PreventEvent as prevent_result:
@@ -200,8 +201,8 @@ class PyFSDPluginManager:
                         f"{plugin.plugin_name}: Cannot prevent event: {event_name}",
                     )
                 else:
-                    return {  # type: ignore[return-value]
-                        **prevent_result.result,  # type: ignore[misc]
+                    return {
+                        **prevent_result.result,
                         "handled_by_plugin": True,
                         "plugin": plugin,
                     }
