@@ -1,7 +1,11 @@
+"""Client object's dataclasses."""
 from dataclasses import dataclass, field
 from math import sqrt
 from time import time
-from typing import Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Literal, Optional, Tuple
+
+if TYPE_CHECKING:
+    from asyncio import Transport
 
 __all__ = ["Position", "FlightPlan", "Client", "ClientType"]
 
@@ -11,8 +15,14 @@ ClientType = Literal["ATC", "PILOT"]
 
 @dataclass
 class FlightPlan:
+    """This dataclass describes a flight plan.
+
+    Attributes:
+      type: b"I" => IFR, b"V" => VFR
+    """
+
     revision: int
-    type: bytes  # Often Literal["I", "V"]
+    type: bytes  # noqa: A003
     aircraft: bytes
     tascruise: int
     dep_airport: bytes
@@ -31,14 +41,16 @@ class FlightPlan:
 
 @dataclass
 class Client:
-    type: ClientType
+    """This dataclass stores a client."""
+
+    type: ClientType  # noqa: A003
     callsign: bytes
     rating: int
     cid: str
     protocol: int
     realname: bytes
     sim_type: int
-    # transport: <>
+    transport: "Transport"
     position: Position = (0, 0)
     transponder: int = 0
     altitude: int = 0
@@ -56,10 +68,12 @@ class Client:
 
     @property
     def position_ok(self) -> bool:
+        """The position is vaild or not."""
         return self.position != (0, 0) and self.altitude < 100000
 
     @property
     def frequency_ok(self) -> bool:
+        """The frequency is vaild or not."""
         return self.frequency != 0 and self.frequency < 100000
 
     def update_plan(
@@ -80,6 +94,7 @@ class Client:
         remarks: bytes,
         route: bytes,
     ) -> int:
+        """Update flight plan."""
         revision: int
         revision = self.flight_plan.revision + 1 if self.flight_plan is not None else 0
         self.flight_plan = FlightPlan(
@@ -113,6 +128,7 @@ class Client:
         pbh: int,
         flags: int,
     ) -> None:
+        """Update pilot position."""
         self.ident_flag = mode
         self.transponder = transponder
         self.position = (lat, lon)
@@ -122,7 +138,7 @@ class Client:
         self.flags = flags
         self.last_updated = int(time())
 
-    def update_ATC_position(
+    def update_ATC_position(  # noqa: N802
         self,
         frequency: int,
         facility_type: int,
@@ -131,6 +147,7 @@ class Client:
         lon: float,
         altitude: int,
     ) -> None:
+        """Update ATC position."""
         self.frequency = frequency
         self.facility_type = facility_type
         self.visual_range = visual_range
@@ -139,6 +156,7 @@ class Client:
         self.last_updated = int(time())
 
     def get_range(self) -> int:
+        """Get visual range."""
         if self.type == "PILOT":
             altitude: int
             if self.altitude is None or self.altitude < 0:
@@ -146,22 +164,20 @@ class Client:
             else:
                 altitude = self.altitude
             return int(10 + 1.414 * sqrt(altitude))
-        else:
-            if self.facility_type == 2 or self.facility_type == 3:
-                # CLR_DEL or GROUND
-                return 5
-            elif self.facility_type == 4:
-                # TOWER
-                return 30
-            elif self.facility_type == 5:
-                # APP/DEP
-                return 100
-            elif self.facility_type == 6:
-                # CENTER
-                return 400
-            elif self.facility_type == 1 or self.facility_type == 7:
-                # FSS or MONITOR
-                return 1500
-            else:
-                # Unknown
-                return 40
+        if self.facility_type == 2 or self.facility_type == 3:
+            # CLR_DEL or GROUND
+            return 5
+        if self.facility_type == 4:
+            # TOWER
+            return 30
+        if self.facility_type == 5:
+            # APP/DEP
+            return 100
+        if self.facility_type == 6:
+            # CENTER
+            return 400
+        if self.facility_type == 1 or self.facility_type == 7:
+            # FSS or MONITOR
+            return 1500
+        # Unknown
+        return 40
