@@ -12,6 +12,8 @@ from typing import (
     Hashable,
     Iterable,
     Literal,
+    Mapping,
+    Tuple,
     Type,
     TypeAlias,
     TypedDict,
@@ -44,8 +46,11 @@ __all__ = [
     "assert_dict",
 ]
 
+# Currently we have no choice to make Literal[...] works, so temporaily type it as Any
+TypeHint: TypeAlias = object  # Union[TypeAlias, Type]
 
-def explain_type(typ: Union[TypeAlias, Type]) -> str:
+
+def explain_type(typ: TypeHint) -> str:
     """Explain a type.
 
     Args:
@@ -84,12 +89,10 @@ class VerifyTypeError(TypeError):
     """
 
     name: str
-    excepted: Union[Type, TypeAlias]
+    excepted: TypeHint
     actually: object
 
-    def __init__(
-        self, name: str, excepted: Union[Type, TypeAlias], actually: object
-    ) -> None:
+    def __init__(self, name: str, excepted: TypeHint, actually: object) -> None:
         """Create a VerifyTypeError instance.
 
         Args:
@@ -177,7 +180,7 @@ class VerifyKeyError(KeyError):
 
 def check_simple_type(
     obj: object,
-    typ: Union[TypeAlias, Type],
+    typ: TypeHint,
     name: str = "object",
 ) -> Iterable[VerifyTypeError]:
     """Simple runtime type checker, supports Union, Literal, List, Dict.
@@ -242,7 +245,7 @@ def check_simple_type(
 
 def assert_simple_type(
     obj: object,
-    typ: Union[TypeAlias, Type],
+    typ: TypeHint,
     name: str = "object",
 ) -> None:
     """Wrapper of check_simple_type, but raise first error.
@@ -266,42 +269,54 @@ def assert_simple_type(
         raise error
 
 
-def lookup_required(
-    typed_dict: Type[TypedDict],  # type: ignore[valid-type]
-) -> Iterable[Hashable]:
+DictStructure = Union[
+    Type[TypedDict],  # type: ignore[valid-type]
+    Mapping,  # It should be Mapping[Hashable, Union[TypeHint, DictStructure]
+    # (but it's invariant)
+]
+
+
+def lookup_required(structure: DictStructure) -> Iterable[Hashable]:
     """Yields all required key in a TypedDict.
 
     Args:
-        typed_dict: The TypedDict.
+        structure: The type structure, TypedDict or dict.
 
     Yields:
         Keys that are required. In normal usage, str was yielded.
     """
-    # Python < 3.8 not supported
-    # ---------
-    # Mypy bug, ignore it
-    if not typed_dict.__total__:  # type: ignore[attr-defined]
-        # Nothing is required
-        return
-    if hasattr(typed_dict, "__required_keys__"):
-        if NotRequired.__module__ == "typing":  # Python 3.11+, not need to Workaround
-            yield from typed_dict.__required_keys__  # type: ignore[attr-defined]
+    if is_typeddict(structure):
+        # Python < 3.8 not supported
+        # ---------
+        # Mypy bug, ignore it
+        if not structure.__total__:  # type: ignore[union-attr]
+            # Nothing is required
             return
-        # Pythpn 3.9, 3.10
-        type_hints = get_type_hints(typed_dict)
-        for may_required_keys in typed_dict.__required_keys__:  # type: ignore[attr-defined]
-            if get_origin(type_hints[may_required_keys]) is not NotRequired:
-                yield may_required_keys
+        if hasattr(structure, "__required_keys__"):
+            if (
+                NotRequired.__module__ == "typing"
+            ):  # Python 3.11+, not need to Workaround
+                yield from structure.__required_keys__  # type: ignore[union-attr]
+                return
+            # Python 3.9, 3.10
+            type_hints = get_type_hints(structure)
+            for may_required_keys in structure.__required_keys__:  # type: ignore[union-attr]
+                if get_origin(type_hints[may_required_keys]) is not NotRequired:
+                    yield may_required_keys
+        else:
+            # Python 3.8
+            for key, typ in get_type_hints(structure).items():
+                if get_origin(typ) is not NotRequired:
+                    yield key
     else:
-        # Python 3.8
-        for key, typ in get_type_hints(typed_dict).items():
-            if get_origin(typ) is not NotRequired:
-                yield key
+        for may_required_keys, type_ in structure.items():  # type: ignore[union-attr]
+            if get_origin(type_) is not NotRequired:
+                yield may_required_keys
 
 
 def check_dict(
     dict_obj: dict,
-    structure: Type[TypedDict],  # type: ignore[valid-type]
+    structure: DictStructure,
     name: str = "dict",
     allow_unexpected_key: bool = False,
 ) -> Iterable[Union[VerifyTypeError, VerifyKeyError]]:
@@ -333,10 +348,24 @@ def check_dict(
     Raises:
         TypeError: When a unsupported/invaild type passed.
     """
+
+    def deal_dict_not_required(
+        dic: Mapping,
+    ) -> Iterable[Tuple[Hashable, Union[TypeHint, DictStructure]]]:
+        for key, typ in dic.items():
+            if get_origin(typ) is NotRequired:
+                yield key, get_args(typ)[0]
+            else:
+                yield key, typ
+
     left_keys = list(dict_obj.keys())
     required_keys = tuple(lookup_required(structure))
     # New get_type_hints will change NotRequired[...] into ..., so not caring about it
-    for key, type_ in new_get_type_hints(structure).items():
+    for key, type_ in (
+        new_get_type_hints(structure).items()  # pyright: ignore
+        if is_typeddict(structure)
+        else deal_dict_not_required(structure)  # type: ignore[arg-type]
+    ):
         try:
             value = dict_obj[key]
         except KeyError:
@@ -346,13 +375,13 @@ def check_dict(
         else:
             if not allow_unexpected_key:
                 left_keys.remove(key)
-        if is_typeddict(type_):
+        if is_typeddict(type_) or isinstance(type_, dict):
             if not isinstance(value, dict):
                 yield VerifyTypeError(f"{name}[{key!r}]", type_, value)
             else:
                 yield from check_dict(
                     value,
-                    type_,
+                    type_,  # type: ignore[arg-type]
                     name=f"{name}[{key!r}]",
                     allow_unexpected_key=allow_unexpected_key,
                 )
@@ -365,7 +394,7 @@ def check_dict(
 
 def assert_dict(
     dict_obj: dict,
-    structure: Type[TypedDict],  # type: ignore[valid-type]
+    structure: DictStructure,
     name: str = "dict",
     allow_unexpected_key: bool = False,
 ) -> None:

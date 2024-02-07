@@ -1,3 +1,4 @@
+"""This module tests pyfsd.define.check_dict."""
 from sys import version_info
 from typing import Dict, List, Literal, Tuple, Union
 from unittest import TestCase
@@ -27,7 +28,7 @@ from pyfsd.define.check_dict import (
 )
 
 
-class TestCheckEict(TestCase):
+class TestCheckDict(TestCase):
     """Test if pyfsd.define.check_dict works."""
 
     complex_type = Union[int, Literal["1234", 5678], List[str], Dict[int, str]]
@@ -99,6 +100,8 @@ class TestCheckEict(TestCase):
 
     def test_lookup_required(self) -> None:
         """Tests if lookup_required works."""
+        some_optional_dict = {"a": int, "b": NotRequired[str]}  # pyright: ignore
+        self.assertEqual(tuple(lookup_required(some_optional_dict)), ("a",))
         for typed_dict in available_typeddict:
             with self.subTest(typeddict_source=typed_dict.__module__):
 
@@ -108,7 +111,7 @@ class TestCheckEict(TestCase):
 
                 self.assertEqual(tuple(lookup_required(SomeOptionalDict)), ("a",))
 
-                class AllOptionalDict(
+                class AllOptionalDict(  # pyright: ignore
                     typed_dict,  # type: ignore[misc, valid-type]
                     total=False,  # type: ignore[call-arg]
                 ):
@@ -171,6 +174,7 @@ class TestCheckEict(TestCase):
                 False,
             ),
         )
+        # TypedDict
         for typed_dict in available_typeddict:
             for dict_obj, exp_errs, allow_unexp_keys in cases:
                 vaild = not exp_errs
@@ -200,8 +204,33 @@ class TestCheckEict(TestCase):
                             ),
                             exp_errs,
                         )
-                        with self.assertRaises(VerifyTypeError) as cm:
+                        with self.assertRaises((VerifyKeyError, VerifyTypeError)) as cm:
                             assert_dict(
                                 dict_obj, ATypedDict, "dict_obj", allow_unexp_keys
                             )
                         self.assertEqual(cm.exception, exp_errs[0])
+        # dict
+        structure = {
+            "a": Union[int, str],
+            "b": Literal[1234, "5678"],
+            "c": List[int],
+            "d": NotRequired[Dict[int, str]],  # pyright: ignore
+        }
+        for dict_obj, exp_errs, allow_unexp_keys in cases:
+            vaild = not exp_errs
+
+            if vaild:
+                self.assertFalse(
+                    tuple(check_dict(dict_obj, structure, "dict_obj", allow_unexp_keys))
+                )
+                assert_dict(dict_obj, structure, "dict_obj", allow_unexp_keys)
+            else:
+                self.assertEqual(
+                    tuple(
+                        check_dict(dict_obj, structure, "dict_obj", allow_unexp_keys)
+                    ),
+                    exp_errs,
+                )
+                with self.assertRaises((VerifyKeyError, VerifyTypeError)) as cm:
+                    assert_dict(dict_obj, structure, "dict_obj", allow_unexp_keys)
+                self.assertEqual(cm.exception, exp_errs[0])
