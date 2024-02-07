@@ -91,7 +91,7 @@ class NOAAMetarFetcher(MetarFetcher):
         ) as resp:
             if resp.status != 200:
                 return None
-            return self.parse_metar((await resp.text()).splitlines())
+            return self.parse_metar((await resp.text(errors="ignore")).splitlines())
 
     async def fetch_all(self, _: dict) -> Optional[MetarInfoDict]:
         """Fetch all airports' metar."""
@@ -104,7 +104,7 @@ class NOAAMetarFetcher(MetarFetcher):
             if resp.status != 200:
                 return None
             all_metar: MetarInfoDict = {}
-            metar_blocks = (await resp.text()).split("\n\n")
+            metar_blocks = (await resp.text(errors="ignore")).split("\n\n")
             for block in metar_blocks:
                 blocklines = block.splitlines()
                 if len(blocklines) < 2:

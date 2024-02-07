@@ -265,6 +265,7 @@ SPLIT_SIGN = CompatibleString(":")
 
 class FSDClientCommand(CompatibleString, Enum):
     """FSD client command."""
+
     # __init__ = Enum.__init__  # type: ignore[assignment]
     ADD_ATC = "#AA"
     REMOVE_ATC = "#DA"

@@ -73,11 +73,19 @@ class PyFSDPluginManager:
 
     plugins: Optional[PluginDict] = None
 
-    def pick_plugins(self, root_config: dict) -> None:
+    def __init__(self, plugin_config_root: dict) -> None:
+        """Create a PyFSDPluginManager instance.
+
+        Args:
+            plugin_config_root: 'plugin' section of config.
+        """
+        self.pick_plugins(plugin_config_root)
+
+    def pick_plugins(self, plugin_config_root: dict) -> None:
         """Pick plugins into self.plugins.
 
         Args:
-            root_config: 'plugin' section of config.
+            plugin_config_root: 'plugin' section of config.
         """
         all_plugins = []
         event_handlers: Dict[str, List[PyFSDPlugin]] = {
@@ -119,7 +127,7 @@ class PyFSDPluginManager:
                         )
 
                     # Check config
-                    plugin_config = root_config.get(plugin.plugin_name, None)
+                    plugin_config = plugin_config_root.get(plugin.plugin_name, None)
                     if plugin.expected_config is not None:
                         if plugin_config is None:
                             logger.error(

@@ -13,6 +13,7 @@ from typing import (
     Optional,
     Tuple,
 )
+from warnings import filterwarnings
 
 from loguru import logger
 
@@ -24,13 +25,17 @@ from .fetch import (
     NOAAMetarFetcher,
 )
 
-# from warnings import catch_warnings  ** not thread safe
-
-
 if TYPE_CHECKING:
     from asyncio import Task
 
     from metar.Metar import Metar
+
+__all__ = ["suppress_metar_parser_warning", "MetarManager"]
+
+
+def suppress_metar_parser_warning() -> None:
+    """Suppress metar parser's warnings."""
+    filterwarnings("ignore", category=RuntimeWarning, module="metar.Metar")
 
 
 class MetarManager:
@@ -61,6 +66,7 @@ class MetarManager:
             config: pyfsd.metar section of config.
         """
         self.cron_time = config["cron_time"] if config["mode"] == "cron" else None
+        self.cron_task = None
         self.config = config
         self.metar_cache = {}
         self.pick_fetchers(config["fetchers"])
@@ -115,7 +121,7 @@ class MetarManager:
                 continue
         logger.error("No metar was fetched. All metar fetcher failed.")
 
-    def get_cron_task(self) -> Task[NoReturn]:
+    def get_cron_task(self) -> "Task[NoReturn]":
         """Get cron fetching task.
 
         Raises:
