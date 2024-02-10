@@ -69,13 +69,9 @@ class MetarManager:
         self.cron_task = None
         self.config = config
         self.metar_cache = {}
-        self.pick_fetchers(config["fetchers"])
 
-    def pick_fetchers(self, enabled_fetchers: Iterable[str]) -> int:
+    def pick_fetchers(self) -> int:
         """Try to pick all specified metar fetchers according config.
-
-        Args:
-            enabled_fetchers: Fetchers(name) to be load.
 
         Returns:
             How much fetchers were loaded.
@@ -92,7 +88,7 @@ class MetarManager:
         ):
             count += 1
             temp_fetchers[fetcher.metar_source] = fetcher
-        for need_fetcher in enabled_fetchers:
+        for need_fetcher in self.config["fetchers"]:
             if need_fetcher not in temp_fetchers:
                 logger.error(f"No such METAR fetcher: {need_fetcher}")
             else:
