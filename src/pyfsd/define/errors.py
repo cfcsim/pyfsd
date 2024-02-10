@@ -8,6 +8,7 @@ from typing import Final
 
 class FSDErrors:
     """Errno constants."""
+
     ERR_OK = 0
     ERR_CSINUSE = 1
     ERR_CSINVALID = 2

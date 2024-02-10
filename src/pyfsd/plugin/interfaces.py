@@ -122,4 +122,3 @@ class AwaitableMaker(ABC):
         Returns:
             A awaitable object.
         """
-

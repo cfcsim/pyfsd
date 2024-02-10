@@ -913,13 +913,16 @@ class ClientProtocol(LineProtocol):
             )
             if plugin_result is None:  # Not handled by plugin
                 packet_ok, has_result = await self.handle_line(line)
-                result = cast(PyFSDHandledLineResult, {
-                    "handled_by_plugin": False,
-                    "success": packet_ok and has_result,
-                    "packet": line,
-                    "packet_ok": packet_ok,
-                    "has_result": has_result,
-                })
+                result = cast(
+                    PyFSDHandledLineResult,
+                    {
+                        "handled_by_plugin": False,
+                        "success": packet_ok and has_result,
+                        "packet": line,
+                        "packet_ok": packet_ok,
+                        "has_result": has_result,
+                    },
+                )
             else:
                 result = plugin_result
 

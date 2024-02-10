@@ -8,6 +8,7 @@ INT_MAX = +2147483647
 
 class Int32MRand(MRand):
     """MRand that simulates int32 overflow."""
+
     _really_randseed: int
 
     def __init__(self) -> None:
