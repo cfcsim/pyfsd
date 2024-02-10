@@ -2,7 +2,7 @@
 
 See .MetarManager
 """
-from asyncio import create_task
+from asyncio import CancelledError, create_task
 from asyncio import sleep as asleep
 from typing import (
     TYPE_CHECKING,
@@ -111,8 +111,13 @@ class MetarManager:
         for fetcher in self.fetchers:
             try:
                 metars = await fetcher.fetch_all(self.config)
+            except CancelledError:
+                # Assume shutting down
+                return
             except NotImplementedError:
                 continue
+            except BaseException:
+                logger.exception("Exception raised when caching metar")
             else:
                 if metars is not None:
                     logger.info(f"Fetched {len(metars)} metars.")
@@ -169,8 +174,13 @@ class MetarManager:
                 metar = await fetcher.fetch(self.config, icao)
                 if metar is not None:
                     return metar
+            except CancelledError:
+                # Assume shutting down
+                return None
             except NotImplementedError:
                 continue
+            except BaseException:
+                logger.exception("Exception raised when fetching metar")
         return None
 
     async def fetch(self, icao: str, ignore_case: bool = True) -> Optional["Metar"]:
