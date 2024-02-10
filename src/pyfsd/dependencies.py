@@ -25,6 +25,7 @@ class Container(containers.DeclarativeContainer):
     client_factory = providers.Singleton(
         ClientFactory,
         config.pyfsd.client.motd.as_(bytes, config.pyfsd.client.motd_encoding),
+        config.pyfsd.client.blacklist,
         metar_manager,
         pyfsd_plugin_manager,
         db_engine,

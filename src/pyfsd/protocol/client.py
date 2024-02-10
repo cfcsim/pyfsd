@@ -190,11 +190,14 @@ class ClientProtocol(LineProtocol):
     def connection_made(self, transport: "Transport") -> None:  # type: ignore[override]
         """Initialize something after the connection is made."""
         super().connection_made(transport)
+        ip = self.transport.get_extra_info("peername")[0]
+        if ip in self.factory.blacklist:
+            logger.info(f"Kicking {ip}")
+            self.transport.close()
+            return
 
         self.reset_timeout_killer()
-        logger.info(
-            "New connection from {ip}.", ip=self.transport.get_extra_info("peername")[0]
-        )
+        logger.info(f"New connection from {ip}.")
         task_keeper.add(
             create_task(
                 self.factory.plugin_manager.trigger_event(
@@ -914,7 +917,7 @@ class ClientProtocol(LineProtocol):
             if plugin_result is None:  # Not handled by plugin
                 packet_ok, has_result = await self.handle_line(line)
                 result = cast(
-                    PyFSDHandledLineResult,
+                    "PyFSDHandledLineResult",
                     {
                         "handled_by_plugin": False,
                         "success": packet_ok and has_result,

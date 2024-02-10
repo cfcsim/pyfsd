@@ -41,6 +41,7 @@ class ClientFactory:
         clients: All clients, Dict[callsign(bytes), Client]
         heartbeat_task: Task to send heartbeat to clients.
         motd: The Message Of The Day.
+        blacklist: IP blacklist.
         metar_manager: The metar manager.
         plugin_manager: The PyFSD plugin manager.
         db_engine: Async sqlalchemy engine.
@@ -53,11 +54,13 @@ class ClientFactory:
     plugin_manager: "PyFSDPluginManager"
     db_engine: "AsyncEngine"
     motd: List[bytes]
+    blacklist: List[str]
     password_hasher: "PasswordHasher"
 
     def __init__(
         self,
         motd: bytes,
+        blacklist: List[str],
         metar_manager: "MetarManager",
         plugin_manager: "PyFSDPluginManager",
         db_engine: "AsyncEngine",
@@ -66,6 +69,7 @@ class ClientFactory:
         self.clients = {}
         self.heartbeat_task = None
         self.motd = motd.splitlines()
+        self.blacklist = blacklist
         self.metar_manager = metar_manager
         self.plugin_manager = plugin_manager
         self.db_engine = db_engine
