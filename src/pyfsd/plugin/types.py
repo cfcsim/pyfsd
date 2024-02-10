@@ -13,6 +13,7 @@ __all__ = [
 
 class PluginHandledEventResult(TypedDict):
     """A result handled by plugin.
+
     This means a plugin raised `pyfsd.plugin.PreventEvent`.
 
     Attributes:
@@ -37,14 +38,16 @@ class PyFSDHandledEventResult(TypedDict):
 
 
 class PyFSDHandledLineResult(PyFSDHandledEventResult):
-    """A lineReceivedFromClient result handled by PyFSD.
+    """Result of a lineReceivedFromClient event handled by PyFSD.
 
     Attributes:
         handled_by_plugin (Literal[False]): Event handled by plugin or not.
         success (bool): The event successfully handled or not.
-        packet_ok: The packet is correct or not.
-        has_result: Succeed in generating result or not.
+        packet: The packet.
+        packet_ok: The packet is valid or not.
+        has_result: Has result or not.
     """
 
     packet_ok: bool
     has_result: bool
+    packet: bytes

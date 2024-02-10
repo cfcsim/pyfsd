@@ -1,19 +1,21 @@
-# pyright: reportSelfClsParameterName=false, reportGeneralTypeIssues=false
+# ruff: noqa: B027
 """Interfaces of PyFSD plugin architecture."""
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Awaitable, ClassVar, Optional, Tuple, Type, TypedDict
 
 if TYPE_CHECKING:
     from ..object.client import Client
-    from ..protocol.client import FSDClientProtocol
-    from ..service import PyFSDService
+    from ..protocol.client import ClientProtocol
     from .types import PluginHandledEventResult, PyFSDHandledLineResult
 
-__all__ = ["Plugin", "PyFSDPlugin", "CallAfterStartPlugin", "AwaitableMaker"]
+__all__ = ["Plugin", "PyFSDPlugin", "AwaitableMaker"]
 
 
-class Plugin(ABC):
-    """Base interface of plugin."""
+class Plugin(ABC):  # noqa: B024
+    """Base interface of plugin.
+
+    Used to ensure a class is a plugin.
+    """
 
 
 class PyFSDPlugin(ABC):
@@ -33,35 +35,20 @@ class PyFSDPlugin(ABC):
     version: ClassVar[Tuple[int, str]]
     expected_config: ClassVar[Optional[Type[TypedDict]]]  # type: ignore[valid-type]
 
-    async def before_start(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
-        """Called before services start.
-
-        Args:
-            pyfsd: PyFSD Service.
-            config: plugin.<plugin_name> section of PyFSD configure file.
-                None if the section doesn't exist.
-        """
-
-    async def after_start(self, pyfsd: "PyFSDService", config: Optional[dict]) -> None:
-        """Called while service `pyfsd.service.PyFSDService` starting.
-
-        Args:
-            pyfsd: PyFSD Service.
-            config: plugin.<plugin_name> section of PyFSD configure file.
-                None if the section doesn't exist.
-        """
+    async def before_start(self) -> None:
+        """Called before PyFSD start."""
 
     async def before_stop(self) -> None:
-        """Called when service `pyfsd.service.PyFSDService` stopping."""
+        """Called when PyFSD stopping."""
 
-    async def new_connection_established(self, protocol: "FSDClientProtocol") -> None:
+    async def new_connection_established(self, protocol: "ClientProtocol") -> None:
         """Called when new connection established.
 
         Args:
             protocol: Protocol of the connection which established.
         """
 
-    async def new_client_created(self, protocol: "FSDClientProtocol") -> None:
+    async def new_client_created(self, protocol: "ClientProtocol") -> None:
         """Called when new client `pyfsd.object.client.Client` created.
 
         Args:
@@ -70,7 +57,7 @@ class PyFSDPlugin(ABC):
 
     async def line_received_from_client(
         self,
-        protocol: "FSDClientProtocol",
+        protocol: "ClientProtocol",
         line: bytes,
     ) -> None:
         """Called when line received from client.
@@ -85,11 +72,12 @@ class PyFSDPlugin(ABC):
 
     async def audit_line_from_client(
         self,
-        protocol: "FSDClientProtocol",
+        protocol: "ClientProtocol",
         line: bytes,
         result: "PyFSDHandledLineResult | PluginHandledEventResult",
     ) -> None:
         """Called when line received from client (after lineReceivedFromClient).
+
         Note that this event cannot be prevented.
 
         Args:
@@ -101,7 +89,7 @@ class PyFSDPlugin(ABC):
 
     async def client_disconnected(
         self,
-        protocol: "FSDClientProtocol",
+        protocol: "ClientProtocol",
         client: Optional["Client"],
     ) -> None:
         """Called when connection disconnected.
@@ -124,11 +112,7 @@ class AwaitableMaker(ABC):
     awaitable_name: ClassVar[str]
 
     @abstractmethod
-    async def __call__(
-        self,
-        pyfsd: "PyFSDService",
-        config: Optional[dict],
-    ) -> Awaitable:
+    async def __call__(self) -> Awaitable:
         """Make a awaitable object.
 
         Args:
@@ -139,18 +123,3 @@ class AwaitableMaker(ABC):
             A awaitable object.
         """
 
-
-class CallAfterStartPlugin(ABC):
-    """Interface of call after start plugin.
-
-    Syntactic sugar of PyFSDPlugin.afterStart
-    """
-
-    @abstractmethod
-    async def __call__(self, pyfsd: "PyFSDService", all_config: dict) -> None:
-        """Called while service `pyfsd.service.PyFSDService` starting.
-
-        Args:
-            pyfsd: PyFSD Service.
-            all_config: PyFSD configure file.
-        """

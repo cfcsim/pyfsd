@@ -73,14 +73,6 @@ class PyFSDPluginManager:
 
     plugins: Optional[PluginDict] = None
 
-    def __init__(self, plugin_config_root: dict) -> None:
-        """Create a PyFSDPluginManager instance.
-
-        Args:
-            plugin_config_root: 'plugin' section of config.
-        """
-        self.pick_plugins(plugin_config_root)
-
     def pick_plugins(self, plugin_config_root: dict) -> None:
         """Pick plugins into self.plugins.
 
@@ -93,7 +85,7 @@ class PyFSDPluginManager:
         }
         for plugin in iter_submodule_plugins(
             plugins,
-            PyFSDPlugin,  # type: ignore[type-abstract]
+            PyFSDPlugin,
             error_handler=lambda name: logger.exception(
                 f"Error happened during load plugin {name}",
             ),
