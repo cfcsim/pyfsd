@@ -58,6 +58,7 @@ if TYPE_CHECKING:
     from asyncio import Task, Transport
 
     from ..factory.client import ClientFactory
+    from ..plugin.types import PluginHandledEventResult, PyFSDHandledLineResult
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -902,6 +903,7 @@ class ClientProtocol(LineProtocol):
         """Handle a line."""
 
         async def handle() -> None:
+            result: Union["PyFSDHandledLineResult", "PluginHandledEventResult"]
             # First try to let plugins to process
             plugin_result = await self.factory.plugin_manager.trigger_event(
                 "line_received_from_client",
@@ -909,22 +911,21 @@ class ClientProtocol(LineProtocol):
                 {},
                 prevent_able=True,
             )
-            if plugin_result is not None:  # Handled by plugin
-                return
-            packet_ok, has_result = await self.handle_line(line)
+            if plugin_result is None:  # Not handled by plugin
+                packet_ok, has_result = await self.handle_line(line)
+                result = cast(PyFSDHandledLineResult, {
+                    "handled_by_plugin": False,
+                    "success": packet_ok and has_result,
+                    "packet": line,
+                    "packet_ok": packet_ok,
+                    "has_result": has_result,
+                })
+            else:
+                result = plugin_result
+
             await self.factory.plugin_manager.trigger_event(
                 "audit_line_from_client",
-                (
-                    self,
-                    line,
-                    {
-                        "handled_by_plugin": False,
-                        "success": packet_ok and has_result,
-                        "packet": line,
-                        "packet_ok": packet_ok,
-                        "has_result": has_result,
-                    },
-                ),
+                (self, line, result),
                 {},
             )
 
