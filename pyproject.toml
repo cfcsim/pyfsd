@@ -30,9 +30,11 @@ dependencies = [
     "haversine>=2.8.0",
     "tomli>=2.0.1; python_version < \"3.11\"",
     "metar>=1.10.0",
-    "sqlalchemy>=2.0.22",
+    "sqlalchemy[asyncio]>=2.0.25",
     "aiohttp>=3.8.6",
     "typing-extensions>=4.0.0; python_version < \"3.11\"",
+    "dependency-injector>=4.41.0",
+    "argon2-cffi>=23.1.0",
 ]
 
 [project.urls]
@@ -42,6 +44,10 @@ Repository = "https://github.com/cfcsim/pyfsd"
 Issues = "https://github.com/cfcsim/pyfsd/issues"
 Discussions = "https://github.com/cfcsim/pyfsd/discussions"
 
+[project.optional-dependencies]
+sqlite3 = [
+    "aiosqlite>=0.19.0",
+]
 [tool.pdm.build]
 package-dir = "src"
 includes = ["src/pyfsd/", "src/twisted/", "src/pyfsd/plugins/__init__.py"]
@@ -69,7 +75,8 @@ dev = [
 start = "twistd -n pyfsd"
 
 [tool.pdm.version]
-source = "scm"
+source = "call"
+getter = "versioneer:get_version"
 write_to = "pyfsd/_version.py"
 write_template = "version = \"{}\"\n"
 
@@ -81,7 +88,7 @@ exclude = [
     ".git",
 ]
 
-[tool.ruff]
+[tool.ruff.lint]
 select = [
     "E",
     "F",
