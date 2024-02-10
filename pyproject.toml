@@ -46,8 +46,21 @@ Discussions = "https://github.com/cfcsim/pyfsd/discussions"
 
 [project.optional-dependencies]
 sqlite3 = [
-    "aiosqlite>=0.19.0",
+    "aiosqlite>=0.19.0"
 ]
+postgresql = [
+    "asyncpg>=0.29.0",
+]
+mysql = [
+    "asyncmy>=0.2.9",
+]
+oracle = [
+    "oracledb>=2.0.1",
+]
+mssql = [
+    "aioodbc>=0.5.0",
+]
+
 [tool.pdm.build]
 package-dir = "src"
 includes = ["src/pyfsd/", "src/twisted/", "src/pyfsd/plugins/__init__.py"]

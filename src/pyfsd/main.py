@@ -1,4 +1,8 @@
-"""Run PyFSD."""
+"""Run PyFSD.
+
+Attributes:
+    DEFAULT_CONFIG: Default config of PyFSD.
+"""
 from argparse import ArgumentParser
 from asyncio import CancelledError, ensure_future, gather, get_event_loop
 from signal import SIGINT, SIGTERM
@@ -17,10 +21,24 @@ try:
     # Python 3.11+
     from typing import NotRequired  # type: ignore[attr-defined]
 
-    from tomllib import load
+    from tomllib import loads
 except ImportError:
-    from tomli import load
+    from tomli import loads
     from typing_extensions import NotRequired
+
+DEFAULT_CONFIG = """[pyfsd.database]
+url = "sqlite:///pyfsd.db"
+
+[pyfsd.client]
+port = 6809
+motd = \"\"\"Modify motd in pyfsd.toml.\"\"\"
+motd_encoding = "ascii"
+blacklist = []
+
+[pyfsd.metar]
+mode = "cron"
+cron_time = 3600
+fetchers = ["NOAA"]"""
 
 
 async def launch(config: dict) -> None:
@@ -66,8 +84,14 @@ def main() -> None:
         type=str,
     )
     args = parser.parse_args()
-    with open(args.config_path, "rb") as config_file:
-        config = load(config_file)
+    try:
+        with open(args.config_path) as config_file:
+            config = loads(config_file.read())
+    except FileNotFoundError:
+        with open(args.config_path, "w") as config_file:
+            config_file.write(DEFAULT_CONFIG)
+        config = loads(DEFAULT_CONFIG)
+
     assert_dict(
         config,
         {
@@ -92,6 +116,24 @@ def main() -> None:
     )
     if "plugin" not in config:
         config["plugin"] = {}
+    # Replace database scheme with async dialect
+    db_url: str = config["pyfsd"]["database"]["url"]
+    if "://" not in db_url:
+        raise ValueError("Invaild database url")
+    scheme, url = db_url.split("://", 1)
+    if "+" not in scheme:  # if user didn't specified driver
+        if scheme == "postgresql":
+            db_url = "postgresql+asyncpg://" + url
+        elif scheme in ("mysql", "mariadb"):
+            db_url = "mysql+asyncmy://" + url
+        elif scheme == "sqlite":
+            db_url = "sqlite+aiosqlite://" + url
+        elif scheme == "oracle":
+            db_url = "oracle+oracledb_async://" + url
+        elif scheme == "mssql":
+            db_url = "mssql+aioodbc://" + url
+        # else I have nothing to do :(
+        config["pyfsd"]["database"]["url"] = db_url
     suppress_metar_parser_warning()
     loop = get_event_loop()
     main_task = ensure_future(launch(config))
