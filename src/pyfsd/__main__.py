@@ -1,9 +1,4 @@
-from asyncio import run
+"""Start PyFSD."""
+from .main import main
 
-
-async def main() -> None:
-    pass
-
-
-if __name__ == "__main__":
-    run(main())
+main()
