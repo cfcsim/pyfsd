@@ -22,7 +22,7 @@ class FlightPlan:
     """
 
     revision: int
-    type: bytes  # noqa: A003
+    type: bytes
     aircraft: bytes
     tascruise: int
     dep_airport: bytes
@@ -43,7 +43,7 @@ class FlightPlan:
 class Client:
     """This dataclass stores a client."""
 
-    type: ClientType  # noqa: A003
+    type: ClientType
     callsign: bytes
     rating: int
     cid: str
