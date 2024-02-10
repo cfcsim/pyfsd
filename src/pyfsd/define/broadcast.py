@@ -22,7 +22,8 @@ def create_broadcast_range_checker(visual_range: int) -> BroadcastChecker:
     """
 
     def checker(from_client: Optional[Client], to_client: Client) -> bool:
-        assert from_client is not None
+        if from_client is None:
+            raise RuntimeError("broadcast_range_checker needs from_client")
         if not from_client.position_ok or not to_client.position_ok:
             return False
         distance = calc_distance(from_client.position, to_client.position)
@@ -44,7 +45,8 @@ def broadcast_position_checker(
     Returns:
         The check result (send message to to_client or not).
     """
-    assert from_client is not None
+    if from_client is None:
+        raise RuntimeError("broadcast_position_checker needs from_client")
     if not from_client.position_ok or not to_client.position_ok:
         return False
     visual_range: int
@@ -70,7 +72,8 @@ def broadcast_message_checker(from_client: Optional[Client], to_client: Client) 
     Returns:
         The check result (send message to to_client or not).
     """
-    assert from_client is not None
+    if from_client is None:
+        raise RuntimeError("broadcast_message_checker needs from_client")
     if not from_client.position_ok or not to_client.position_ok:
         return False
     visual_range: int
@@ -100,7 +103,7 @@ def broadcast_checkers(*checkers: BroadcastChecker) -> BroadcastChecker:
     return checker
 
 
-def all_ATC_checker(_: Optional[Client], to_client: Client) -> bool:
+def all_ATC_checker(_: Optional[Client], to_client: Client) -> bool:  # noqa: N802
     """A broadcast checker which only broadcast to ATC.
 
     Paramaters:
@@ -136,7 +139,8 @@ def at_checker(from_client: Optional[Client], to_client: Client) -> bool:
     Returns:
         The check result (send message to to_client or not).
     """
-    assert from_client is not None
+    if from_client is None:
+        raise RuntimeError("at_checker needs from_client")
     if not from_client.position_ok or not to_client.position_ok:
         return False
     distance = calc_distance(from_client.position, to_client.position)
@@ -152,12 +156,10 @@ def is_multicast(callsign: str) -> bool:
     Returns:
         Is multicast or not.
     """
-    if callsign == "*":
-        return True
-    elif callsign == "*A":
-        return True
-    elif callsign == "*P":
-        return True
-    elif callsign.startswith("@"):
+    if (
+        callsign == "*"
+        or callsign == "*A"
+        or (callsign == "*P" or callsign.startswith("@"))
+    ):
         return True
     return False

@@ -1,7 +1,13 @@
+"""FSD client protocol errors."""
+
 __all__ = ["FSDErrors"]
 
 
+from typing import Final
+
+
 class FSDErrors:
+    """Errno constants."""
     ERR_OK = 0
     ERR_CSINUSE = 1
     ERR_CSINVALID = 2
@@ -16,7 +22,7 @@ class FSDErrors:
     ERR_LEVEL = 11
     ERR_SERVFULL = 12
     ERR_CSSUSPEND = 13
-    error_names = [
+    error_names: Final = [
         "No error",
         "Callsign in use",
         "Callsign invalid",

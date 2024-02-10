@@ -142,7 +142,7 @@ class VerifyKeyError(KeyError):
 
     dict_name: str
     key: Hashable
-    type: Literal["missing", "leftover"]  # noqa: A003
+    type: Literal["missing", "leftover"]
 
     def __init__(
         self, dict_name: str, key: Hashable, type_: Literal["missing", "leftover"]

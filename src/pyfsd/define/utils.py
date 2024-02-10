@@ -1,10 +1,15 @@
-"""Collection of tools that are used frequently."""
+"""Collection of tools that are used frequently.
+
+Attributes:
+    task_keeper: Helper to keep your asyncio.Task's strong reference.
+"""
 from re import compile
 from typing import (
     TYPE_CHECKING,
     Callable,
     Hashable,
     Iterable,
+    Set,
     TypeVar,
     Union,
     cast,
@@ -15,6 +20,8 @@ from typing import (
 from haversine import Unit, haversine
 
 if TYPE_CHECKING:
+    from asyncio import Task
+
     from ..object.client import Position
 
 __all__ = [
@@ -27,6 +34,7 @@ __all__ = [
     "is_empty_iterable",
     "iterables",
     "iter_callable",
+    "task_keeper",
     "MRand",
 ]
 __str_invaild_char_regex = compile("[!@#$%*:& \t]")
@@ -206,3 +214,26 @@ class MRand:
     def srand(self, seed: int) -> None:
         """Set random seed."""
         self.mrandseed = seed
+
+
+class TaskKeeper:
+    """Keep strong reference to running tasks.
+
+    Note:
+        You're advised not to create new instance,
+        use `pyfsd.define.utils.task_keeper` instead.
+    """
+
+    tasks: Set["Task"]
+
+    def __init__(self) -> None:
+        """Create a TaskKeeper instance."""
+        self.tasks = set()
+
+    def add(self, task: "Task") -> None:
+        """Add a task that to be kept."""
+        self.tasks.add(task)
+        task.add_done_callback(self.tasks.discard)
+
+
+task_keeper = TaskKeeper()
