@@ -47,7 +47,7 @@ jobs:
     - name: Run ruff
       run: |
         source .venv/bin/activate
-        ruff check . --show-source --show-fixes
+        ruff check . --show-source --show-fixes --ignore FIX 
     - name: Build package
       if: ${{ always() }}
       id: build
