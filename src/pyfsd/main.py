@@ -10,6 +10,7 @@ from typing import Literal, Union
 
 from dependency_injector.wiring import register_loader_containers
 from loguru import logger
+from typing_extensions import NotRequired
 
 from ._version import version
 from .db_tables import metadata
@@ -19,12 +20,9 @@ from .metar.manager import suppress_metar_parser_warning
 
 try:
     # Python 3.11+
-    from typing import NotRequired  # type: ignore[attr-defined]
-
-    from tomllib import loads
+    from tomllib import loads  # type: ignore[import-not-found,unused-ignore]
 except ImportError:
-    from tomli import loads
-    from typing_extensions import NotRequired
+    from tomli import loads  # type: ignore[no-redef,import-not-found,unused-ignore]
 
 DEFAULT_CONFIG = """[pyfsd.database]
 url = "sqlite:///pyfsd.db"

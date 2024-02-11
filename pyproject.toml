@@ -32,7 +32,7 @@ dependencies = [
     "metar>=1.10.0",
     "sqlalchemy[asyncio]>=2.0.25",
     "aiohttp>=3.8.6",
-    "typing-extensions>=4.0.0; python_version < \"3.11\"",
+    "typing-extensions>=4.9.0",
     "argon2-cffi>=23.1.0",
     "dependency-injector-fork>=4.42.1",
 ]
@@ -63,8 +63,8 @@ mssql = [
 
 [tool.pdm.build]
 package-dir = "src"
-includes = ["src/pyfsd/", "src/twisted/", "src/pyfsd/plugins/__init__.py"]
-excludes = ["src/pyfsd/plugins/*", "src/twisted/plugins/dropin.cache"]
+includes = ["src/pyfsd/plugins/__init__.py"]
+excludes = ["src/pyfsd/plugins/*"]
 
 [tool.pdm.dev-dependencies]
 docs = [

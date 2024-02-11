@@ -11,7 +11,10 @@ if version_info < (3, 11):
 
     available_typeddict = (TypedDict, new_TypedDict)
 else:
-    from typing import NotRequired, TypedDict  # type: ignore[no-redef,attr-defined]
+    from typing import (  # type: ignore[no-redef,attr-defined,unused-ignore]
+        NotRequired,
+        TypedDict,
+    )
 
     available_typeddict = (TypedDict,)  # type: ignore[assignment]
 

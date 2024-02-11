@@ -18,6 +18,7 @@ from typing import (
 )
 
 from loguru import logger
+from typing_extensions import Concatenate, ParamSpec
 
 from .._version import version as pyfsd_version
 from ..define.broadcast import (
@@ -40,19 +41,6 @@ from ..define.utils import is_callsign_vaild, str_to_float, str_to_int, task_kee
 from ..metar.profile import WeatherProfile
 from ..object.client import Client, ClientType
 from . import LineProtocol
-
-try:
-    # Python 3.10+
-    from typing import (  # type: ignore[attr-defined,unused-ignore]
-        Concatenate,
-        ParamSpec,
-    )
-except ImportError:
-    from typing_extensions import (  # type: ignore[assignment,unused-ignore]
-        Concatenate,
-        ParamSpec,
-    )
-
 
 if TYPE_CHECKING:
     from asyncio import Task, Transport

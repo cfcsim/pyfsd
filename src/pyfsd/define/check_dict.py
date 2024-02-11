@@ -15,7 +15,6 @@ from typing import (
     Mapping,
     Tuple,
     Type,
-    TypeAlias,
     TypedDict,
     Union,
     get_args,
@@ -24,7 +23,10 @@ from typing import (
 )
 
 if version_info >= (3, 11):
-    from typing import NotRequired, is_typeddict  # type: ignore[attr-defined]
+    from typing import (  # type: ignore[attr-defined,unused-ignore]
+        NotRequired,
+        is_typeddict,
+    )
 
     new_get_type_hints = get_type_hints
 else:
@@ -47,7 +49,7 @@ __all__ = [
 ]
 
 # Currently we have no choice to make Literal[...] works, so temporaily type it as Any
-TypeHint: TypeAlias = object  # Union[TypeAlias, Type]
+TypeHint = object  # Union[TypeAlias, Type]
 
 
 def explain_type(typ: TypeHint) -> str:

@@ -74,9 +74,11 @@ class TestUtils(TestCase):
     def test_task_keeper(self) -> None:
         """Test if task_keeper works."""
         loop = get_event_loop()
+
         def make_task() -> None:
             async def func() -> None:
                 pass
+
             task = create_task(func())
             task_keeper.add(task)
 
