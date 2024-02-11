@@ -63,8 +63,8 @@ mssql = [
 
 [tool.pdm.build]
 package-dir = "src"
-includes = ["src/pyfsd/plugins/__init__.py"]
-excludes = ["src/pyfsd/plugins/*"]
+includes = ["src/pyfsd", "src/pyfsd/plugins/__init__.py"]
+excludes = ["src/pyfsd/plugins/*", "**/.mypy_cache"]
 
 [tool.pdm.dev-dependencies]
 docs = [

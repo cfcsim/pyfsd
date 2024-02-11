@@ -172,12 +172,8 @@ test.py
 *.swp
 *.swo
 
-# Twisted
-dropin.cache
-twistd.log
-twistd.pid
-
 # PyFSD
+src/pyfsd/_version.py
 src/pyfsd/plugins/*.py
 !src/pyfsd/plugins/__init__.py
 pyfsd.db
