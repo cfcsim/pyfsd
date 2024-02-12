@@ -7,7 +7,7 @@ Attributes:
 from inspect import getfile
 from typing import Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypedDict
 
-from loguru import logger
+from structlog import get_logger
 
 from .. import plugins
 from ..define.check_dict import check_dict
@@ -17,6 +17,7 @@ from .collect import iter_submodule_plugins
 from .interfaces import AwaitableMaker, PyFSDPlugin
 from .types import PluginHandledEventResult
 
+logger = get_logger(__name__)
 __all__ = ["format_plugin", "PLUGIN_EVENTS", "PluginDict", "PyFSDPluginManager"]
 
 
@@ -92,30 +93,30 @@ class PyFSDPluginManager:
         ):
             # Tell user loading plugin
             logger.info(
-                "Loading plugin {plugin}",
-                plugin=format_plugin(plugin, with_version=True),
+                "Loading plugin %s",
+                format_plugin(plugin, with_version=True),
             )
             if plugin in all_plugins:
                 # Skip already loaded plugin
                 logger.debug(
-                    "plugin {plugin} already loaded, skipping.",
-                    plugin=format_plugin(plugin),
+                    "plugin %s already loaded, skipping.",
+                    format_plugin(plugin),
                 )
             else:
                 # Check API
                 if not isinstance(plugin.api, int) or plugin.api > API_LEVEL:
                     logger.error(
-                        "{plugin} needs API {api}, try update PyFSD",
-                        api=plugin.api,
-                        plugin=format_plugin(plugin),
+                        "%s needs API %d, try update PyFSD",
+                        format_plugin(plugin),
+                        plugin.api,
                     )
                 else:
                     # Check API again.....
                     if plugin.api != API_LEVEL:
-                        logger.error(
-                            "{plugin} using outdated API {api}, may cause some problem",
-                            api=plugin.api,
+                        logger.warning(
+                            "%s using outdated API %d, may cause some problem",
                             plugin=format_plugin(plugin),
+                            api=plugin.api,
                         )
 
                     # Check config
@@ -123,8 +124,8 @@ class PyFSDPluginManager:
                     if plugin.expected_config is not None:
                         if plugin_config is None:
                             logger.error(
-                                "Cannot load plugin {name} because it needs config.",
-                                name=plugin.plugin_name,
+                                "Cannot load plugin %s because it needs config.",
+                                plugin.plugin_name,
                             )
                             continue
                         config_errors = tuple(
@@ -199,7 +200,7 @@ class PyFSDPluginManager:
                 await getattr(plugin, event_name)(*args, **kwargs)
             except PreventEvent as prevent_result:
                 if not prevent_able:
-                    logger.error(
+                    await logger.aerror(
                         f"{plugin.plugin_name}: Cannot prevent event: {event_name}",
                     )
                 else:
@@ -209,7 +210,7 @@ class PyFSDPluginManager:
                         "plugin": plugin,
                     }
             except BaseException:
-                logger.exception(
+                await logger.aexception(
                     f"Error happened during call plugin {plugin.plugin_name}",
                 )
         return None

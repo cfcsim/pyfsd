@@ -26,7 +26,6 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "loguru>=0.7.0",
     "haversine>=2.8.0",
     "tomli>=2.0.1; python_version < \"3.11\"",
     "metar>=1.10.0",
@@ -35,6 +34,9 @@ dependencies = [
     "typing-extensions>=4.9.0",
     "argon2-cffi>=23.1.0",
     "dependency-injector-fork>=4.42.1",
+    "structlog>=24.1.0",
+    "colorama>=0.4.6; sys_platform == \"win32\"",
+    "better-exceptions>=0.3.3",
 ]
 
 [project.urls]

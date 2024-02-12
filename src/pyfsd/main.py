@@ -9,7 +9,7 @@ from signal import SIGINT, SIGTERM
 from typing import Literal, Union
 
 from dependency_injector.wiring import register_loader_containers
-from loguru import logger
+from structlog import get_logger
 from typing_extensions import NotRequired
 
 from . import plugins
@@ -27,6 +27,8 @@ try:
     from tomllib import loads  # type: ignore[import-not-found,unused-ignore]
 except ImportError:
     from tomli import loads  # type: ignore[no-redef,import-not-found,unused-ignore]
+
+logger = get_logger(__name__)
 
 DEFAULT_CONFIG = """[pyfsd.database]
 url = "sqlite:///pyfsd.db"
@@ -64,7 +66,7 @@ async def launch(config: dict) -> None:
     )
 
     for plugin in awaitable_plugins:
-        logger.info("Loading plugin {}", format_awaitable(plugin))
+        await logger.ainfo("Loading plugin %s", format_awaitable(plugin))
 
     awaitable_generators = tuple(plugin() for plugin in awaitable_plugins)
 
@@ -83,12 +85,12 @@ async def launch(config: dict) -> None:
         *(next(generator) for generator in awaitable_generators),
     )
     await container.pyfsd_plugin_manager().trigger_event("before_start", (), {})
-    logger.info(f"PyFSD {version}")
+    await logger.ainfo(f"PyFSD {version}")
     try:
         async with client_server:
             await gather(*tasks)
     except CancelledError:
-        logger.info("Stopping")
+        await logger.ainfo("Stopping")
         await container.pyfsd_plugin_manager().trigger_event("before_stop", (), {})
         await container.db_engine().dispose()
         for generator in awaitable_generators:
@@ -159,7 +161,9 @@ def main() -> None:
             db_url = "mssql+aioodbc://" + url
         # else I have nothing to do :(
         config["pyfsd"]["database"]["url"] = db_url
+
     suppress_metar_parser_warning()
+
     loop = get_event_loop()
     main_task = ensure_future(launch(config))
     for signal in [SIGINT, SIGTERM]:

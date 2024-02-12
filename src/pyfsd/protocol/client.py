@@ -17,7 +17,7 @@ from typing import (
     cast,
 )
 
-from loguru import logger
+from structlog import get_logger
 from typing_extensions import Concatenate, ParamSpec
 
 from .._version import version as pyfsd_version
@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from ..factory.client import ClientFactory
     from ..plugin.types import PluginHandledEventResult, PyFSDHandledLineResult
 
+logger = get_logger(__name__)
 P = ParamSpec("P")
 T = TypeVar("T")
 HandleResult = Tuple[bool, bool]  # (packet_ok, has_result)
@@ -457,11 +458,11 @@ class ClientProtocol(LineProtocol):
                 from_client=client,
             )
         self.send_motd()
-        logger.info(
-            "New client {callsign} ({cid}) from {ip}.",
-            callsign=callsign.decode(errors="backslashreplace"),
-            cid=cid_str,
-            ip=self.transport.get_extra_info("peername")[0],
+        await logger.ainfo(
+            "New client %s (%s) from %s.",
+            callsign.decode(errors="backslashreplace"),
+            cid_str,
+            self.transport.get_extra_info("peername")[0],
         )
         await self.factory.plugin_manager.trigger_event(
             "new_client_created", (self,), {}

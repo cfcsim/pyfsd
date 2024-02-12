@@ -15,7 +15,7 @@ from typing import (
 )
 from warnings import filterwarnings
 
-from loguru import logger
+from structlog import get_logger
 
 from .. import plugins
 from ..plugin.collect import iter_submodule_plugins
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
     from metar.Metar import Metar
 
+logger = get_logger(__name__)
 __all__ = ["suppress_metar_parser_warning", "MetarManager"]
 
 
@@ -102,7 +103,7 @@ class MetarManager:
         Raises:
             RuntimeError: if not in cron mode.
         """
-        logger.info("Fetching METAR")
+        await logger.ainfo("Fetching METAR")
 
         for fetcher in self.fetchers:
             try:
@@ -113,14 +114,14 @@ class MetarManager:
             except NotImplementedError:
                 continue
             except BaseException:
-                logger.exception("Exception raised when caching metar")
+                await logger.aexception("Exception raised when caching metar")
             else:
                 if metars is not None:
-                    logger.info(f"Fetched {len(metars)} metars.")
+                    await logger.ainfo(f"Fetched {len(metars)} metars.")
                     self.metar_cache = metars
                     return
                 continue
-        logger.error("No metar was fetched. All metar fetcher failed.")
+        await logger.aerror("No metar was fetched. All metar fetcher failed.")
 
     def get_cron_task(self) -> "Task[NoReturn]":
         """Get cron fetching task.
@@ -176,7 +177,7 @@ class MetarManager:
             except NotImplementedError:
                 continue
             except BaseException:
-                logger.exception("Exception raised when fetching metar")
+                await logger.aexception("Exception raised when fetching metar")
         return None
 
     async def fetch(self, icao: str, ignore_case: bool = True) -> Optional["Metar"]:
