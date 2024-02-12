@@ -126,12 +126,14 @@ class PyFSDPluginManager:
                                 "Cannot load plugin {name} because it needs config.",
                                 name=plugin.plugin_name,
                             )
-                            return
-                        config_errors = check_dict(
-                            plugin_config,
-                            plugin.expected_config,
-                            name=f"plugin[{plugin.plugin_name!r}]",
-                            allow_unexpected_key=True,
+                            continue
+                        config_errors = tuple(
+                            check_dict(
+                                plugin_config,
+                                plugin.expected_config,
+                                name=f"plugin[{plugin.plugin_name!r}]",
+                                allow_unexpected_key=True,
+                            )
                         )
                         if config_errors:
                             error_string = (
@@ -140,8 +142,8 @@ class PyFSDPluginManager:
                             )
                             for config_error in config_errors:
                                 error_string += str(config_error) + "\n"
-                            logger.error(error_string)
-                            return
+                            logger.error(error_string.rstrip("\n"))
+                            continue
 
                     # Everything is ok, save it
                     all_plugins.append(plugin)
