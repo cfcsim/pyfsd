@@ -12,11 +12,15 @@ from dependency_injector.wiring import register_loader_containers
 from loguru import logger
 from typing_extensions import NotRequired
 
+from . import plugins
 from ._version import version
 from .db_tables import metadata
 from .define.check_dict import assert_dict
 from .dependencies import Container
 from .metar.manager import suppress_metar_parser_warning
+from .plugin.collect import iter_submodule_plugins
+from .plugin.interfaces import AwaitableMaker
+from .plugin.manager import format_awaitable
 
 try:
     # Python 3.11+
@@ -48,6 +52,23 @@ async def launch(config: dict) -> None:
     container.pyfsd_plugin_manager().pick_plugins(config["plugin"])
     container.metar_manager().pick_fetchers()
 
+    # Load AwaitableMaker plugins
+    awaitable_plugins = tuple(
+        iter_submodule_plugins(
+            plugins,
+            AwaitableMaker,  # type: ignore[type-abstract]
+            error_handler=lambda name: logger.exception(
+                f"Error happened during load plugin {name}",
+            ),
+        )
+    )
+
+    for plugin in awaitable_plugins:
+        logger.info("Loading plugin {}", format_awaitable(plugin))
+
+    awaitable_generators = tuple(plugin() for plugin in awaitable_plugins)
+
+    # Initialize database
     async with container.db_engine().begin() as conn:
         await conn.run_sync(metadata.create_all)
 
@@ -59,6 +80,7 @@ async def launch(config: dict) -> None:
         container.metar_manager().get_cron_task(),
         client_server.serve_forever(),
         container.client_factory().get_heartbeat_task(),
+        *(next(generator) for generator in awaitable_generators),
     )
     await container.pyfsd_plugin_manager().trigger_event("before_start", (), {})
     logger.info(f"PyFSD {version}")
@@ -66,9 +88,14 @@ async def launch(config: dict) -> None:
         async with client_server:
             await gather(*tasks)
     except CancelledError:
+        logger.info("Stopping")
         await container.pyfsd_plugin_manager().trigger_event("before_stop", (), {})
         await container.db_engine().dispose()
-        logger.info("Stopping")
+        for generator in awaitable_generators:
+            try:  # noqa: SIM105
+                next(generator)
+            except StopIteration:
+                pass
 
 
 def main() -> None:

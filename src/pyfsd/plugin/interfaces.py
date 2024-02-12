@@ -1,7 +1,18 @@
 # ruff: noqa: B027
 """Interfaces of PyFSD plugin architecture."""
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Awaitable, ClassVar, Optional, Tuple, Type, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Awaitable,
+    ClassVar,
+    Generator,
+    Iterable,
+    Optional,
+    Tuple,
+    Type,
+    TypedDict,
+    Union,
+)
 
 if TYPE_CHECKING:
     from ..object.client import Client
@@ -33,7 +44,7 @@ class PyFSDPlugin(ABC):
     plugin_name: ClassVar[str]
     api: ClassVar[int]
     version: ClassVar[Tuple[int, str]]
-    expected_config: ClassVar[Optional[Type[TypedDict]]]  # type: ignore[valid-type]
+    expected_config: ClassVar[Union[Type[TypedDict], dict, None]]  # type: ignore[valid-type]
 
     async def before_start(self) -> None:
         """Called before PyFSD start."""
@@ -112,12 +123,16 @@ class AwaitableMaker(ABC):
     awaitable_name: ClassVar[str]
 
     @abstractmethod
-    async def __call__(self) -> Awaitable:
+    def __call__(self) -> Generator[Awaitable, None, None]:
         """Make a awaitable object.
 
-        Args:
-            config: plugin.<awaitable_name> section of PyFSD configure file.
-                None if the section doesn't exist.
+        Yields:
+            First time yield the awaitable object, the next time do clean up.
+            Examples::
+                server = Server()
+                server.prepare()
+                yield server.run()
+                server.clean()
 
         Returns:
             A awaitable object.
