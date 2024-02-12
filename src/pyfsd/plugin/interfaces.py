@@ -6,7 +6,6 @@ from typing import (
     Awaitable,
     ClassVar,
     Generator,
-    Iterable,
     Optional,
     Tuple,
     Type,
