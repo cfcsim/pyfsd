@@ -4,6 +4,7 @@ Attributes:
     MetarInfoDict: Type of a dict that describes all airports' metar.
 """
 from abc import ABC, abstractmethod
+from asyncio import get_event_loop
 from datetime import datetime, timezone
 from typing import ClassVar, Dict, List, Optional
 
@@ -104,12 +105,15 @@ class NOAAMetarFetcher(MetarFetcher):
             if resp.status != 200:
                 return None
             all_metar: MetarInfoDict = {}
+            loop = get_event_loop()
             metar_blocks = (await resp.text(errors="ignore")).split("\n\n")
-            for block in metar_blocks:
-                blocklines = block.splitlines()
-                if len(blocklines) < 2:
-                    continue
-                current_metar = self.parse_metar(blocklines)
-                if current_metar.station_id is not None:
-                    all_metar[current_metar.station_id] = current_metar
+            def parser() -> None:
+                for block in metar_blocks:
+                    blocklines = block.splitlines()
+                    if len(blocklines) < 2:
+                        continue
+                    current_metar = self.parse_metar(blocklines)
+                    if current_metar.station_id is not None:
+                        all_metar[current_metar.station_id] = current_metar
+            await loop.run_in_executor(None, parser)
             return all_metar
