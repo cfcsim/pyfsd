@@ -107,6 +107,7 @@ class NOAAMetarFetcher(MetarFetcher):
             all_metar: MetarInfoDict = {}
             loop = get_event_loop()
             metar_blocks = (await resp.text(errors="ignore")).split("\n\n")
+
             def parser() -> None:
                 for block in metar_blocks:
                     blocklines = block.splitlines()
@@ -115,5 +116,6 @@ class NOAAMetarFetcher(MetarFetcher):
                     current_metar = self.parse_metar(blocklines)
                     if current_metar.station_id is not None:
                         all_metar[current_metar.station_id] = current_metar
+
             await loop.run_in_executor(None, parser)
             return all_metar
