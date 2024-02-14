@@ -23,7 +23,7 @@ from typing import (
 from structlog import get_logger
 
 from .. import plugins
-from ..define.check_dict import VerifyKeyError, VerifyTypeError, check_dict
+from ..define.check_dict import check_dict
 from ..define.utils import iter_callable
 from . import API_LEVEL, PreventEvent
 from .collect import iter_submodule_plugins
@@ -39,11 +39,6 @@ __all__ = ["format_plugin", "PLUGIN_EVENTS", "PluginDict", "PluginManager"]
 def deal_exception(name: str) -> None:
     """Handle exceptions when importing plugins."""
     type_, exception, traceback = exc_info()
-
-    if isinstance(exception, (VerifyKeyError, VerifyTypeError)):
-        # Allow assertDict
-        logger.error("Cannot load plugin %s because %s", name, str(exception))
-        return
 
     # Cut traceback to plugin file
     current_traceback = traceback
@@ -122,7 +117,8 @@ class PluginManager:
     """PyFSD Plugin manager.
 
     Attributes:
-        plugins: All collected plugins.
+        plugins: Taged collected plugins.
+        pyfsd_plugins: Collected PyFSDPlugins.
     """
 
     plugins: Optional[Plugins] = None

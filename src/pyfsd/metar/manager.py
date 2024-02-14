@@ -17,6 +17,7 @@ from warnings import filterwarnings
 
 from structlog import get_logger
 
+from ..define.check_dict import VerifyKeyError, VerifyTypeError
 from .fetch import (
     MetarFetcher,
     MetarInfoDict,
@@ -114,6 +115,11 @@ class MetarManager:
                 return
             except NotImplementedError:
                 continue
+            except (VerifyKeyError, VerifyTypeError) as err:
+                await logger.aerror(
+                    f"Metar fetcher {fetcher.metar_source} doesn't"
+                    f" work because {err!s}"
+                )
             except BaseException:
                 await logger.aexception("Exception raised when caching metar")
             else:
@@ -177,6 +183,11 @@ class MetarManager:
                 return None
             except NotImplementedError:
                 continue
+            except (VerifyKeyError, VerifyTypeError) as err:
+                await logger.aerror(
+                    f"Metar fetcher {fetcher.metar_source} doesn't"
+                    f" work because {err!s}"
+                )
             except BaseException:
                 await logger.aexception("Exception raised when fetching metar")
         return None

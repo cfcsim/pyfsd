@@ -40,10 +40,10 @@ class PyFSDPlugin(ABC):
             None if this plugin requires no config. (disables config check)
     """
 
-    plugin_name: ClassVar[str]
-    api: ClassVar[int]
-    version: ClassVar[Tuple[int, str]]
-    expected_config: ClassVar[Union[Type[TypedDict], dict, None]]  # type: ignore[valid-type]
+    plugin_name: ClassVar[str] = "<plugin_name>"
+    api: ClassVar[int] = -1
+    version: ClassVar[Tuple[int, str]] = (-1, "<version>")
+    expected_config: ClassVar[Union[Type[TypedDict], dict, None]] = None  # type: ignore[valid-type]
 
     async def before_start(self) -> None:
         """Called before PyFSD start."""
@@ -113,21 +113,23 @@ class PyFSDPlugin(ABC):
 class AwaitableMaker(ABC):
     """Interface of Awaitable maker, a object which can make a awaitable object.
 
-    Should be used to load a blocking awaitable object.
+    Used to await a blocking awaitable object when PyFSD starts.
 
     Attributes:
         awaitable_name: Name of the to-make awaitable object.
     """
 
-    awaitable_name: ClassVar[str]
+    awaitable_name: ClassVar[str] = "<awaitable_name>"
 
     @abstractmethod
-    def __call__(self) -> Generator[Awaitable, None, None]:
+    def __call__(self) -> Generator[Optional[Awaitable], None, None]:
         """Make a awaitable object.
 
         Yields:
             First time yield the awaitable object, the next time do clean up.
-            Examples::
+            If nothing needs to be awaited, yield None first time. (code block after
+                yield still executes.)
+            Example::
                 server = Server()
                 server.prepare()
                 yield server.run()

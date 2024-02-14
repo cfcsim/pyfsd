@@ -14,7 +14,7 @@ from typing_extensions import NotRequired
 
 from ._version import version
 from .db_tables import metadata
-from .define.check_dict import assert_dict
+from .define.check_dict import VerifyKeyError, VerifyTypeError, assert_dict
 from .dependencies import Container
 from .metar.manager import suppress_metar_parser_warning
 from .plugin.interfaces import AwaitableMaker
@@ -61,10 +61,17 @@ async def launch(config: dict) -> None:
     awaitable_generators = []
     awaitables = []
     for plugin in pm.get_plugins(AwaitableMaker):  # type: ignore[type-abstract]
-        await logger.ainfo("Loading plugin %s", format_awaitable(plugin))
+        str_plugin = format_awaitable(plugin)
+        await logger.ainfo("Loading plugin %s", str_plugin)
         generator = plugin()
-        awaitable_generators.append(generator)
-        awaitables.append(next(generator))
+        try:
+            awaitable = next(generator)
+        except (VerifyKeyError, VerifyTypeError) as err:
+            logger.error("Plugin %s doesn't work because %s", str_plugin, err)
+        else:
+            if awaitable is not None:
+                awaitables.append(awaitable)
+            awaitable_generators.append(generator)
     # =============== Startup
     loop = get_event_loop()
     client_server = await loop.create_server(
