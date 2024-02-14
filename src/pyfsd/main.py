@@ -12,13 +12,11 @@ from dependency_injector.wiring import register_loader_containers
 from structlog import get_logger
 from typing_extensions import NotRequired
 
-from . import plugins
 from ._version import version
 from .db_tables import metadata
 from .define.check_dict import assert_dict
 from .dependencies import Container
 from .metar.manager import suppress_metar_parser_warning
-from .plugin.collect import iter_submodule_plugins
 from .plugin.interfaces import AwaitableMaker
 from .plugin.manager import format_awaitable
 
@@ -47,51 +45,45 @@ fetchers = ["NOAA"]"""
 
 async def launch(config: dict) -> None:
     """Launch PyFSD."""
+    # =============== Initialize dependencies
     container = Container()
     container.config.from_dict(config)
     register_loader_containers(container)  # Register
-    # Then load plugins to load them
-    container.pyfsd_plugin_manager().pick_plugins(config["plugin"])
-    container.metar_manager().pick_fetchers()
-
-    # Load AwaitableMaker plugins
-    awaitable_plugins = tuple(
-        iter_submodule_plugins(
-            plugins,
-            AwaitableMaker,  # type: ignore[type-abstract]
-            error_handler=lambda name: logger.exception(
-                f"Error happened during load plugin {name}",
-            ),
-        )
-    )
-
-    for plugin in awaitable_plugins:
-        await logger.ainfo("Loading plugin %s", format_awaitable(plugin))
-
-    awaitable_generators = tuple(plugin() for plugin in awaitable_plugins)
-
+    # Then load plugins to wire them
+    pm = container.plugin_manager()
+    pm.pick_plugins()
+    pm.load_pyfsd_plugins(config["plugin"])
+    container.metar_manager().load_fetchers()
     # Initialize database
     async with container.db_engine().begin() as conn:
         await conn.run_sync(metadata.create_all)
-
+    # =============== Load AwaitableMaker plugins
+    awaitable_generators = []
+    awaitables = []
+    for plugin in pm.get_plugins(AwaitableMaker):  # type: ignore[type-abstract]
+        await logger.ainfo("Loading plugin %s", format_awaitable(plugin))
+        generator = plugin()
+        awaitable_generators.append(generator)
+        awaitables.append(next(generator))
+    # =============== Startup
     loop = get_event_loop()
     client_server = await loop.create_server(
         container.client_factory(), port=config["pyfsd"]["client"]["port"]
     )
-    tasks = (
-        container.metar_manager().get_cron_task(),
-        client_server.serve_forever(),
-        container.client_factory().get_heartbeat_task(),
-        *(next(generator) for generator in awaitable_generators),
-    )
-    await container.pyfsd_plugin_manager().trigger_event("before_start", (), {})
+    await container.plugin_manager().trigger_event("before_start", (), {})
     await logger.ainfo(f"PyFSD {version}")
     try:
         async with client_server:
-            await gather(*tasks)
+            await gather(
+                container.metar_manager().get_cron_task(),
+                container.client_factory().get_heartbeat_task(),
+                client_server.serve_forever(),
+                *awaitables,
+            )
     except CancelledError:
+        # =========== Stop
         await logger.ainfo("Stopping")
-        await container.pyfsd_plugin_manager().trigger_event("before_stop", (), {})
+        await container.plugin_manager().trigger_event("before_stop", (), {})
         await container.db_engine().dispose()
         for generator in awaitable_generators:
             try:  # noqa: SIM105

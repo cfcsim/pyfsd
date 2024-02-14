@@ -4,25 +4,65 @@ Attributes:
     PLUGIN_EVENTS: All available PyFSD plugin events.
 """
 
-from inspect import getfile
-from typing import Callable, Dict, Iterable, List, Mapping, Optional, Tuple, TypedDict
+from abc import ABC
+from inspect import getfile, getmro
+from sys import exc_info
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Type,
+    TypedDict,
+    TypeVar,
+)
 
 from structlog import get_logger
 
 from .. import plugins
-from ..define.check_dict import check_dict
+from ..define.check_dict import VerifyKeyError, VerifyTypeError, check_dict
 from ..define.utils import iter_callable
 from . import API_LEVEL, PreventEvent
 from .collect import iter_submodule_plugins
-from .interfaces import AwaitableMaker, PyFSDPlugin
+from .interfaces import AwaitableMaker, Plugin, PyFSDPlugin
 from .types import PluginHandledEventResult
 
+_T_ABC = TypeVar("_T_ABC", bound=ABC)
+
 logger = get_logger(__name__)
-__all__ = ["format_plugin", "PLUGIN_EVENTS", "PluginDict", "PyFSDPluginManager"]
+__all__ = ["format_plugin", "PLUGIN_EVENTS", "PluginDict", "PluginManager"]
+
+
+def deal_exception(name: str) -> None:
+    """Handle exceptions when importing plugins."""
+    type_, exception, traceback = exc_info()
+
+    if isinstance(exception, (VerifyKeyError, VerifyTypeError)):
+        # Allow assertDict
+        logger.error("Cannot load plugin %s because %s", name, str(exception))
+        return
+
+    # Cut traceback to plugin file
+    current_traceback = traceback
+    while (
+        current_traceback is not None
+        and current_traceback.tb_next is not None
+        and current_traceback.tb_frame.f_code.co_name != "<module>"
+    ):
+        current_traceback = current_traceback.tb_next
+    traceback = current_traceback
+
+    logger.exception(
+        f"Error happened during load plugin {name}",
+        exc_info=(type_, exception, traceback),
+    )
 
 
 def format_plugin(plugin: PyFSDPlugin, with_version: bool = False) -> str:
-    """Format a plugin into string.
+    """Format a PyFSD plugin into string.
 
     Args:
         plugin: The plugin.
@@ -53,8 +93,21 @@ def format_awaitable(plugin: AwaitableMaker) -> str:
 PLUGIN_EVENTS = tuple(func.__name__ for func in iter_callable(PyFSDPlugin))
 
 
+class Plugins(Dict):
+    """A dict stores all plugins.
+
+    plugins_dict[ABC] => List[Plugins implemented ABC]
+    """
+
+    def __getitem__(self, __key: Type[_T_ABC]) -> List[_T_ABC]:
+        return super().__getitem__(__key)  # type: ignore[no-any-return]
+
+    def __setitem__(self, __key: Type[_T_ABC], __value: List[_T_ABC]) -> None:
+        return super().__setitem__(__key, __value)
+
+
 class PluginDict(TypedDict):
-    """Plugin set used by PyFSDPluginManager.
+    """A dict stores all PyFSDPlugin.
 
     Attributes:
         all: All plugins.
@@ -65,17 +118,38 @@ class PluginDict(TypedDict):
     tagged: Dict[str, List[PyFSDPlugin]]
 
 
-class PyFSDPluginManager:
+class PluginManager:
     """PyFSD Plugin manager.
 
     Attributes:
-        plugins: Plugin set.
+        plugins: All collected plugins.
     """
 
-    plugins: Optional[PluginDict] = None
+    plugins: Optional[Plugins] = None
+    pyfsd_plugins: Optional[PluginDict] = None
 
-    def pick_plugins(self, plugin_config_root: dict) -> None:
-        """Pick plugins into self.plugins.
+    def pick_plugins(self) -> None:
+        """Pick all plugins into self.pyfsd_plugins."""
+        plugins_dict: Plugins = Plugins()
+        for plugin in iter_submodule_plugins(plugins, Plugin, deal_exception):
+            plugin_class = type(plugin)
+            for cls in getmro(plugin_class):
+                if issubclass(cls, ABC) and cls not in (plugin_class, Plugin, ABC):
+                    if cls not in plugins_dict:
+                        plugins_dict[cls] = []
+                    plugins_dict[cls].append(plugin)
+        self.plugins = plugins_dict
+
+    def get_plugins(self, plugin_abc: Type[_T_ABC]) -> List[_T_ABC]:
+        """Get list of plugins that implemented specified ABC."""
+        if self.plugins is None:
+            raise RuntimeError("Plugins not picked")
+        if plugin_abc not in self.plugins:
+            return []
+        return self.plugins[plugin_abc]
+
+    def load_pyfsd_plugins(self, plugin_config_root: dict) -> None:
+        """Pick PyFSD plugins into self.pyfsd_plugins.
 
         Args:
             plugin_config_root: 'plugin' section of config.
@@ -84,13 +158,7 @@ class PyFSDPluginManager:
         event_handlers: Dict[str, List[PyFSDPlugin]] = {
             name: [] for name in PLUGIN_EVENTS
         }
-        for plugin in iter_submodule_plugins(
-            plugins,
-            PyFSDPlugin,
-            error_handler=lambda name: logger.exception(
-                f"Error happened during load plugin {name}",
-            ),
-        ):
+        for plugin in self.get_plugins(PyFSDPlugin):
             # Tell user loading plugin
             logger.info(
                 "Loading plugin %s",
@@ -155,7 +223,7 @@ class PyFSDPluginManager:
                         ) is not getattr(PyFSDPlugin, event):
                             event_handlers[event].append(plugin)
 
-        self.plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
+        self.pyfsd_plugins = {"all": tuple(all_plugins), "tagged": event_handlers}
 
     def iter_plugin_by_event_name(self, event_name: str) -> Iterable[PyFSDPlugin]:
         """Yields all plugins that handles specified event.
@@ -166,12 +234,12 @@ class PyFSDPluginManager:
         Returns:
             The plugin.
         """
-        if self.plugins is None:
-            raise RuntimeError("Plugin not loaded")
+        if self.pyfsd_plugins is None:
+            raise RuntimeError("PyFSD plugins not loaded")
         if event_name not in PLUGIN_EVENTS:
             msg = f"Invaild event {event_name}"
             raise ValueError(msg)
-        yield from self.plugins["tagged"][event_name]
+        yield from self.pyfsd_plugins["tagged"][event_name]
 
     def iter_handler_by_event_name(self, event_name: str) -> Iterable[Callable]:
         """Yields event handler of all plugins that handles specified event.

@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ..define.broadcast import BroadcastChecker
     from ..metar.manager import MetarManager
     from ..object.client import Client
-    from ..plugin.manager import PyFSDPluginManager
+    from ..plugin.manager import PluginManager
 
 __all__ = ["ClientFactory"]
 
@@ -43,7 +43,7 @@ class ClientFactory:
         motd: The Message Of The Day.
         blacklist: IP blacklist.
         metar_manager: The metar manager.
-        plugin_manager: The PyFSD plugin manager.
+        plugin_manager: The plugin manager.
         db_engine: Async sqlalchemy engine.
         password_hasher: Argon2 password hasher.
     """
@@ -51,7 +51,7 @@ class ClientFactory:
     clients: Dict[bytes, "Client"]
     heartbeat_task: "Task[NoReturn] | None"
     metar_manager: "MetarManager"
-    plugin_manager: "PyFSDPluginManager"
+    plugin_manager: "PluginManager"
     db_engine: "AsyncEngine"
     motd: List[bytes]
     blacklist: List[str]
@@ -62,7 +62,7 @@ class ClientFactory:
         motd: bytes,
         blacklist: List[str],
         metar_manager: "MetarManager",
-        plugin_manager: "PyFSDPluginManager",
+        plugin_manager: "PluginManager",
         db_engine: "AsyncEngine",
     ) -> None:
         """Create a ClientFactory instance."""

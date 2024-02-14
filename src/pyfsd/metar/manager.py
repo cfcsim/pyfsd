@@ -17,8 +17,6 @@ from warnings import filterwarnings
 
 from structlog import get_logger
 
-from .. import plugins
-from ..plugin.collect import iter_submodule_plugins
 from .fetch import (
     MetarFetcher,
     MetarInfoDict,
@@ -29,6 +27,8 @@ if TYPE_CHECKING:
     from asyncio import Task
 
     from metar.Metar import Metar
+
+    from ..plugin.manager import PluginManager
 
 logger = get_logger(__name__)
 __all__ = ["suppress_metar_parser_warning", "MetarManager"]
@@ -52,41 +52,42 @@ class MetarManager:
         metar_cache: Metars fetched in cron mode.
         config: pyfsd.metar section of config.
         cron_time: Interval time between every two cron fetch. None if not in cron mode.
+        plugin_manager: Plugin manager, used later in load_fetchers.
+        cron_task: Task to perform cron metar cache.
     """
 
+    plugin_manager: "PluginManager"
     fetchers: Tuple[MetarFetcher, ...]
     metar_cache: MetarInfoDict
     config: dict
     cron_time: Optional[float]
     cron_task: "Task[NoReturn] | None"
 
-    def __init__(self, config: dict) -> None:
+    def __init__(self, config: dict, plugin_manager: "PluginManager") -> None:
         """Create a MetarManager instance.
 
         Args:
             config: pyfsd.metar section of config.
+            plugin_manager: The plugin manager.
         """
         self.cron_time = config["cron_time"] if config["mode"] == "cron" else None
         self.cron_task = None
         self.config = config
         self.metar_cache = {}
+        self.plugin_manager = plugin_manager
 
-    def pick_fetchers(self) -> int:
-        """Try to pick all specified metar fetchers according config.
+    def load_fetchers(self) -> int:
+        """Try to load all specified metar fetchers according config.
 
         Returns:
             How much fetchers were loaded.
         """
-        count = 1
+        count = 1  # NOAAMetarFetcher
         temp_fetchers: Dict[str, MetarFetcher] = {
             NOAAMetarFetcher.metar_source: NOAAMetarFetcher()
         }
         fetchers: List[MetarFetcher] = []
-        for fetcher in iter_submodule_plugins(
-            plugins,
-            MetarFetcher,  # type: ignore[type-abstract]
-            error_handler=logger.exception,
-        ):
+        for fetcher in self.plugin_manager.get_plugins(MetarFetcher):  # type: ignore[type-abstract]
             count += 1
             temp_fetchers[fetcher.metar_source] = fetcher
         for need_fetcher in self.config["fetchers"]:

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from .factory.client import ClientFactory
 from .metar.manager import MetarManager
-from .plugin.manager import PyFSDPluginManager
+from .plugin.manager import PluginManager
 
 
 class Container(containers.DeclarativeContainer):
@@ -13,20 +13,22 @@ class Container(containers.DeclarativeContainer):
     Attributes:
         config: The root config.
         db_engine: Async sqlalchemy database engine.
-        pyfsd_plugin_manager: 'PyFSD plugin' manager.
+        plugin_manager: Plugin manager.
         metar_manager: Metar manager.
         client_factory: Client protocol factory, which stores clients and so on.
     """
 
     config = providers.Configuration()
-    metar_manager = providers.Singleton(MetarManager, config.pyfsd.metar)
     db_engine = providers.Singleton(create_async_engine, config.pyfsd.database.url)
-    pyfsd_plugin_manager = providers.Singleton(PyFSDPluginManager)
+    plugin_manager = providers.Singleton(PluginManager)
+    metar_manager = providers.Singleton(
+        MetarManager, config.pyfsd.metar, plugin_manager
+    )
     client_factory = providers.Singleton(
         ClientFactory,
         config.pyfsd.client.motd.as_(bytes, config.pyfsd.client.motd_encoding),
         config.pyfsd.client.blacklist,
         metar_manager,
-        pyfsd_plugin_manager,
+        plugin_manager,
         db_engine,
     )
