@@ -30,16 +30,8 @@ jobs:
     - name: Install dependencies
       run: |
         pdm install -d --no-self
-    - name: Upload log
-      if: ${{ failure() }} 
-      uses: actions/upload-artifact@v3
-      with:
-        name: PDM error log
-        path: /tmp/pdm-install-*.log
     #- name: Run pyright
     #  uses: jakebailey/pyright-action@v1
-    #  with:
-    #    version: "1.1.308"
     - name: Run mypy
       run: |
         source .venv/bin/activate
@@ -47,7 +39,11 @@ jobs:
     - name: Run ruff
       run: |
         source .venv/bin/activate
-        ruff check . --show-source --show-fixes --ignore FIX 
+        ruff check . --output-format=full --show-fixes --ignore FIX 
+    - name: Run ruff
+      run: |
+        source .venv/bin/activate
+        python -m unittest
     - name: Build package
       if: ${{ always() }}
       id: build
