@@ -29,7 +29,7 @@ jobs:
         cache: true
     - name: Install dependencies
       run: |
-        pdm install -d --no-self
+        pdm install -d
     #- name: Run pyright
     #  uses: jakebailey/pyright-action@v1
     - name: Run mypy
@@ -40,7 +40,7 @@ jobs:
       run: |
         source .venv/bin/activate
         ruff check . --output-format=full --show-fixes --ignore FIX 
-    - name: Run ruff
+    - name: Run unittest
       run: |
         source .venv/bin/activate
         python -m unittest
