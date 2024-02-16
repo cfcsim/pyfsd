@@ -1,5 +1,5 @@
 """This module tests pyfsd.define.utils."""
-from asyncio import create_task, get_event_loop, sleep
+from asyncio import create_task, new_event_loop, sleep
 from unittest import TestCase
 
 from haversine import Unit
@@ -73,7 +73,7 @@ class TestUtils(TestCase):
 
     def test_task_keeper(self) -> None:
         """Test if task_keeper works."""
-        loop = get_event_loop()
+        loop = new_event_loop()
 
         def make_task() -> None:
             async def func() -> None:
