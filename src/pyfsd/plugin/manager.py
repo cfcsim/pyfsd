@@ -6,6 +6,7 @@ Attributes:
 
 from abc import ABC
 from inspect import getfile, getmro
+from os import getcwd
 from sys import exc_info
 from typing import (
     Callable,
@@ -56,6 +57,9 @@ def deal_exception(name: str) -> None:
     )
 
 
+_cwd = getcwd()
+
+
 def format_plugin(plugin: PyFSDPlugin, with_version: bool = False) -> str:
     """Format a PyFSD plugin into string.
 
@@ -66,10 +70,13 @@ def format_plugin(plugin: PyFSDPlugin, with_version: bool = False) -> str:
     Returns:
         The formatted result.
     """
+    path = getfile(type(plugin))
+    if path.startswith(_cwd):
+        path = path[len(_cwd) + 1 :]
     return (
         f"{plugin.plugin_name}"
         + (f" {plugin.version[1]} ({plugin.version[0]}) " if with_version else "")
-        + f"({getfile(type(plugin))})"
+        + f"({path})"
     )
 
 
@@ -82,7 +89,10 @@ def format_awaitable(plugin: AwaitableMaker) -> str:
     Returns:
         The formatted result.
     """
-    return f"{plugin.awaitable_name} ({getfile(type(plugin))})"
+    path = getfile(type(plugin))
+    if path.startswith(_cwd):
+        path = path[len(_cwd) + 1 :]
+    return f"{plugin.awaitable_name} ({path})"
 
 
 PLUGIN_EVENTS = tuple(func.__name__ for func in iter_callable(PyFSDPlugin))
