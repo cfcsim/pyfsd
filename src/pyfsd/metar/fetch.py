@@ -6,10 +6,13 @@ Attributes:
 from abc import ABC, abstractmethod
 from asyncio import get_event_loop
 from datetime import datetime, timezone
-from typing import ClassVar, Dict, List, Optional
+from typing import TYPE_CHECKING, ClassVar, Dict, List, Optional, Union
 
 from aiohttp import ClientSession
 from metar.Metar import Metar
+
+if TYPE_CHECKING:
+    from .manager import PyFSDMetarConfig
 
 MetarInfoDict = Dict[str, Metar]
 
@@ -30,7 +33,9 @@ class MetarFetcher(ABC):
     metar_source: ClassVar[str]
 
     @abstractmethod
-    async def fetch(self, config: dict, icao: str) -> Optional[Metar]:
+    async def fetch(
+        self, config: Union[dict, "PyFSDMetarConfig"], icao: str
+    ) -> Optional[Metar]:
         """Fetch the METAR of the specified airport.
 
         Args:
@@ -45,7 +50,9 @@ class MetarFetcher(ABC):
         """
 
     @abstractmethod
-    async def fetch_all(self, config: dict) -> Optional[MetarInfoDict]:
+    async def fetch_all(
+        self, config: Union[dict, "PyFSDMetarConfig"]
+    ) -> Optional[MetarInfoDict]:
         """Fetch METAR for all airports.
 
         Args:
@@ -85,7 +92,7 @@ class NOAAMetarFetcher(MetarFetcher):
             year=metar_datetime.year,
         )
 
-    async def fetch(self, _: dict, icao: str) -> Optional[Metar]:
+    async def fetch(self, config: object, icao: str) -> Optional[Metar]:
         """Fetch single airport's metar."""
         async with ClientSession() as session, session.get(
             f"https://tgftp.nws.noaa.gov/data/observations/metar/stations/{icao}.TXT"
@@ -94,7 +101,7 @@ class NOAAMetarFetcher(MetarFetcher):
                 return None
             return self.parse_metar((await resp.text(errors="ignore")).splitlines())
 
-    async def fetch_all(self, _: dict) -> Optional[MetarInfoDict]:
+    async def fetch_all(self, config: object) -> Optional[MetarInfoDict]:
         """Fetch all airports' metar."""
         utc_hour = datetime.now(timezone.utc).hour
 

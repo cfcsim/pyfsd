@@ -6,7 +6,7 @@ Attributes:
 from argparse import ArgumentParser
 from asyncio import CancelledError, ensure_future, gather, get_event_loop
 from signal import SIGINT, SIGTERM
-from typing import Literal, Union
+from typing import TypedDict, cast
 
 from dependency_injector.wiring import register_loader_containers
 from structlog import get_logger
@@ -16,7 +16,8 @@ from ._version import version
 from .db_tables import metadata
 from .define.check_dict import VerifyKeyError, VerifyTypeError, assert_dict
 from .dependencies import Container
-from .metar.manager import suppress_metar_parser_warning
+from .factory.client import PyFSDClientConfig
+from .metar.manager import PyFSDMetarConfig, suppress_metar_parser_warning
 from .plugin.interfaces import AwaitableMaker
 from .plugin.manager import format_awaitable
 from .setup_logger import PyFSDLoggerConfig, setup_logger
@@ -26,6 +27,34 @@ try:
     from tomllib import loads  # type: ignore[import-not-found,unused-ignore]
 except ImportError:
     from tomli import loads  # type: ignore[no-redef,import-not-found,unused-ignore]
+
+
+class PyFSDDatabaseConfig(TypedDict):
+    """PyFSD database config.
+
+    Attributes:
+        url: The database url.
+        See `SQLALchemy docs <https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls>`_.
+    """
+
+    url: str
+
+
+class PyFSDConfig(TypedDict):
+    """PyFSD config."""
+
+    database: PyFSDDatabaseConfig
+    client: PyFSDClientConfig
+    metar: PyFSDMetarConfig
+    logger: PyFSDLoggerConfig
+
+
+class RootPyFSDConfig(TypedDict):
+    """PyFSD root config."""
+
+    pyfsd: PyFSDConfig
+    plugin: NotRequired[dict]
+
 
 logger = get_logger(__name__)
 
@@ -55,7 +84,7 @@ formatter = "colored"
 """
 
 
-async def launch(config: dict) -> None:
+async def launch(config: RootPyFSDConfig) -> None:
     """Launch PyFSD."""
     # =============== Initialize dependencies
     container = Container()
@@ -64,7 +93,7 @@ async def launch(config: dict) -> None:
     # Then load plugins to wire them
     pm = container.plugin_manager()
     pm.pick_plugins()
-    pm.load_pyfsd_plugins(config["plugin"])
+    pm.load_pyfsd_plugins(config.get("plugin", {}))
     container.metar_manager().load_fetchers()
     # Initialize database
     async with container.db_engine().begin() as conn:
@@ -132,29 +161,9 @@ def main() -> None:
 
     assert_dict(
         config,
-        {
-            "pyfsd": {
-                "database": {"url": str},
-                "client": {
-                    "port": int,
-                    "motd": str,
-                    "motd_encoding": str,
-                    "blacklist": list,
-                },
-                "metar": {
-                    "mode": Literal["cron", "once"],
-                    "fallback_once": NotRequired[bool],
-                    "fetchers": list,
-                    "cron_time": NotRequired[Union[float, int]],
-                },
-                "logger": PyFSDLoggerConfig,
-            },
-            "plugin": NotRequired[dict],
-        },
+        RootPyFSDConfig,
         "config",
     )
-    if "plugin" not in config:
-        config["plugin"] = {}
     # Replace database scheme with async dialect
     db_url: str = config["pyfsd"]["database"]["url"]
     if "://" not in db_url:
@@ -178,7 +187,7 @@ def main() -> None:
     setup_logger(config["pyfsd"]["logger"])
 
     loop = get_event_loop()
-    main_task = ensure_future(launch(config))
+    main_task = ensure_future(launch(cast(RootPyFSDConfig, config)))
     for signal in [SIGINT, SIGTERM]:
         loop.add_signal_handler(signal, main_task.cancel)
     loop.run_until_complete(main_task)

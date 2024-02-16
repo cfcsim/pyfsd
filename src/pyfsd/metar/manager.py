@@ -9,13 +9,17 @@ from typing import (
     Dict,
     Iterable,
     List,
+    Literal,
     NoReturn,
     Optional,
     Tuple,
+    TypedDict,
+    Union,
 )
 from warnings import filterwarnings
 
 from structlog import get_logger
+from typing_extensions import NotRequired
 
 from ..define.check_dict import VerifyKeyError, VerifyTypeError
 from .fetch import (
@@ -35,6 +39,24 @@ logger = get_logger(__name__)
 __all__ = ["suppress_metar_parser_warning", "MetarManager"]
 
 
+class PyFSDMetarConfig(TypedDict):
+    """PyFSD metar config.
+
+    Attributes:
+        mode: Mode to fetch metar. once means fetch at once when client request metar,
+        cron means cache all airports' metar every specified interval.
+        fallback_once: If specified airport not found in cron metar, fetch by once
+        or not. Will be ignored if not in cron mode.
+        fetchers: Enabled metar fetchers.
+        cron_time: The cron mode's specified interval. (see mode)
+    """
+
+    mode: Literal["cron", "once"]
+    fallback_once: NotRequired[bool]
+    fetchers: list
+    cron_time: NotRequired[Union[float, int]]
+
+
 def suppress_metar_parser_warning() -> None:
     """Suppress metar parser's warnings."""
     filterwarnings("ignore", category=RuntimeWarning, module="metar.Metar")
@@ -42,11 +64,6 @@ def suppress_metar_parser_warning() -> None:
 
 class MetarManager:
     """The PyFSD metar manager.
-
-    Note:
-        Mode explain:
-        cron: Fetch all airports' metar (cached).
-        once: Fetch specified airport's metar.
 
     Attributes:
         fetchers: All fetchers.
@@ -60,18 +77,20 @@ class MetarManager:
     plugin_manager: "PluginManager"
     fetchers: Tuple[MetarFetcher, ...]
     metar_cache: MetarInfoDict
-    config: dict
+    config: Union[dict, PyFSDMetarConfig]
     cron_time: Optional[float]
     cron_task: "Task[NoReturn] | None"
 
-    def __init__(self, config: dict, plugin_manager: "PluginManager") -> None:
+    def __init__(
+        self, config: Union[dict, PyFSDMetarConfig], plugin_manager: "PluginManager"
+    ) -> None:
         """Create a MetarManager instance.
 
         Args:
             config: pyfsd.metar section of config.
             plugin_manager: The plugin manager.
         """
-        self.cron_time = config["cron_time"] if config["mode"] == "cron" else None
+        self.cron_time = config.get("cron_time") if config["mode"] == "cron" else None
         self.cron_task = None
         self.config = config
         self.metar_cache = {}

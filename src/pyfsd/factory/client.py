@@ -11,6 +11,7 @@ from typing import (
     NoReturn,
     Optional,
     Tuple,
+    TypedDict,
     cast,
 )
 
@@ -32,6 +33,13 @@ if TYPE_CHECKING:
     from ..plugin.manager import PluginManager
 
 __all__ = ["ClientFactory"]
+
+
+class PyFSDClientConfig(TypedDict):
+    port: int
+    motd: str
+    motd_encoding: str
+    blacklist: list
 
 
 class ClientFactory:
