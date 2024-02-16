@@ -19,6 +19,7 @@ from .dependencies import Container
 from .metar.manager import suppress_metar_parser_warning
 from .plugin.interfaces import AwaitableMaker
 from .plugin.manager import format_awaitable
+from .setup_logger import PyFSDLoggerConfig, setup_logger
 
 try:
     # Python 3.11+
@@ -40,7 +41,18 @@ blacklist = []
 [pyfsd.metar]
 mode = "cron"
 cron_time = 3600
-fetchers = ["NOAA"]"""
+fetchers = ["NOAA"]
+
+[pyfsd.logger.logger]
+handlers = ["default"]
+level = "INFO"
+propagate = true
+
+[pyfsd.logger.handlers.default]
+level = "DEBUG"
+class = "logging.StreamHandler"
+formatter = "colored"
+"""
 
 
 async def launch(config: dict) -> None:
@@ -135,6 +147,7 @@ def main() -> None:
                     "fetchers": list,
                     "cron_time": NotRequired[Union[float, int]],
                 },
+                "logger": PyFSDLoggerConfig,
             },
             "plugin": NotRequired[dict],
         },
@@ -162,6 +175,7 @@ def main() -> None:
         config["pyfsd"]["database"]["url"] = db_url
 
     suppress_metar_parser_warning()
+    setup_logger(config["pyfsd"]["logger"])
 
     loop = get_event_loop()
     main_task = ensure_future(launch(config))
