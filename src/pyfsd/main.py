@@ -74,11 +74,11 @@ fetchers = ["NOAA"]
 
 [pyfsd.logger.logger]
 handlers = ["default"]
-level = "INFO"
+level = "DEBUG"
 propagate = true
 
 [pyfsd.logger.handlers.default]
-level = "DEBUG"
+level = "INFO"
 class = "logging.StreamHandler"
 formatter = "colored"
 """
