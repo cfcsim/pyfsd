@@ -174,9 +174,8 @@ test.py
 
 # PyFSD
 src/pyfsd/_version.py
-src/pyfsd/plugins/*.py
-!src/pyfsd/plugins/__init__.py
 pyfsd.db
 pyfsd.toml
 pyfsd_client.toml
 whazzup.json
+pyfsd_plugins/
