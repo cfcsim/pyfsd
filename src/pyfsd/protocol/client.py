@@ -1,6 +1,6 @@
 # ruff: noqa: S101
 """PyFSD client protocol."""
-from asyncio import CancelledError, create_task
+from asyncio import CancelledError, create_task, Lock
 from asyncio import sleep as asleep
 from inspect import isawaitable
 from time import time
@@ -139,7 +139,7 @@ class ClientProtocol(LineProtocol):
         timeout_killer: Helper to disconnect when timeout.
         transport: Asyncio transport.
         client: The client info. None before `#AA` or `#AP` to create new client.
-        tasks: Processing tasks.
+        tasks: Processing handle_line tasks.
     """
 
     factory: "ClientFactory"
@@ -147,6 +147,7 @@ class ClientProtocol(LineProtocol):
     transport: "Transport"
     tasks: Set["Task"]
     client: Optional[Client]
+    lock = Lock()
 
     def __init__(self, factory: "ClientFactory") -> None:
         """Create a ClientProtocol instance."""
@@ -924,7 +925,12 @@ class ClientProtocol(LineProtocol):
                 {},
             )
 
-        self.add_task(create_task(handle()))
+        async def do_after_before_done() -> None:
+            """Wait last task done then handle this."""
+            async with self.lock:
+                await handle()
+
+        self.add_task(create_task(do_after_before_done()))
 
     async def handle_line(
         self,
