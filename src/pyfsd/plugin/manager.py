@@ -5,6 +5,7 @@ Attributes:
 """
 
 from abc import ABC
+from asyncio import CancelledError
 from inspect import getfile, getmro
 from os import getcwd
 from sys import exc_info
@@ -283,6 +284,8 @@ class PluginManager:
                         "handled_by_plugin": True,
                         "plugin": plugin,
                     }
+            except CancelledError:
+                pass
             except BaseException:
                 await logger.aexception(
                     f"Error happened during call plugin {plugin.plugin_name}",
