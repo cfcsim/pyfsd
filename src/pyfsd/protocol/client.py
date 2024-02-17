@@ -1,6 +1,6 @@
 # ruff: noqa: S101
 """PyFSD client protocol."""
-from asyncio import CancelledError, create_task, Lock
+from asyncio import CancelledError, Lock, create_task
 from asyncio import sleep as asleep
 from inspect import isawaitable
 from time import time
