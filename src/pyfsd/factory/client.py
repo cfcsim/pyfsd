@@ -17,6 +17,7 @@ from typing import (
 
 from argon2 import PasswordHasher, exceptions
 from sqlalchemy import select, update
+from structlog import get_logger
 
 from ..db_tables import users_table
 from ..define.packet import FSDClientCommand, join_lines, make_packet
@@ -33,6 +34,8 @@ if TYPE_CHECKING:
     from ..plugin.manager import PluginManager
 
 __all__ = ["ClientFactory"]
+
+logger = get_logger(__name__)
 
 
 class PyFSDClientConfig(TypedDict):
@@ -165,7 +168,8 @@ class ClientFactory:
     async def check_auth(self, username: str, password: str) -> Optional[int]:
         """Check if password and username is correct."""
 
-        async def update_hashed() -> None:
+        # This function updates hash (argon2)
+        async def update_hashed(new_hashed: str) -> None:
             async with self.db_engine.begin() as conn:
                 await conn.execute(
                     update(users_table)
@@ -173,6 +177,7 @@ class ClientFactory:
                     .values(password=new_hashed)
                 )
 
+        # Fetch current hashed password and rating
         async with self.db_engine.begin() as conn:
             infos = tuple(
                 await conn.execute(
@@ -181,24 +186,32 @@ class ClientFactory:
                     )
                 )
             )
-        if len(infos) == 0:
+        if len(infos) == 0:  # User not found
             return None
-        if len(infos) != 1:
-            raise RuntimeError(f"Repeated callsign in users database: {username}")
+        if len(infos) != 1:  # User duplicated
+            raise RuntimeError(f"Duplicated callsign in users database: {username}")
         hashed, rating = cast(Tuple[str, int], infos[0])
-        # --------- Helper to convert sha256 into argon2
-        if len(hashed) == 64:
-            if sha256(password.encode()).hexdigest() == hashed:
-                # Now we have plain password, convert it into argon2
+
+        # =============== Check if hash is sha256
+        if len(hashed) == 64:  # hash is sha256
+            if sha256(password.encode()).hexdigest() == hashed:  # correct
+                # Now we have the plain password, save it as argon2
                 new_hashed = self.password_hasher.hash(password)
-                await update_hashed()
+                await update_hashed(new_hashed)
                 return rating
-            return None
-        # --------- Delete this part later!
+            return None  # incorrect
+        # =============== Check argon2
         try:
             self.password_hasher.verify(hashed, password)
-        except exceptions.VerifyMismatchError:
+        except exceptions.VerifyMismatchError:  # Incorrect
             return None
+        except exceptions.InvalidHashError:
+            await logger.aerror(f"Invaild hash found in users table: {hashed}")
+            return None
+        except BaseException:  # What happened?
+            await logger.aexception("Uncaught exception when vaildating password")
+            return None
+        # Check if need rehash
         if self.password_hasher.check_needs_rehash(hashed):
-            await update_hashed()
+            await update_hashed(new_hashed)
         return rating
