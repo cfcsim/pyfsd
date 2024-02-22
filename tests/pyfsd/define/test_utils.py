@@ -7,6 +7,7 @@ from pyfsd.define.utils import (
     MRand,
     ascii_only,
     assert_no_duplicate,
+    asyncify,
     calc_distance,
     is_callsign_vaild,
     is_empty_iterable,
@@ -70,6 +71,24 @@ class TestUtils(TestCase):
     def test_iterables(self) -> None:
         """Test if iterables works."""
         self.assertEqual(list(iterables([1, 2], [3, 4])), [1, 2, 3, 4])
+
+    def test_asyncify(self) -> None:
+        """Test if asyncify works."""
+        k = False
+
+        @asyncify
+        def func() -> int:
+            """Docstring."""
+            nonlocal k
+            k = True
+            return 1
+
+        async def check() -> None:
+            self.assertEqual(await func(), 1)
+
+        self.assertEqual(func.__doc__, "Docstring.")
+        new_event_loop().run_until_complete(check())
+        self.assertTrue(k)
 
     def test_task_keeper(self) -> None:
         """Test if task_keeper works."""

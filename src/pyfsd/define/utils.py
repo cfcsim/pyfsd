@@ -3,9 +3,12 @@
 Attributes:
     task_keeper: Helper to keep your asyncio.Task's strong reference.
 """
+from asyncio import get_event_loop
+from functools import wraps
 from re import compile
 from typing import (
     TYPE_CHECKING,
+    Awaitable,
     Callable,
     Hashable,
     Iterable,
@@ -16,8 +19,8 @@ from typing import (
     overload,
 )
 
-# Not yet typed
 from haversine import Unit, haversine
+from typing_extensions import ParamSpec
 
 if TYPE_CHECKING:
     from asyncio import Task
@@ -25,6 +28,7 @@ if TYPE_CHECKING:
     from ..object.client import Position
 
 __all__ = [
+    "asyncify",
     "str_to_int",
     "str_to_float",
     "is_callsign_vaild",
@@ -187,6 +191,27 @@ def iter_callable(obj: object, ignore_private: bool = True) -> Iterable[Callable
         attr = getattr(obj, attr_name)
         if callable(attr):
             yield attr
+
+P = ParamSpec("P")
+
+def asyncify(func: Callable[P, T]) -> Callable[P, Awaitable[T]]:
+    """Decorator to patch a sync function to become async by execute it in thread.
+
+    Example::
+        @asyncify
+        def blocking_func():
+            sleep(100) # Blocking call
+
+        async def another_func():
+            await blocking_func()  # Not blocking anymore
+    """
+
+    @wraps(func)
+    def _call(*args: P.args, **kwargs: P.kwargs) -> Awaitable[T]:
+        loop = get_event_loop()
+        return loop.run_in_executor(None, lambda: func(*args, **kwargs))
+
+    return _call
 
 
 class MRand:
