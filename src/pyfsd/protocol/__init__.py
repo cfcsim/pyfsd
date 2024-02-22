@@ -17,18 +17,30 @@ class LineReceiver(Protocol, metaclass=ABCMeta):
     Attributes:
         buffer: Buffer used to store a line's data.
         delimiter: Line delimiter.
+        max_length: Max acceptable line length. Set it to -1 to allow infinite
     """
 
     buffer: bytes = b""
-    delimiter = b"\r\n"
+    delimiter: bytes = b"\r\n"
+    max_length: int = 1024  # 1kb
 
     @abstractmethod
     def line_received(self, line: bytes) -> None:
         """Called when a line was received."""
         raise NotImplementedError
 
+    @abstractmethod
+    def max_length_exceed(self, length: int) -> None:
+        """Called when line length exceed max length."""
+        raise NotImplementedError
+
     def data_received(self, data: bytes) -> None:
         """Handle datas and call line_received as soon as we received a line."""
+        if self.max_length != -1:
+            length = len(self.buffer) + len(data)
+            if length > self.max_length:
+                self.max_length_exceed(length)
+
         if self.delimiter in data:
             *lines, left = data.split(self.delimiter)
             lines[0] = self.buffer + lines[0]
@@ -52,6 +64,10 @@ class LineProtocol(LineReceiver):
     def connection_made(self, transport: "Transport") -> None:  # type: ignore[override]
         """Save transport after the connection was made."""
         self.transport = transport
+
+    def max_length_exceed(self, length: int) -> None:
+        """Kill when line length exceed max length."""
+        self.transport.close()
 
     def send_line(self, line: bytes) -> None:
         """Send line to client."""
