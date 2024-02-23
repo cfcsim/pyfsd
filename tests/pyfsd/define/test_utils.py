@@ -9,7 +9,7 @@ from pyfsd.define.utils import (
     assert_no_duplicate,
     asyncify,
     calc_distance,
-    is_callsign_vaild,
+    is_callsign_valid,
     is_empty_iterable,
     iter_callable,
     iterables,
@@ -35,11 +35,11 @@ class TestUtils(TestCase):
         with self.assertRaises(AssertionError):
             assert_no_duplicate((1, 1, 4, 5, 1, 4))
 
-    def test_is_callsign_vaild(self) -> None:
-        """Test if is_callsign_vaild works."""
-        self.assertFalse(is_callsign_vaild("*P"))
-        self.assertFalse(is_callsign_vaild("CSN:1012"))
-        self.assertTrue(is_callsign_vaild("1012"))
+    def test_is_callsign_valid(self) -> None:
+        """Test if is_callsign_valid works."""
+        self.assertFalse(is_callsign_valid("*P"))
+        self.assertFalse(is_callsign_valid("CSN:1012"))
+        self.assertTrue(is_callsign_valid("1012"))
 
     def test_iter_callable(self) -> None:
         """Test if iter_callable works."""

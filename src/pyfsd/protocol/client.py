@@ -37,7 +37,7 @@ from ..define.packet import (
     break_packet,
     make_packet,
 )
-from ..define.utils import is_callsign_vaild, str_to_float, str_to_int, task_keeper
+from ..define.utils import is_callsign_valid, str_to_float, str_to_int, task_keeper
 from ..metar.profile import WeatherProfile
 from ..object.client import Client, ClientType
 from . import LineProtocol
@@ -207,7 +207,7 @@ class ClientProtocol(LineProtocol):
             fatal: Disconnect after the error is sent or not.
         """
         if errno < 0 or errno > 13:
-            raise ValueError("Invaild errno")
+            raise ValueError("Invalid errno")
         err_bytes = FSDErrors.error_names[errno].encode("ascii")
         self.send_lines(
             make_packet(
@@ -389,7 +389,7 @@ class ClientProtocol(LineProtocol):
         else:
             req_rating_int = str_to_int(req_rating, default_value=0)
         protocol_int = str_to_int(protocol, default_value=-1)
-        if not is_callsign_vaild(callsign):
+        if not is_callsign_valid(callsign):
             self.send_error(FSDErrors.ERR_CSINVALID, fatal=True)
             return False, False
         if protocol_int != 9:
@@ -588,7 +588,7 @@ class ClientProtocol(LineProtocol):
             or lon_float < -180.0
         ):
             logger.debug(
-                "Invaild position: "
+                "Invalid position: "
                 + self.client.callsign.decode(errors="replace")
                 + f" with {lat_float}, {lon_float}",
             )
@@ -650,7 +650,7 @@ class ClientProtocol(LineProtocol):
             or lon_float < -180.0
         ):
             logger.debug(
-                "Invaild position: "
+                "Invalid position: "
                 + self.client.callsign.decode(errors="replace")
                 + f" with {lat_float}, {lon_float}",
             )

@@ -31,7 +31,7 @@ __all__ = [
     "asyncify",
     "str_to_int",
     "str_to_float",
-    "is_callsign_vaild",
+    "is_callsign_valid",
     "calc_distance",
     "ascii_only",
     "assert_no_duplicate",
@@ -41,8 +41,8 @@ __all__ = [
     "task_keeper",
     "MRand",
 ]
-__str_invaild_char_regex = compile("[!@#$%*:& \t]")
-__bytes_invaild_char_regex = compile(b"[!@#$%*:& \t]")
+__str_invalid_char_regex = compile("[!@#$%*:& \t]")
+__bytes_invalid_char_regex = compile(b"[!@#$%*:& \t]")
 T = TypeVar("T")
 
 
@@ -98,15 +98,15 @@ def calc_distance(
     return cast(float, haversine(from_position, to_position, unit=unit))
 
 
-def is_callsign_vaild(callsign: Union[str, bytes]) -> bool:
-    """Check if a callsign is vaild or not."""
-    global __str_invaild_char_regex, __bytes_invaild_char_regex
+def is_callsign_valid(callsign: Union[str, bytes]) -> bool:
+    """Check if a callsign is valid or not."""
+    global __str_invalid_char_regex, __bytes_invalid_char_regex
     if len(callsign) < 2 or len(callsign) > 12:
         return False
     if (  # type: ignore[attr-defined]
-        __str_invaild_char_regex
+        __str_invalid_char_regex
         if isinstance(callsign, str)
-        else __bytes_invaild_char_regex
+        else __bytes_invalid_char_regex
     ).search(
         callsign,  # pyright: ignore
     ) is not None:
