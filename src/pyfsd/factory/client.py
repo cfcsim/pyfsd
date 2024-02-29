@@ -213,5 +213,5 @@ class ClientFactory:
             return None
         # Check if need rehash
         if self.password_hasher.check_needs_rehash(hashed):
-            await update_hashed(new_hashed)
+            await update_hashed(self.password_hasher.hash(password))
         return rating
