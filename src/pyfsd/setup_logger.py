@@ -116,7 +116,9 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
                     "processors": [
                         *extra_dealers,
                         stdlib.ProcessorFormatter.remove_processors_meta,
-                        dev.ConsoleRenderer(colors=False),
+                        dev.ConsoleRenderer(
+                            colors=False, exception_formatter=dev.better_traceback
+                        ),
                     ],
                     "foreign_pre_chain": pre_chain,
                 },
@@ -134,7 +136,9 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
                     "processors": [
                         *extra_dealers,
                         stdlib.ProcessorFormatter.remove_processors_meta,
-                        dev.ConsoleRenderer(colors=True),
+                        dev.ConsoleRenderer(
+                            colors=True, exception_formatter=dev.better_traceback
+                        ),
                     ],
                     "foreign_pre_chain": pre_chain,
                 },
@@ -150,7 +154,6 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
             stdlib.PositionalArgumentsFormatter(),
             timestamper,
             processors.StackInfoRenderer(),
-            processors.format_exc_info,
             stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
         logger_factory=stdlib.LoggerFactory(),
