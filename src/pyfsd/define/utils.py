@@ -192,7 +192,9 @@ def iter_callable(obj: object, ignore_private: bool = True) -> Iterable[Callable
         if callable(attr):
             yield attr
 
+
 P = ParamSpec("P")
+
 
 def asyncify(func: Callable[P, T]) -> Callable[P, Awaitable[T]]:
     """Decorator to patch a sync function to become async by execute it in thread.
@@ -207,9 +209,9 @@ def asyncify(func: Callable[P, T]) -> Callable[P, Awaitable[T]]:
     """
 
     @wraps(func)
-    def _call(*args: P.args, **kwargs: P.kwargs) -> Awaitable[T]:
+    async def _call(*args: P.args, **kwargs: P.kwargs) -> T:
         loop = get_event_loop()
-        return loop.run_in_executor(None, lambda: func(*args, **kwargs))
+        return await loop.run_in_executor(None, lambda: func(*args, **kwargs))
 
     return _call
 
