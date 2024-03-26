@@ -1,4 +1,5 @@
 """PyFSD dependencies container."""
+
 from typing import TYPE_CHECKING
 
 from dependency_injector import containers, providers

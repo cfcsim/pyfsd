@@ -4,6 +4,7 @@
 Attributes:
     API_LEVEL: Current PyFSD plugin api level.
 """
+
 from typing import Optional
 
 __all__ = ["API_LEVEL", "PreventEvent"]

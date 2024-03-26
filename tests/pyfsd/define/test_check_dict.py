@@ -1,4 +1,5 @@
 """This module tests pyfsd.define.check_dict."""
+
 from sys import version_info
 from typing import Dict, List, Literal, Tuple, Union
 from unittest import TestCase

@@ -7,6 +7,7 @@ Example::
     check_simple_type(1, Union[int, str])
     check_dict({ "a": 1 }, TypedDict("A", { "a": int }))
 """
+
 from sys import version_info
 from typing import (
     Hashable,

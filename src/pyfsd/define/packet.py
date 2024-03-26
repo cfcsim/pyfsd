@@ -4,6 +4,7 @@ Attributes:
     CLIENT_USED_COMMAND: All possibly command can be issued by user in protocol 9.
     SPLIT_SIGN: FSD client packet's split sign.
 """
+
 from collections.abc import Sequence
 from enum import Enum
 from typing import (
@@ -311,24 +312,21 @@ def make_packet(*parts: Union[AnyStr, FSDClientCommand]) -> AnyStr:
 def break_packet(
     packet: AnyStr,
     possibly_commands: Iterable[AnyStr],
-) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]:
-    ...
+) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]: ...
 
 
 @overload
 def break_packet(
     packet: AnyStr,
     possibly_commands: Iterable[FSDClientCommand],
-) -> Tuple[Optional[FSDClientCommand], Tuple[AnyStr, ...]]:
-    ...
+) -> Tuple[Optional[FSDClientCommand], Tuple[AnyStr, ...]]: ...
 
 
 @overload
 def break_packet(
     packet: AnyStr,
     possibly_commands: Iterable[Union[AnyStr, FSDClientCommand]],
-) -> Tuple[Optional[Union[AnyStr, FSDClientCommand]], Tuple[AnyStr, ...]]:
-    ...
+) -> Tuple[Optional[Union[AnyStr, FSDClientCommand]], Tuple[AnyStr, ...]]: ...
 
 
 def break_packet(

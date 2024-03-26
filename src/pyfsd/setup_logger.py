@@ -1,5 +1,6 @@
 # https://www.structlog.org/en/stable/standard-library.html
 """Logger configurer."""
+
 from logging.config import dictConfig
 from sys import version_info
 from typing import Dict, List, Literal, TypedDict, Union

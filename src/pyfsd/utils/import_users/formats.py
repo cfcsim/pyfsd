@@ -4,6 +4,7 @@ Attributes:
     User: description of a user, (callsign, password, rating)
     formats: All registered formats.
 """
+
 from csv import reader
 from sqlite3 import connect
 from typing import ClassVar, Dict, Protocol, Tuple

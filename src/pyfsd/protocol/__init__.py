@@ -1,4 +1,5 @@
 """PyFSD protocols."""
+
 from abc import ABCMeta, abstractmethod
 from asyncio import Protocol
 from typing import TYPE_CHECKING

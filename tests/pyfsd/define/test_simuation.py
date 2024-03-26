@@ -1,4 +1,5 @@
 """This module tests pyfsd.define.simulation."""
+
 from unittest import TestCase
 
 from pyfsd.define.simulation import Int32MRand

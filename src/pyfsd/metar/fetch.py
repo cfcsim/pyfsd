@@ -3,6 +3,7 @@
 Attributes:
     MetarInfoDict: Type of a dict that describes all airports' metar.
 """
+
 from abc import ABC, abstractmethod
 from asyncio import get_event_loop
 from datetime import datetime, timezone

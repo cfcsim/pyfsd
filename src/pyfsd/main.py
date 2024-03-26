@@ -3,6 +3,7 @@
 Attributes:
     DEFAULT_CONFIG: Default config of PyFSD.
 """
+
 from argparse import ArgumentParser
 from asyncio import CancelledError, ensure_future, gather, get_event_loop
 from signal import SIGINT, SIGTERM

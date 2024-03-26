@@ -3,6 +3,7 @@
 Note:
     These databases were initialized in pyfsd.main.main().
 """
+
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
 __all__ = ["metadata", "users_table"]

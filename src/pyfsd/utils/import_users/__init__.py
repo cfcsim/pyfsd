@@ -1,4 +1,5 @@
 """A tool used to convert users database in other format into PyFSD's format."""
+
 from argparse import ArgumentParser
 
 from argon2 import PasswordHasher

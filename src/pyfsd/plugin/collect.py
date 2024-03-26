@@ -1,4 +1,5 @@
 """Tools to collect PyFSD plugins."""
+
 from importlib import import_module
 from pkgutil import iter_modules
 from typing import TYPE_CHECKING, Callable, Iterable, Optional, Type, TypeVar

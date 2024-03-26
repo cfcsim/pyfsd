@@ -1,4 +1,5 @@
 """This module tests pyfsd.define.utils."""
+
 from asyncio import create_task, new_event_loop, sleep
 from unittest import TestCase
 

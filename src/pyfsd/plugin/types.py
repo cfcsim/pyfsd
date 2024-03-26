@@ -1,4 +1,5 @@
 """Typings of PyFSD plugin architecture."""
+
 from typing import TYPE_CHECKING, Literal, TypedDict
 
 if TYPE_CHECKING:

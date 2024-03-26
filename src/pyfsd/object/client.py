@@ -1,4 +1,5 @@
 """Client object's dataclasses."""
+
 from dataclasses import dataclass, field
 from math import sqrt
 from time import time

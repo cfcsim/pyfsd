@@ -3,6 +3,7 @@
 Attributes:
     task_keeper: Helper to keep your asyncio.Task's strong reference.
 """
+
 from asyncio import get_event_loop
 from functools import wraps
 from re import compile
@@ -153,13 +154,11 @@ def is_empty_iterable(iter_obj: Iterable) -> bool:
 
 
 @overload
-def iterables(*iterators: Iterable[T]) -> Iterable[T]:
-    ...
+def iterables(*iterators: Iterable[T]) -> Iterable[T]: ...
 
 
 @overload
-def iterables(*iterators: Iterable) -> Iterable:
-    ...
+def iterables(*iterators: Iterable) -> Iterable: ...
 
 
 def iterables(*iterators: Iterable) -> Iterable:

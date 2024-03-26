@@ -3,6 +3,7 @@
 Example:
     FSDClientFactory.broadcast(..., check_func=atChecker)
 """
+
 from typing import Callable, Optional
 
 from ..object.client import Client
