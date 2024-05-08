@@ -132,6 +132,14 @@ def check_packet(
     return decorator
 
 
+def kill_after_1sec(kill_func: Callable) -> None:
+    """Kill the client after 1 second by kill_func."""
+    async def kill() -> None:
+        await asleep(1)
+        kill_func()
+    task_keeper.add(create_task(kill()))
+
+
 class ClientProtocol(LineProtocol):
     """PyFSD client protocol.
 
@@ -172,7 +180,7 @@ class ClientProtocol(LineProtocol):
                 pass
             else:
                 self.send_line(b"# Timeout")
-                self.transport.close()
+                kill_after_1sec(self.transport.close)
 
         if hasattr(self, "timeout_killer_task"):
             self.timeout_killer_task.cancel()
@@ -220,7 +228,7 @@ class ClientProtocol(LineProtocol):
             ),
         )
         if fatal:
-            self.transport.close()
+            kill_after_1sec(self.transport.close)
 
     def send_motd(self) -> None:
         """Send motd to client."""
@@ -475,7 +483,7 @@ class ClientProtocol(LineProtocol):
     def handle_remove_client(self, _: Tuple[bytes, ...]) -> HandleResult:
         """Handle remove client request."""
         assert self.client is not None
-        self.transport.close()
+        kill_after_1sec(self.transport.close)
         return True, True
 
     @check_packet(17)
@@ -890,7 +898,7 @@ class ClientProtocol(LineProtocol):
             callsign_kill,
             make_packet(FSDClientCommand.KILL + b"SERVER", callsign_kill, reason),
         )
-        self.factory.clients[callsign_kill].transport.close()
+        kill_after_1sec(self.factory.clients[callsign_kill].transport.close)
         return True, True
 
     def line_received(self, line: bytes) -> None:
