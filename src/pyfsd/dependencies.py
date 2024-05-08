@@ -37,7 +37,9 @@ class Container(containers.DeclarativeContainer):
     """
 
     config = RootPyFSDConfigProvider()
-    db_engine = providers.Singleton(create_async_engine, config.pyfsd.database.url)
+    db_engine = providers.Singleton(
+        create_async_engine, config.pyfsd.database.url, pool_pre_ping=True
+    )
     plugin_manager = providers.Singleton(PluginManager)
     metar_manager = providers.Singleton(
         MetarManager, config.pyfsd.metar, plugin_manager
