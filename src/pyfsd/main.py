@@ -15,12 +15,11 @@ from typing_extensions import NotRequired
 
 from ._version import version
 from .db_tables import metadata
-from .define.check_dict import VerifyKeyError, VerifyTypeError, assert_dict
+from .define.check_dict import assert_dict
 from .dependencies import Container
 from .factory.client import PyFSDClientConfig
 from .metar.manager import PyFSDMetarConfig, suppress_metar_parser_warning
 from .plugin.interfaces import AwaitableMaker
-from .plugin.manager import format_awaitable
 from .setup_logger import PyFSDLoggerConfig, setup_logger
 
 try:
@@ -93,8 +92,7 @@ async def launch(config: RootPyFSDConfig) -> None:
     register_loader_containers(container)  # Register
     # Then load plugins to wire them
     pm = container.plugin_manager()
-    pm.pick_plugins()
-    pm.load_pyfsd_plugins(config.get("plugin", {}))
+    pm.pick_plugins(config.get("plugin", {}))
     container.metar_manager().load_fetchers()
     # Initialize database
     async with container.db_engine().begin() as conn:
@@ -103,17 +101,11 @@ async def launch(config: RootPyFSDConfig) -> None:
     awaitable_generators = []
     awaitables = []
     for plugin in pm.get_plugins(AwaitableMaker):  # type: ignore[type-abstract]
-        str_plugin = format_awaitable(plugin)
-        await logger.ainfo("Loading plugin %s", str_plugin)
         generator = plugin()
-        try:
-            awaitable = next(generator)
-        except (VerifyKeyError, VerifyTypeError) as err:
-            logger.error("Plugin %s doesn't work because %s", str_plugin, err)
-        else:
-            if awaitable is not None:
-                awaitables.append(awaitable)
-            awaitable_generators.append(generator)
+        awaitable = next(generator)
+        if awaitable is not None:
+            awaitables.append(awaitable)
+        awaitable_generators.append(generator)
     # =============== Startup
     loop = get_event_loop()
     client_server = await loop.create_server(
@@ -121,6 +113,7 @@ async def launch(config: RootPyFSDConfig) -> None:
     )
     await container.plugin_manager().trigger_event("before_start", (), {})
     await logger.ainfo(f"PyFSD {version}")
+    await logger.ainfo(f"{pm.plugins_count()} plugins: {pm!s}")
     try:
         async with client_server:
             await gather(

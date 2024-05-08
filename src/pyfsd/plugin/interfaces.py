@@ -5,13 +5,8 @@ from abc import ABC, abstractmethod
 from typing import (
     TYPE_CHECKING,
     Awaitable,
-    ClassVar,
     Generator,
     Optional,
-    Tuple,
-    Type,
-    TypedDict,
-    Union,
 )
 
 if TYPE_CHECKING:
@@ -30,21 +25,7 @@ class Plugin(ABC):  # noqa: B024
 
 
 class PyFSDPlugin(ABC):
-    """Interface of PyFSD Plugin.
-
-    Attributes:
-        plugin_name: Name of this plugin.
-        api: API level of this plugin.
-        version: int and human readable version of this plugin.
-        expected_config: Configuration structure description, TypedDict.
-            structure parameter of pyfsd.define.check_dict function.
-            None if this plugin requires no config. (disables config check)
-    """
-
-    plugin_name: ClassVar[str] = "<plugin_name>"
-    api: ClassVar[int] = -1
-    version: ClassVar[Tuple[int, str]] = (-1, "<version>")
-    expected_config: ClassVar[Union[Type[TypedDict], dict, None]] = None  # type: ignore[valid-type]
+    """Interface of PyFSD Plugin."""
 
     async def before_start(self) -> None:
         """Called before PyFSD start."""
@@ -115,12 +96,7 @@ class AwaitableMaker(ABC):
     """Interface of Awaitable maker, a object which can make a awaitable object.
 
     Used to await a blocking awaitable object when PyFSD starts.
-
-    Attributes:
-        awaitable_name: Name of the to-make awaitable object.
     """
-
-    awaitable_name: ClassVar[str] = "<awaitable_name>"
 
     @abstractmethod
     def __call__(self) -> Generator[Optional[Awaitable], None, None]:
