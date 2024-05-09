@@ -29,6 +29,8 @@ def iter_submodules(
     for module_info in iter_modules(path, name + "."):
         try:
             yield import_module(module_info.name)
+        except GeneratorExit:
+            break
         except BaseException:
             if error_handler:
                 error_handler(module_info.name)
