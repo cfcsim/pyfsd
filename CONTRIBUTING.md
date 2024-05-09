@@ -31,7 +31,7 @@ pdm install -d
 
 You now have the dependencies installed.
 
-You can run the application with `twistd pyfsd [ARGS...]`.
+You can run the application with `python -m pyfsd [ARGS...]`.
 
 ## Development
 
