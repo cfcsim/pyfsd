@@ -106,14 +106,14 @@ def get_plugin_file_info(plugin: "ModuleType") -> Optional[InternalPluginFileInf
     orig_plugin_info = getattr(plugin, "plugin_info", None)
     if orig_plugin_info is None:
         return None
-    name = getattr(orig_plugin_info, "name", getfile(type(plugin)).split("/")[-1][:-3])
-    api = str_to_int(str(getattr(plugin, "api", -1)), default_value=-1)
-    orig_version = getattr(orig_plugin_info, "version", (0, "unknown"))
+    name = orig_plugin_info.get("name", getfile(plugin).split("/")[-1][:-3])
+    api = str_to_int(str(orig_plugin_info.get("api", -1)), default_value=-1)
+    orig_version = orig_plugin_info.get("version", (0, "unknown"))
     if isinstance(orig_version, tuple) and len(orig_version) >= 2:
         version = (str_to_int(str(orig_version[0]), 0), str(orig_version[1]))
     else:
         version = (0, "unknown")
-    orig_expected_config = getattr(orig_plugin_info, "expected_config", None)
+    orig_expected_config = orig_plugin_info.get("expected_config", None)
     return {
         "name": name,
         "api": api,
@@ -337,12 +337,10 @@ class PluginManager:
         )
 
     def __str__(self) -> str:
-        """Return all plugins' info."""
+        """Return all plugins' name."""
         if not self.all_plugins:
             return ""
-        return ", ".join(
-            f"{plugin['name']} {plugin['version'][1]}" for plugin in self.all_plugins
-        )
+        return ", ".join(plugin["name"] for plugin in self.all_plugins)
 
     def plugins_count(self) -> int:
         """Get count of plugins."""
