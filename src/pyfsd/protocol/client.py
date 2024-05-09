@@ -134,9 +134,11 @@ def check_packet(
 
 def kill_after_1sec(kill_func: Callable) -> None:
     """Kill the client after 1 second by kill_func."""
+
     async def kill() -> None:
         await asleep(1)
         kill_func()
+
     task_keeper.add(create_task(kill()))
 
 

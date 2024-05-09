@@ -24,7 +24,7 @@ class Plugin(ABC):  # noqa: B024
     """
 
 
-class PyFSDPlugin(ABC):
+class PyFSDPlugin(ABC):  # noqa: B024
     """Interface of PyFSD Plugin."""
 
     async def before_start(self) -> None:
