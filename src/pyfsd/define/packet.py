@@ -341,8 +341,8 @@ def break_packet(
 
     Args:
         packet: The original packet.
-        possibly_commands: All possibly commands. This function will check if packet
-        starts with one of possibly commands then split it out.
+        possibly_commands: All possibly commands. This function will check if packet \
+            starts with one of possibly commands then split it out.
 
     Returns:
         tuple[command or None, tuple[every_part, ...]]

@@ -38,8 +38,8 @@ class TimeFormatConfig(TypedDict):
     Attributes document comes from structlog.processors.TimeStamper.
 
     Attributes:
-        fmt: strftime format string, or "iso" for ISO 8601, or "timestamp"
-        for a UNIX timestamp.
+        fmt: strftime format string, or "iso" for ISO 8601, or "timestamp" \
+            for a UNIX timestamp.
         utc: Whether timestamp should be in UTC or local time.
         key: Target key in event_dict for added timestamps.
     """

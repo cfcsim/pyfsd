@@ -44,10 +44,10 @@ class PyFSDMetarConfig(TypedDict):
     """PyFSD metar config.
 
     Attributes:
-        mode: Mode to fetch metar. once means fetch at once when client request metar,
-        cron means cache all airports' metar every specified interval.
-        fallback_once: If specified airport not found in cron metar, fetch by once
-        or not. Will be ignored if not in cron mode.
+        mode: Mode to fetch metar. once means fetch at once when client request metar, \
+            cron means cache all airports' metar every specified interval.
+        fallback_once: If specified airport not found in cron metar, fetch by once \
+            or not. Will be ignored if not in cron mode.
         fetchers: Enabled metar fetchers.
         cron_time: The cron mode's specified interval. (see mode)
     """
