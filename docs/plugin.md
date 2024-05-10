@@ -1,3 +1,3 @@
 # 插件使用
-一般地，只需要创建pyfsd/plugins目录然后把插件文件丢进去就行。
-以wheel形式安装时需要用`PYTHONPATH=. twistd -n pyfsd`来启动PyFSD，不然不能加载插件。
+在运行PyFSD的目录下创建`pyfsd_plugins`目录(如果没有)然后把插件文件丢进去。
+你应该认真的阅读插件的README文件来知晓配置、冲突、适用PyFSD版本等消息。
