@@ -1,8 +1,6 @@
-Rewriting in asyncio
-----
 # PyFSD
-基于Twisted的[FSD](https://github.com/kuroneko/fsd)协议9的实现。  
-[使用&插件开发文档](https://cfcsim.github.io/pyfsd)
+可扩展、基于Python的[FSD](https://github.com/kuroneko/fsd)客户端协议9的实现。  
+[在线文档](https://cfcsim.github.io/pyfsd)
 
 ## Todo
 ### 多服务器协议
@@ -10,5 +8,5 @@ Rewriting in asyncio
 
 ## 开源协议
 MIT License  
-Copyright (c) 2023 gamecss  
+Copyright (c) 2023-2024 gamecss  
 无附加条款。
