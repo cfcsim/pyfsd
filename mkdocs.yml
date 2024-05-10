@@ -1,12 +1,12 @@
 site_name: "pyfsd"
-site_description: "An implementation of protocol 9 of FSD based on Python & Twisted."
+site_description: "An implementation of protocol 9 of FSD based on Python."
 site_url: "https://cfcsim.github.io/pyfsd"
 repo_url: "https://github.com/cfcsim/pyfsd"
 repo_name: "cfcsim/pyfsd"
 site_dir: "site"
 watch: [mkdocs.yml, README.md, CONTRIBUTING.md, CHANGELOG.md, src/pyfsd]
-copyright: Copyright &copy; 2023 gamecss
-edit_uri: edit/early-dev/docs/
+copyright: Copyright &copy; 2023-2024 gamecss
+edit_uri: edit/async_dev/docs/
 
 validation:
   omitted_files: warn
@@ -23,8 +23,8 @@ nav:
   - 行为准则: code_of_conduct.md
 - 使用指南:
   - 安装: install.md
-  - 插件: plugin.md
   - 配置: configure.md
+  - 插件: plugin.md
   - 命令行工具:
     - import_user: cmdline_tools/import_user.md
 - 开发指南:
@@ -82,19 +82,12 @@ markdown_extensions:
 - callouts
 - footnotes
 - pymdownx.emoji:
-    emoji_index: !!python/name:materialx.emoji.twemoji
-    emoji_generator: !!python/name:materialx.emoji.to_svg
 - pymdownx.magiclink
 - pymdownx.snippets:
     check_paths: true
 - pymdownx.superfences
 - pymdownx.tabbed:
-    alternate_style: true
-    slugify: !!python/object/apply:pymdownx.slugs.slugify
-      kwds:
-        case: lower
 - pymdownx.tasklist:
-    custom_checkbox: true
 - toc:
     permalink: true
 
@@ -111,8 +104,6 @@ plugins:
       python:
         import:
         - https://docs.python.org/3/objects.inv
-        - https://zopeinterface.readthedocs.io/en/latest/objects.inv
-        - https://docs.twisted.org/en/stable/api/objects.inv
         options:
           docstring_options:
             ignore_init_summary: true

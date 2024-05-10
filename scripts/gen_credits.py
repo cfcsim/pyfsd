@@ -107,7 +107,7 @@ def _render_credits() -> str:
         """
         # 制作人员
 
-        *{{ project_name }}*依赖这些项目。 **谢谢你们!**
+        *{{ project_name }}*依赖这些项目。 **感谢你们!**
 
         [`python`](https://www.python.org/) |
         [`pdm`](https://pdm.fming.dev/) |
