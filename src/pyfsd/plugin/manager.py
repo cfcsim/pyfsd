@@ -61,6 +61,8 @@ class InternalPluginFileInfo(PluginInfo):
             Configuration structure description, in dict or TypedDict.
             structure parameter of pyfsd.define.check_dict function.
             None if this plugin requires no config. (disables config check)
+        initializer (Union[Callable[[], None], None]): A callable object which will be
+            called when the plugin file get imported.
         path: Path of this plugin file.
         plugins: All plugins under the file.
     """
@@ -104,7 +106,7 @@ def get_plugin_file_info(plugin: "ModuleType") -> Optional[InternalPluginFileInf
         The info or None.
     """
     orig_plugin_info = getattr(plugin, "plugin_info", None)
-    if orig_plugin_info is None:
+    if not isinstance(orig_plugin_info, dict):
         return None
     name = orig_plugin_info.get("name", getfile(plugin).split("/")[-1][:-3])
     api = str_to_int(str(orig_plugin_info.get("api", -1)), default_value=-1)
@@ -121,6 +123,7 @@ def get_plugin_file_info(plugin: "ModuleType") -> Optional[InternalPluginFileInf
         "expected_config": orig_expected_config
         if isinstance(orig_expected_config, dict)
         else None,
+        "initializer": orig_plugin_info.get("initializer", None),
         "path": getfile(plugin),
         "plugins": (),
     }
@@ -225,6 +228,8 @@ class PluginManager:
                 "Loading plugin %s", format_plugin(plugin_info, with_version=True)
             )
 
+            if callable(plugin_info["initializer"]):
+                plugin_info["initializer"]()
             file_plugins = []
             for plugin in iter_plugins(module, Plugin):
                 if plugin in all_plugins:  # Detect repeated plugins
