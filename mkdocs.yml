@@ -1,6 +1,6 @@
 site_name: "pyfsd"
 site_description: "An implementation of protocol 9 of FSD based on Python."
-site_url: "https://cfcsim.github.io/pyfsd"
+site_url: "https://cfcsim.github.io/pyfsd/"
 repo_url: "https://github.com/cfcsim/pyfsd"
 repo_name: "cfcsim/pyfsd"
 site_dir: "site"
@@ -130,3 +130,5 @@ extra:
     link: https://github.com/gamecss
   - icon: fontawesome/brands/python
     link: https://pypi.org/project/pyfsd/
+  version:
+    provider: mike
