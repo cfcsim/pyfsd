@@ -63,7 +63,7 @@ def explain_type(typ: TypeHint) -> str:
         Description of the type.
 
     Raises:
-        TypeError: When a unsupported/invaild type passed.
+        TypeError: When a unsupported/invalid type passed.
     """
     if is_typeddict(typ):
         return "dict"
@@ -78,7 +78,7 @@ def explain_type(typ: TypeHint) -> str:
         raise TypeError(msg)
     if isinstance(typ, type):
         return typ.__name__
-    msg = f"Invaild type: {typ!r}"
+    msg = f"Invalid type: {typ!r}"
     raise TypeError(msg)
 
 
@@ -242,7 +242,7 @@ def check_simple_type(
         if not isinstance(obj, typ):
             yield VerifyTypeError(name, typ, obj)
     else:
-        msg = f"Invaild type: {typ!r}"
+        msg = f"Invalid type: {typ!r}"
         raise TypeError(msg)
 
 
@@ -349,7 +349,7 @@ def check_dict(
         Detected type error, in VerifyTypeError / VerifyKeyError
 
     Raises:
-        TypeError: When a unsupported/invaild type passed.
+        TypeError: When a unsupported/invalid type passed.
     """
 
     def deal_dict_not_required(
@@ -428,7 +428,7 @@ def assert_dict(
     Raises:
         VerifyTypeError: When found type error.
         VerifyKeyError: When found a type error about key.
-        TypeError: When a unsupported/invaild type passed.
+        TypeError: When a unsupported/invalid type passed.
     """
     try:
         error = next(

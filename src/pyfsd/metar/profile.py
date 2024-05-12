@@ -89,7 +89,7 @@ def get_season(month: int, swap: bool) -> int:
         return 0 if swap else 2
     if month in [9, 10, 11]:
         return 1
-    raise ValueError(f"Invaild month {month}")
+    raise ValueError(f"Invalid month {month}")
 
 
 @dataclass

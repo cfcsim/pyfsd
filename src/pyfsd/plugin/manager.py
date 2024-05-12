@@ -283,8 +283,7 @@ class PluginManager:
         if self.sorted_pyfsd_plugins is None:
             raise RuntimeError("PyFSD plugins not loaded")
         if event_name not in PLUGIN_EVENTS:
-            msg = f"Invaild event {event_name}"
-            raise ValueError(msg)
+            raise ValueError(f"Invalid event {event_name}")
         yield from self.sorted_pyfsd_plugins[event_name]
 
     def iter_handler_by_event_name(self, event_name: str) -> Iterable[Callable]:

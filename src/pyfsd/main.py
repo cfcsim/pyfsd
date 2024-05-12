@@ -161,7 +161,7 @@ def main() -> None:
     # Replace database scheme with async dialect
     db_url: str = config["pyfsd"]["database"]["url"]
     if "://" not in db_url:
-        raise ValueError("Invaild database url")
+        raise ValueError("Invalid database url")
     scheme, url = db_url.split("://", 1)
     if "+" not in scheme:  # if user didn't specified driver
         if scheme == "postgresql":

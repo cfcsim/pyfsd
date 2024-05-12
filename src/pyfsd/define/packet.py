@@ -257,7 +257,7 @@ class CompatibleString:
             return self.string  # type: ignore[return-value]
         if type_ is bytes:
             return self.string.encode()  # type: ignore[return-value]
-        raise TypeError(f"Invaild string type: {type_}")
+        raise TypeError(f"Invalid string type: {type_}")
 
 
 Sequence.register(CompatibleString)  # pyright: ignore

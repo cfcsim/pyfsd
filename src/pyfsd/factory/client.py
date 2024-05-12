@@ -207,7 +207,7 @@ class ClientFactory:
         except exceptions.VerifyMismatchError:  # Incorrect
             return None
         except exceptions.InvalidHashError:
-            await logger.aerror(f"Invaild hash found in users table: {hashed}")
+            await logger.aerror(f"Invalid hash found in users table: {hashed}")
             return None
         except BaseException:  # What happened?
             await logger.aexception("Uncaught exception when vaildating password")
