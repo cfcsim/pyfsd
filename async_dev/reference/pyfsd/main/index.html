@@ -172,7 +172,7 @@
     <span class=c1># Replace database scheme with async dialect</span>
     <span class=n>db_url</span><span class=p>:</span> <span class=nb>str</span> <span class=o>=</span> <span class=n>config</span><span class=p>[</span><span class=s2>&quot;pyfsd&quot;</span><span class=p>][</span><span class=s2>&quot;database&quot;</span><span class=p>][</span><span class=s2>&quot;url&quot;</span><span class=p>]</span>
     <span class=k>if</span> <span class=s2>&quot;://&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>db_url</span><span class=p>:</span>
-        <span class=k>raise</span> <span class=ne>ValueError</span><span class=p>(</span><span class=s2>&quot;Invaild database url&quot;</span><span class=p>)</span>
+        <span class=k>raise</span> <span class=ne>ValueError</span><span class=p>(</span><span class=s2>&quot;Invalid database url&quot;</span><span class=p>)</span>
     <span class=n>scheme</span><span class=p>,</span> <span class=n>url</span> <span class=o>=</span> <span class=n>db_url</span><span class=o>.</span><span class=n>split</span><span class=p>(</span><span class=s2>&quot;://&quot;</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span>
     <span class=k>if</span> <span class=s2>&quot;+&quot;</span> <span class=ow>not</span> <span class=ow>in</span> <span class=n>scheme</span><span class=p>:</span>  <span class=c1># if user didn&#39;t specified driver</span>
         <span class=k>if</span> <span class=n>scheme</span> <span class=o>==</span> <span class=s2>&quot;postgresql&quot;</span><span class=p>:</span>

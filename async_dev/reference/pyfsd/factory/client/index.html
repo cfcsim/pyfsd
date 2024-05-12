@@ -187,7 +187,7 @@
     <span class=k>except</span> <span class=n>exceptions</span><span class=o>.</span><span class=n>VerifyMismatchError</span><span class=p>:</span>  <span class=c1># Incorrect</span>
         <span class=k>return</span> <span class=kc>None</span>
     <span class=k>except</span> <span class=n>exceptions</span><span class=o>.</span><span class=n>InvalidHashError</span><span class=p>:</span>
-        <span class=k>await</span> <span class=n>logger</span><span class=o>.</span><span class=n>aerror</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;Invaild hash found in users table: </span><span class=si>{</span><span class=n>hashed</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>)</span>
+        <span class=k>await</span> <span class=n>logger</span><span class=o>.</span><span class=n>aerror</span><span class=p>(</span><span class=sa>f</span><span class=s2>&quot;Invalid hash found in users table: </span><span class=si>{</span><span class=n>hashed</span><span class=si>}</span><span class=s2>&quot;</span><span class=p>)</span>
         <span class=k>return</span> <span class=kc>None</span>
     <span class=k>except</span> <span class=ne>BaseException</span><span class=p>:</span>  <span class=c1># What happened?</span>
         <span class=k>await</span> <span class=n>logger</span><span class=o>.</span><span class=n>aexception</span><span class=p>(</span><span class=s2>&quot;Uncaught exception when vaildating password&quot;</span><span class=p>)</span>
