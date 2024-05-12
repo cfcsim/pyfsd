@@ -139,8 +139,7 @@ def assert_no_duplicate(
     if len(list_val) != len(nodup_list_val):
         for nodup_val in nodup_list_val:
             list_val.remove(nodup_val)
-        msg = f"Duplicated value: {list_val}"
-        raise AssertionError(msg)
+        raise AssertionError(f"Duplicated value: {list_val}")
 
 
 def is_empty_iterable(iter_obj: Iterable) -> bool:

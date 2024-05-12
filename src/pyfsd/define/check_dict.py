@@ -74,12 +74,10 @@ def explain_type(typ: TypeHint) -> str:
             return " or ".join(repr(sub_value) for sub_value in get_args(typ))
         if type_origin in (list, dict):
             return str(typ)[len(typ.__module__) + 1 :]
-        msg = f"Unsupported type: {type_origin!r}"
-        raise TypeError(msg)
+        raise TypeError(f"Unsupported type: {type_origin!r}")
     if isinstance(typ, type):
         return typ.__name__
-    msg = f"Invalid type: {typ!r}"
-    raise TypeError(msg)
+    raise TypeError(f"Invalid type: {typ!r}")
 
 
 class VerifyTypeError(TypeError):
@@ -236,14 +234,12 @@ def check_simple_type(
                     name=f"{name}[{key!r}]",
                 )
         else:
-            msg = f"Unsupported type: {type_origin!r}"
-            raise TypeError(msg)
+            raise TypeError(f"Unsupported type: {type_origin!r}")
     elif isinstance(typ, type):
         if not isinstance(obj, typ):
             yield VerifyTypeError(name, typ, obj)
     else:
-        msg = f"Invalid type: {typ!r}"
-        raise TypeError(msg)
+        raise TypeError(f"Invalid type: {typ!r}")
 
 
 def assert_simple_type(
