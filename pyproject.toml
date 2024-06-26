@@ -29,12 +29,12 @@ dependencies = [
     "haversine>=2.8.1",
     "tomli>=2.0.1; python_version < \"3.11\"",
     "metar>=1.11.0",
-    "sqlalchemy[asyncio]>=2.0.30",
+    "sqlalchemy[asyncio]>=2.0.31",
     "aiohttp>=3.9.5",
-    "typing-extensions>=4.11.0",
+    "typing-extensions>=4.12.2",
     "argon2-cffi>=23.1.0",
     "dependency-injector-fork>=4.42.1",
-    "structlog>=24.1.0",
+    "structlog>=24.2.0",
     "colorama>=0.4.6; sys_platform == \"win32\"",
     "better-exceptions>=0.3.3",
 ]
@@ -57,7 +57,7 @@ mysql = [
     "asyncmy>=0.2.9",
 ]
 oracle = [
-    "oracledb>=2.2.0",
+    "oracledb>=2.2.1",
 ]
 mssql = [
     "aioodbc>=0.5.0",
@@ -70,21 +70,21 @@ excludes = ["src/pyfsd/plugins/*", "**/.mypy_cache"]
 
 [tool.pdm.dev-dependencies]
 docs = [
-    "mkdocs-material>=9.5.21",
+    "mkdocs-material>=9.5.27",
     "mkdocstrings[python]>=0.25.1",
     "mkdocs-minify-plugin>=0.8.0",
     "markdown-callouts>=0.4.0",
-    "markdown-exec>=1.8.1",
+    "markdown-exec>=1.9.3",
     "mkdocs>=1.6.0",
     "mkdocs-gen-files>=0.5.0",
     "mkdocs-git-committers-plugin-2>=2.3.0",
     "mkdocs-literate-nav>=0.6.1",
     "mkdocs-minify-plugin>=0.6.4",
-    "mike>=2.1.1",
+    "mike>=2.1.2",
 ]
 dev = [
-    "mypy>=1.10.0",
-    "ruff>=0.4.3",
+    "mypy>=1.10.1",
+    "ruff>=0.4.10",
 ]
 
 [tool.pdm.scripts]
