@@ -157,10 +157,8 @@ def is_multicast(callsign: str) -> bool:
     Returns:
         Is multicast or not.
     """
-    if (
+    return (
         callsign == "*"
         or callsign == "*A"
         or (callsign == "*P" or callsign.startswith("@"))
-    ):
-        return True
-    return False
+    )

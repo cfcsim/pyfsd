@@ -19,7 +19,6 @@ from signal import SIGHUP, SIGINT, SIGTERM
 from typing import Awaitable, List, TypedDict, cast
 
 from dependency_injector.wiring import register_loader_containers
-from sqlalchemy.sql.ddl import exc
 from structlog import get_logger
 from typing_extensions import NotRequired
 

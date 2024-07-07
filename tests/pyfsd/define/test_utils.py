@@ -14,6 +14,7 @@ from pyfsd.define.utils import (
     is_empty_iterable,
     iter_callable,
     iterables,
+    mustdone_task_keeper,
     str_to_float,
     str_to_int,
     task_keeper,
@@ -95,16 +96,19 @@ class TestUtils(TestCase):
         """Test if task_keeper works."""
         loop = new_event_loop()
 
-        def make_task() -> None:
-            async def func() -> None:
-                pass
+        for keeper in (task_keeper, mustdone_task_keeper):
+            with self.subTest(keeper=keeper):
 
-            task = create_task(func())
-            task_keeper.add(task)
+                def make_task() -> None:
+                    async def func() -> None:
+                        pass
 
-        loop.call_soon(make_task)
-        loop.run_until_complete(sleep(0))
-        self.assertFalse(task_keeper.tasks)
+                    task = create_task(func())
+                    keeper.add(task)
+
+                loop.call_soon(make_task)
+                loop.run_until_complete(sleep(0))
+                self.assertFalse(keeper.tasks)
 
     def test_MRand(self) -> None:  # noqa: N802
         """Test if MRand works."""

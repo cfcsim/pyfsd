@@ -106,15 +106,13 @@ def is_callsign_valid(callsign: Union[str, bytes]) -> bool:
     global __str_invalid_char_regex, __bytes_invalid_char_regex
     if len(callsign) < 2 or len(callsign) > 12:
         return False
-    if (  # type: ignore[attr-defined]
+    return (  # type: ignore[attr-defined]
         __str_invalid_char_regex
         if isinstance(callsign, str)
         else __bytes_invalid_char_regex
     ).search(
         callsign,  # pyright: ignore
-    ) is not None:
-        return False
-    return True
+    ) is None
 
 
 def ascii_only(string: Union[str, bytes]) -> bool:
