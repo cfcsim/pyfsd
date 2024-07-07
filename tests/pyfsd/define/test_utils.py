@@ -1,6 +1,6 @@
 """This module tests pyfsd.define.utils."""
 
-from asyncio import create_task, new_event_loop, sleep
+from asyncio import create_task, new_event_loop
 from unittest import TestCase
 
 from haversine import Unit
@@ -104,10 +104,11 @@ class TestUtils(TestCase):
                         pass
 
                     task = create_task(func())
-                    keeper.add(task)
+                    task.add_done_callback(lambda _: loop.stop())
+                    keeper.add(task)  # noqa: B023
 
                 loop.call_soon(make_task)
-                loop.run_until_complete(sleep(0))
+                loop.run_forever()
                 self.assertFalse(keeper.tasks)
 
     def test_MRand(self) -> None:  # noqa: N802

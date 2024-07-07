@@ -255,10 +255,10 @@ class TaskKeeper:
         """Create a TaskKeeper instance."""
         self.tasks = set()
 
-    def cancel_all(self, msg: object = None) -> None:
+    def cancel_all(self) -> None:
         """Cancel all tasks."""
         for task in self.tasks:
-            task.cancel(msg=msg)
+            task.cancel()
 
     def add(self, task: "Task") -> None:
         """Add a task that to be kept."""
