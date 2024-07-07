@@ -1,7 +1,9 @@
 """Collection of tools that are used frequently.
 
 Attributes:
-    task_keeper: Helper to keep your asyncio.Task's strong reference.
+    task_keeper: Helper to keep your asyncio.Task's strong reference and cancel it when
+        PyFSD is shutting down.
+    mustdone_task_keeper: Similar to task_keeper, but PyFSD will await them before stop
 """
 
 from asyncio import get_event_loop
@@ -255,6 +257,11 @@ class TaskKeeper:
         """Create a TaskKeeper instance."""
         self.tasks = set()
 
+    def cancel_all(self, msg: object = None) -> None:
+        """Cancel all tasks."""
+        for task in self.tasks:
+            task.cancel(msg=msg)
+
     def add(self, task: "Task") -> None:
         """Add a task that to be kept."""
         self.tasks.add(task)
@@ -262,3 +269,4 @@ class TaskKeeper:
 
 
 task_keeper = TaskKeeper()
+mustdone_task_keeper = TaskKeeper()

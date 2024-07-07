@@ -1,7 +1,7 @@
 # ruff: noqa: S101
 """PyFSD client protocol."""
 
-from asyncio import CancelledError, Lock, create_task
+from asyncio import Lock, create_task
 from asyncio import sleep as asleep
 from inspect import isawaitable
 from time import time
@@ -38,7 +38,13 @@ from ..define.packet import (
     break_packet,
     make_packet,
 )
-from ..define.utils import is_callsign_valid, str_to_float, str_to_int, task_keeper
+from ..define.utils import (
+    is_callsign_valid,
+    mustdone_task_keeper,
+    str_to_float,
+    str_to_int,
+    task_keeper,
+)
 from ..metar.profile import WeatherProfile
 from ..object.client import Client, ClientType
 from . import LineProtocol
@@ -176,13 +182,9 @@ class ClientProtocol(LineProtocol):
         """Reset timeout killer."""
 
         async def timeout_killer() -> None:
-            try:
-                await asleep(800)
-            except CancelledError:
-                pass
-            else:
-                self.send_line(b"# Timeout")
-                kill_after_1sec(self.transport.close)
+            await asleep(800)
+            self.send_line(b"# Timeout")
+            kill_after_1sec(self.transport.close)
 
         if hasattr(self, "timeout_killer_task"):
             self.timeout_killer_task.cancel()
@@ -199,7 +201,7 @@ class ClientProtocol(LineProtocol):
 
         self.reset_timeout_killer()
         logger.info(f"New connection from {ip}.")
-        task_keeper.add(
+        mustdone_task_keeper.add(
             create_task(
                 self.factory.plugin_manager.trigger_event(
                     "new_connection_established", (self,), {}
@@ -907,7 +909,7 @@ class ClientProtocol(LineProtocol):
         """Handle a line."""
 
         async def handle() -> None:
-            result: Union["PyFSDHandledLineResult", "PluginHandledEventResult"]
+            result: PyFSDHandledLineResult | PluginHandledEventResult
             # First try to let plugins to process
             plugin_result = await self.factory.plugin_manager.trigger_event(
                 "line_received_from_client",
@@ -1048,15 +1050,14 @@ class ClientProtocol(LineProtocol):
         """Handle connection lost."""
         if hasattr(self, "timeout_killer_task"):
             self.timeout_killer_task.cancel()
-
+        client = None
         if self.client is not None:
             logger.info(
                 f"{self.transport.get_extra_info('peername')[0]} "
                 f"({self.client.callsign.decode(errors='replace')}) "
                 "disconnected.",
             )
-            for pending_task in self.tasks:
-                pending_task.cancel()
+
             self.factory.broadcast(
                 make_packet(
                     (
@@ -1070,15 +1071,18 @@ class ClientProtocol(LineProtocol):
                 from_client=self.client,
             )
             del self.factory.clients[self.client.callsign]
-            task_keeper.add(
-                create_task(
-                    self.factory.plugin_manager.trigger_event(
-                        "client_disconnected",
-                        (self, self.client),
-                        {},
-                    )
-                )
-            )
+            client = self.client
             self.client = None
         else:
             logger.info(f"{self.transport.get_extra_info('peername')[0]} disconnected.")
+        for pending_task in self.tasks:
+            pending_task.cancel()
+        mustdone_task_keeper.add(
+            create_task(
+                self.factory.plugin_manager.trigger_event(
+                    "client_disconnected",
+                    (self, client),
+                    {},
+                )
+            )
+        )
