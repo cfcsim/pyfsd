@@ -70,7 +70,7 @@ excludes = ["src/pyfsd/plugins/*", "**/.mypy_cache"]
 
 [tool.pdm.dev-dependencies]
 docs = [
-    "mkdocs-material>=9.5.27",
+    "mkdocs-material>=9.5.28",
     "mkdocstrings[python]>=0.25.1",
     "mkdocs-minify-plugin>=0.8.0",
     "markdown-callouts>=0.4.0",
@@ -84,11 +84,11 @@ docs = [
 ]
 dev = [
     "mypy>=1.10.1",
-    "ruff>=0.4.10",
+    "ruff>=0.5.1",
 ]
 
 [tool.pdm.scripts]
-start = "twistd -n pyfsd"
+start = "python -m pyfsd"
 
 [tool.pdm.version]
 source = "call"
