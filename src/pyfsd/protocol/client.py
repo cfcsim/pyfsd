@@ -909,7 +909,7 @@ class ClientProtocol(LineProtocol):
         """Handle a line."""
 
         async def handle() -> None:
-            result: PyFSDHandledLineResult | PluginHandledEventResult
+            result: "PyFSDHandledLineResult | PluginHandledEventResult"  # noqa: UP037
             # First try to let plugins to process
             plugin_result = await self.factory.plugin_manager.trigger_event(
                 "line_received_from_client",
