@@ -130,9 +130,6 @@ class MetarManager:
         for fetcher in self.fetchers:
             try:
                 metars = await fetcher.fetch_all(self.config)
-            except CancelledError:
-                # Assume shutting down
-                return
             except NotImplementedError:
                 continue
             except (VerifyKeyError, VerifyTypeError) as err:
@@ -140,6 +137,8 @@ class MetarManager:
                     f"Metar fetcher {fetcher.metar_source} doesn't"
                     f" work because {err!s}"
                 )
+            except CancelledError:
+                raise CancelledError from None
             except BaseException:
                 await logger.aexception("Exception raised when caching metar")
             else:
@@ -198,11 +197,10 @@ class MetarManager:
                 metar = await fetcher.fetch(self.config, icao)
                 if metar is not None:
                     return metar
-            except CancelledError:
-                # Assume shutting down
-                return None
             except NotImplementedError:
                 continue
+            except CancelledError:
+                raise CancelledError from None
             except (VerifyKeyError, VerifyTypeError) as err:
                 await logger.aerror(
                     f"Metar fetcher {fetcher.metar_source} doesn't"

@@ -324,7 +324,7 @@ class PluginManager:
                     plugin=plugin,
                 )
             except CancelledError:
-                pass
+                raise CancelledError from None
             except BaseException:
                 await logger.aexception(
                     f"Error happened when calling plugin {plugin!r}",
