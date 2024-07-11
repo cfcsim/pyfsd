@@ -71,7 +71,10 @@
 <span class=normal>166</span>
 <span class=normal>167</span>
 <span class=normal>168</span>
-<span class=normal>169</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>async</span> <span class=k>def</span> <span class=nf>launch</span><span class=p>(</span><span class=n>config</span><span class=p>:</span> <span class=n>RootPyFSDConfig</span><span class=p>,</span> <span class=n>wait_all_tasks_done</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>True</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=normal>169</span>
+<span class=normal>170</span>
+<span class=normal>171</span>
+<span class=normal>172</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>async</span> <span class=k>def</span> <span class=nf>launch</span><span class=p>(</span><span class=n>config</span><span class=p>:</span> <span class=n>RootPyFSDConfig</span><span class=p>,</span> <span class=n>wait_all_tasks_done</span><span class=p>:</span> <span class=nb>bool</span> <span class=o>=</span> <span class=kc>True</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Launch PyFSD.&quot;&quot;&quot;</span>
     <span class=c1># =============== Initialize dependencies</span>
     <span class=n>container</span> <span class=o>=</span> <span class=n>Container</span><span class=p>()</span>
@@ -129,9 +132,12 @@
         <span class=k>for</span> <span class=n>task</span> <span class=ow>in</span> <span class=n>task_keeper</span><span class=o>.</span><span class=n>tasks</span><span class=p>:</span>
             <span class=n>task</span><span class=o>.</span><span class=n>cancel</span><span class=p>()</span>
 
-        <span class=n>tasks</span> <span class=o>=</span> <span class=n>all_tasks</span><span class=p>()</span>
-        <span class=n>tasks</span><span class=o>.</span><span class=n>discard</span><span class=p>(</span><span class=n>cast</span><span class=p>(</span><span class=n>Task</span><span class=p>,</span> <span class=n>current_task</span><span class=p>()))</span>
-        <span class=k>if</span> <span class=n>wait_all_tasks_done</span> <span class=ow>and</span> <span class=n>tasks</span><span class=p>:</span>
+        <span class=k>if</span> <span class=n>wait_all_tasks_done</span><span class=p>:</span>
+            <span class=n>tasks</span> <span class=o>=</span> <span class=n>all_tasks</span><span class=p>()</span>
+            <span class=n>tasks</span><span class=o>.</span><span class=n>discard</span><span class=p>(</span><span class=n>cast</span><span class=p>(</span><span class=n>Task</span><span class=p>,</span> <span class=n>current_task</span><span class=p>()))</span>
+        <span class=k>else</span><span class=p>:</span>
+            <span class=n>tasks</span> <span class=o>=</span> <span class=n>mustdone_task_keeper</span><span class=o>.</span><span class=n>tasks</span>
+        <span class=k>if</span> <span class=n>tasks</span><span class=p>:</span>
             <span class=n>total_wait_seconds</span> <span class=o>=</span> <span class=mi>0</span>
             <span class=k>while</span> <span class=kc>True</span><span class=p>:</span>
                 <span class=n>total_wait_seconds</span> <span class=o>+=</span> <span class=mi>5</span>
@@ -145,10 +151,7 @@
                 <span class=p>)</span>
         <span class=k>await</span> <span class=n>container</span><span class=o>.</span><span class=n>db_engine</span><span class=p>()</span><span class=o>.</span><span class=n>dispose</span><span class=p>()</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=pyfsd.main.main class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-function"></code> <span class="doc doc-object-name doc-function-name">main</span> <a href=#pyfsd.main.main class=headerlink title="Permanent link">&para;</a></h2> <div class="doc-signature highlight"><pre><span></span><code><span class=n>main</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=kc>None</span>
-</code></pre></div> <div class="doc doc-contents "> <p>Main function of PyFSD.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/main.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>172</span>
-<span class=normal>173</span>
-<span class=normal>174</span>
-<span class=normal>175</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Main function of PyFSD.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/main.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>175</span>
 <span class=normal>176</span>
 <span class=normal>177</span>
 <span class=normal>178</span>
@@ -206,7 +209,10 @@
 <span class=normal>230</span>
 <span class=normal>231</span>
 <span class=normal>232</span>
-<span class=normal>233</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>main</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=normal>233</span>
+<span class=normal>234</span>
+<span class=normal>235</span>
+<span class=normal>236</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>main</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Main function of PyFSD.&quot;&quot;&quot;</span>
     <span class=n>parser</span> <span class=o>=</span> <span class=n>ArgumentParser</span><span class=p>()</span>
     <span class=n>parser</span><span class=o>.</span><span class=n>add_argument</span><span class=p>(</span>
