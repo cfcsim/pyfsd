@@ -25,7 +25,7 @@ from typing_extensions import NotRequired
 from ._version import version
 from .db_tables import metadata
 from .define.check_dict import assert_dict
-from .define.utils import task_keeper
+from .define.utils import mustdone_task_keeper, task_keeper
 from .dependencies import Container
 from .factory.client import PyFSDClientConfig
 from .metar.manager import PyFSDMetarConfig, suppress_metar_parser_warning
@@ -152,9 +152,12 @@ async def launch(config: RootPyFSDConfig, wait_all_tasks_done: bool = True) -> N
         for task in task_keeper.tasks:
             task.cancel()
 
-        tasks = all_tasks()
-        tasks.discard(cast(Task, current_task()))
-        if wait_all_tasks_done and tasks:
+        if wait_all_tasks_done:
+            tasks = all_tasks()
+            tasks.discard(cast(Task, current_task()))
+        else:
+            tasks = mustdone_task_keeper.tasks
+        if tasks:
             total_wait_seconds = 0
             while True:
                 total_wait_seconds += 5
