@@ -1,2 +1,2 @@
-可在此处下载我的插件: [gamecss/pyfsd-plugins](https://github.com/gamecss/pyfsd-plugins)  
-[插件文档](https://gamecss.github.io/pyfsd/develop/plugin.html)
+可在此处下载我的插件: [tonestory6809/pyfsd-plugins](https://github.com/tonestory6809/pyfsd-plugins)  
+[插件文档](https://cfcsim.github.io/pyfsd/async_dev/develop/plugin/)

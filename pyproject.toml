@@ -5,10 +5,10 @@ build-backend = "pdm.backend"
 [project]
 name = "pyfsd"
 description = "An implementation of protocol 9 of FSD based on Python."
-authors = [{name = "gamecss", email = "52902973+gamecss@users.noreply.github.com"}]
+authors = [{name = "tonestory6809", email = "175278158+tonestory6809@users.noreply.github.com"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.8.1"
+requires-python = ">=3.8"
 keywords = []
 dynamic = ["version"]
 classifiers = [

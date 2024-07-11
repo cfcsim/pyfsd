@@ -5,7 +5,7 @@
 groups = ["default", "dev", "docs", "mssql", "mysql", "oracle", "postgresql", "sqlite3"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:498c03a52930a03e059e668b45cb6b6467035bb2467642fb1526b7cc74f68c4a"
+content_hash = "sha256:5be20a0325892e4f29f869085a6c26237317759f782e81f04ea4c197b6fbe9c6"
 
 [[package]]
 name = "aiohttp"

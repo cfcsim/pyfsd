@@ -8,5 +8,5 @@
 
 ## 开源协议
 MIT License  
-Copyright (c) 2023-2024 gamecss  
+Copyright (c) 2023-2024 tonestory6809  
 无附加条款。
