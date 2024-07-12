@@ -182,7 +182,7 @@ class ClientProtocol(LineProtocol):
         """Reset timeout killer."""
 
         async def timeout_killer() -> None:
-            await asleep(800)
+            await asleep(500)
             self.send_line(b"# Timeout")
             kill_after_1sec(self.transport.close)
 
@@ -615,7 +615,6 @@ class ClientProtocol(LineProtocol):
             pbh_int,
             flags_int,
         )
-        self.reset_timeout_killer()
         self.factory.broadcast(
             make_packet(
                 FSDClientCommand.PILOT_POSITION + mode,
@@ -675,7 +674,6 @@ class ClientProtocol(LineProtocol):
             lon_float,
             altitdue_int,
         )
-        self.reset_timeout_killer()
         self.factory.broadcast(
             make_packet(
                 FSDClientCommand.ATC_POSITION + self.client.callsign,
@@ -907,6 +905,7 @@ class ClientProtocol(LineProtocol):
 
     def line_received(self, line: bytes) -> None:
         """Handle a line."""
+        self.reset_timeout_killer()
 
         async def handle() -> None:
             result: "PyFSDHandledLineResult | PluginHandledEventResult"  # noqa: UP037
