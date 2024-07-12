@@ -173,9 +173,9 @@ test.py
 *.swo
 
 # PyFSD
-src/pyfsd/_version.py
 pyfsd.db
 pyfsd.toml
 pyfsd_client.toml
 whazzup.json
+logs/
 pyfsd_plugins/
