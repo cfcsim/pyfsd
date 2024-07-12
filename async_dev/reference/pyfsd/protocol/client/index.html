@@ -17,7 +17,8 @@
     <span class=bp>self</span><span class=o>.</span><span class=n>tasks</span><span class=o>.</span><span class=n>add</span><span class=p>(</span><span class=n>task</span><span class=p>)</span>
     <span class=n>task</span><span class=o>.</span><span class=n>add_done_callback</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>tasks</span><span class=o>.</span><span class=n>discard</span><span class=p>)</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.connection_lost class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">connection_lost</span> <a href=#pyfsd.protocol.client.ClientProtocol.connection_lost class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>connection_lost</span><span class=p>(</span><span class=n>_</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" title="typing.Optional" href="https://docs.python.org/3/library/typing.html#typing.Optional">Optional</a></span><span class=p>[</span><span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#BaseException">BaseException</a></span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle connection lost.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>1049</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle connection lost.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>1048</span>
+<span class=normal>1049</span>
 <span class=normal>1050</span>
 <span class=normal>1051</span>
 <span class=normal>1052</span>
@@ -55,8 +56,7 @@
 <span class=normal>1084</span>
 <span class=normal>1085</span>
 <span class=normal>1086</span>
-<span class=normal>1087</span>
-<span class=normal>1088</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>connection_lost</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>_</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=ne>BaseException</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>  <span class=c1># pyright: ignore</span>
+<span class=normal>1087</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>connection_lost</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>_</span><span class=p>:</span> <span class=n>Optional</span><span class=p>[</span><span class=ne>BaseException</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>  <span class=c1># pyright: ignore</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Handle connection lost.&quot;&quot;&quot;</span>
     <span class=k>if</span> <span class=nb>hasattr</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=s2>&quot;timeout_killer_task&quot;</span><span class=p>):</span>
         <span class=bp>self</span><span class=o>.</span><span class=n>timeout_killer_task</span><span class=o>.</span><span class=n>cancel</span><span class=p>()</span>
@@ -133,7 +133,8 @@
         <span class=p>)</span>
     <span class=p>)</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.handle_ATC_position_update class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">handle_ATC_position_update</span> <a href=#pyfsd.protocol.client.ClientProtocol.handle_ATC_position_update class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>handle_ATC_position_update</span><span class=p>(</span><span class=n>packet</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a></span><span class=p>[</span><span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n><span title="pyfsd.protocol.client.HandleResult">HandleResult</span></span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle ATC position update request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>637</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle ATC position update request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>636</span>
+<span class=normal>637</span>
 <span class=normal>638</span>
 <span class=normal>639</span>
 <span class=normal>640</span>
@@ -187,9 +188,7 @@
 <span class=normal>688</span>
 <span class=normal>689</span>
 <span class=normal>690</span>
-<span class=normal>691</span>
-<span class=normal>692</span>
-<span class=normal>693</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>8</span><span class=p>)</span>
+<span class=normal>691</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>8</span><span class=p>)</span>
 <span class=k>def</span> <span class=nf>handle_ATC_position_update</span><span class=p>(</span>  <span class=c1># noqa: N802</span>
     <span class=bp>self</span><span class=p>,</span>
     <span class=n>packet</span><span class=p>:</span> <span class=n>Tuple</span><span class=p>[</span><span class=nb>bytes</span><span class=p>,</span> <span class=o>...</span><span class=p>],</span>
@@ -230,7 +229,6 @@
         <span class=n>lon_float</span><span class=p>,</span>
         <span class=n>altitdue_int</span><span class=p>,</span>
     <span class=p>)</span>
-    <span class=bp>self</span><span class=o>.</span><span class=n>reset_timeout_killer</span><span class=p>()</span>
     <span class=bp>self</span><span class=o>.</span><span class=n>factory</span><span class=o>.</span><span class=n>broadcast</span><span class=p>(</span>
         <span class=n>make_packet</span><span class=p>(</span>
             <span class=n>FSDClientCommand</span><span class=o>.</span><span class=n>ATC_POSITION</span> <span class=o>+</span> <span class=bp>self</span><span class=o>.</span><span class=n>client</span><span class=o>.</span><span class=n>callsign</span><span class=p>,</span>
@@ -247,7 +245,9 @@
     <span class=p>)</span>
     <span class=k>return</span> <span class=kc>True</span><span class=p>,</span> <span class=kc>True</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.handle_CQ class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">handle_CQ</span> <a href=#pyfsd.protocol.client.ClientProtocol.handle_CQ class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>handle_CQ</span><span class=p>(</span><span class=n>packet</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a></span><span class=p>[</span><span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n><span title="pyfsd.protocol.client.HandleResult">HandleResult</span></span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle $CQ request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>810</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle $CQ request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>808</span>
+<span class=normal>809</span>
+<span class=normal>810</span>
 <span class=normal>811</span>
 <span class=normal>812</span>
 <span class=normal>813</span>
@@ -310,9 +310,7 @@
 <span class=normal>870</span>
 <span class=normal>871</span>
 <span class=normal>872</span>
-<span class=normal>873</span>
-<span class=normal>874</span>
-<span class=normal>875</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>)</span>
+<span class=normal>873</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>)</span>
 <span class=k>def</span> <span class=nf>handle_CQ</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>packet</span><span class=p>:</span> <span class=n>Tuple</span><span class=p>[</span><span class=nb>bytes</span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n>HandleResult</span><span class=p>:</span>  <span class=c1># noqa: N802</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Handle $CQ request.&quot;&quot;&quot;</span>
     <span class=c1># Behavior may differ from FSD.</span>
@@ -379,7 +377,9 @@
         <span class=k>return</span> <span class=kc>True</span><span class=p>,</span> <span class=kc>False</span>
     <span class=k>return</span> <span class=kc>True</span><span class=p>,</span> <span class=kc>True</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.handle_acars class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">handle_acars</span> <span class="doc doc-labels"> <small class="doc doc-label doc-label-async"><code>async</code></small> </span> <a href=#pyfsd.protocol.client.ClientProtocol.handle_acars class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>handle_acars</span><span class=p>(</span><span class=n>packet</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a></span><span class=p>[</span><span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n><span title="pyfsd.protocol.client.HandleResult">HandleResult</span></span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle acars request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>782</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle acars request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>780</span>
+<span class=normal>781</span>
+<span class=normal>782</span>
 <span class=normal>783</span>
 <span class=normal>784</span>
 <span class=normal>785</span>
@@ -403,9 +403,7 @@
 <span class=normal>803</span>
 <span class=normal>804</span>
 <span class=normal>805</span>
-<span class=normal>806</span>
-<span class=normal>807</span>
-<span class=normal>808</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>)</span>
+<span class=normal>806</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>)</span>
 <span class=k>async</span> <span class=k>def</span> <span class=nf>handle_acars</span><span class=p>(</span>
     <span class=bp>self</span><span class=p>,</span>
     <span class=n>packet</span><span class=p>:</span> <span class=n>Tuple</span><span class=p>[</span><span class=nb>bytes</span><span class=p>,</span> <span class=o>...</span><span class=p>],</span>
@@ -799,7 +797,9 @@
         <span class=n>to_packet</span><span class=p>,</span>
     <span class=p>)</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.handle_kill class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">handle_kill</span> <a href=#pyfsd.protocol.client.ClientProtocol.handle_kill class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>handle_kill</span><span class=p>(</span><span class=n>packet</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a></span><span class=p>[</span><span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n><span title="pyfsd.protocol.client.HandleResult">HandleResult</span></span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle kill request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>877</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle kill request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>875</span>
+<span class=normal>876</span>
+<span class=normal>877</span>
 <span class=normal>878</span>
 <span class=normal>879</span>
 <span class=normal>880</span>
@@ -826,9 +826,7 @@
 <span class=normal>901</span>
 <span class=normal>902</span>
 <span class=normal>903</span>
-<span class=normal>904</span>
-<span class=normal>905</span>
-<span class=normal>906</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>,</span> <span class=n>check_callsign</span><span class=o>=</span><span class=kc>False</span><span class=p>)</span>
+<span class=normal>904</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>,</span> <span class=n>check_callsign</span><span class=o>=</span><span class=kc>False</span><span class=p>)</span>
 <span class=k>def</span> <span class=nf>handle_kill</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>packet</span><span class=p>:</span> <span class=n>Tuple</span><span class=p>[</span><span class=nb>bytes</span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n>HandleResult</span><span class=p>:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Handle kill request.&quot;&quot;&quot;</span>
     <span class=k>assert</span> <span class=bp>self</span><span class=o>.</span><span class=n>client</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
@@ -859,7 +857,8 @@
     <span class=n>kill_after_1sec</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>factory</span><span class=o>.</span><span class=n>clients</span><span class=p>[</span><span class=n>callsign_kill</span><span class=p>]</span><span class=o>.</span><span class=n>transport</span><span class=o>.</span><span class=n>close</span><span class=p>)</span>
     <span class=k>return</span> <span class=kc>True</span><span class=p>,</span> <span class=kc>True</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.handle_line class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">handle_line</span> <span class="doc doc-labels"> <small class="doc doc-label doc-label-async"><code>async</code></small> </span> <a href=#pyfsd.protocol.client.ClientProtocol.handle_line class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>handle_line</span><span class=p>(</span><span class=n>byte_line</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n><span title="pyfsd.protocol.client.HandleResult">HandleResult</span></span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle a line.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 948</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle a line.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal> 947</span>
+<span class=normal> 948</span>
 <span class=normal> 949</span>
 <span class=normal> 950</span>
 <span class=normal> 951</span>
@@ -957,8 +956,7 @@
 <span class=normal>1043</span>
 <span class=normal>1044</span>
 <span class=normal>1045</span>
-<span class=normal>1046</span>
-<span class=normal>1047</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>async</span> <span class=k>def</span> <span class=nf>handle_line</span><span class=p>(</span>
+<span class=normal>1046</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>async</span> <span class=k>def</span> <span class=nf>handle_line</span><span class=p>(</span>
     <span class=bp>self</span><span class=p>,</span>
     <span class=n>byte_line</span><span class=p>:</span> <span class=nb>bytes</span><span class=p>,</span>
 <span class=p>)</span> <span class=o>-&gt;</span> <span class=n>HandleResult</span><span class=p>:</span>
@@ -1122,8 +1120,7 @@
 <span class=normal>631</span>
 <span class=normal>632</span>
 <span class=normal>633</span>
-<span class=normal>634</span>
-<span class=normal>635</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>10</span><span class=p>,</span> <span class=n>callsign_position</span><span class=o>=</span><span class=mi>1</span><span class=p>)</span>
+<span class=normal>634</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>10</span><span class=p>,</span> <span class=n>callsign_position</span><span class=o>=</span><span class=mi>1</span><span class=p>)</span>
 <span class=k>def</span> <span class=nf>handle_pilot_position_update</span><span class=p>(</span>
     <span class=bp>self</span><span class=p>,</span>
     <span class=n>packet</span><span class=p>:</span> <span class=n>Tuple</span><span class=p>[</span><span class=nb>bytes</span><span class=p>,</span> <span class=o>...</span><span class=p>],</span>
@@ -1170,7 +1167,6 @@
         <span class=n>pbh_int</span><span class=p>,</span>
         <span class=n>flags_int</span><span class=p>,</span>
     <span class=p>)</span>
-    <span class=bp>self</span><span class=o>.</span><span class=n>reset_timeout_killer</span><span class=p>()</span>
     <span class=bp>self</span><span class=o>.</span><span class=n>factory</span><span class=o>.</span><span class=n>broadcast</span><span class=p>(</span>
         <span class=n>make_packet</span><span class=p>(</span>
             <span class=n>FSDClientCommand</span><span class=o>.</span><span class=n>PILOT_POSITION</span> <span class=o>+</span> <span class=n>mode</span><span class=p>,</span>
@@ -1355,7 +1351,9 @@
     <span class=n>kill_after_1sec</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>transport</span><span class=o>.</span><span class=n>close</span><span class=p>)</span>
     <span class=k>return</span> <span class=kc>True</span><span class=p>,</span> <span class=kc>True</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.handle_server_ping class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">handle_server_ping</span> <a href=#pyfsd.protocol.client.ClientProtocol.handle_server_ping class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>handle_server_ping</span><span class=p>(</span><span class=n>packet</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a></span><span class=p>[</span><span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n><span title="pyfsd.protocol.client.HandleResult">HandleResult</span></span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle server ping request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>695</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle server ping request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>693</span>
+<span class=normal>694</span>
+<span class=normal>695</span>
 <span class=normal>696</span>
 <span class=normal>697</span>
 <span class=normal>698</span>
@@ -1364,9 +1362,7 @@
 <span class=normal>701</span>
 <span class=normal>702</span>
 <span class=normal>703</span>
-<span class=normal>704</span>
-<span class=normal>705</span>
-<span class=normal>706</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>2</span><span class=p>)</span>
+<span class=normal>704</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>2</span><span class=p>)</span>
 <span class=k>def</span> <span class=nf>handle_server_ping</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>packet</span><span class=p>:</span> <span class=n>Tuple</span><span class=p>[</span><span class=nb>bytes</span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n>HandleResult</span><span class=p>:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Handle server ping request.&quot;&quot;&quot;</span>
     <span class=k>assert</span> <span class=bp>self</span><span class=o>.</span><span class=n>client</span> <span class=ow>is</span> <span class=ow>not</span> <span class=kc>None</span>
@@ -1379,7 +1375,9 @@
     <span class=p>)</span>
     <span class=k>return</span> <span class=kc>True</span><span class=p>,</span> <span class=kc>True</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.handle_weather class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">handle_weather</span> <span class="doc doc-labels"> <small class="doc doc-label doc-label-async"><code>async</code></small> </span> <a href=#pyfsd.protocol.client.ClientProtocol.handle_weather class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>handle_weather</span><span class=p>(</span><span class=n>packet</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" title="typing.Tuple" href="https://docs.python.org/3/library/typing.html#typing.Tuple">Tuple</a></span><span class=p>[</span><span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>,</span> <span class=o>...</span><span class=p>])</span> <span class=o>-&gt;</span> <span class=n><span title="pyfsd.protocol.client.HandleResult">HandleResult</span></span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle weather request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>708</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle weather request.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>706</span>
+<span class=normal>707</span>
+<span class=normal>708</span>
 <span class=normal>709</span>
 <span class=normal>710</span>
 <span class=normal>711</span>
@@ -1449,9 +1447,7 @@
 <span class=normal>775</span>
 <span class=normal>776</span>
 <span class=normal>777</span>
-<span class=normal>778</span>
-<span class=normal>779</span>
-<span class=normal>780</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>)</span>
+<span class=normal>778</span></pre></div></td><td class=code><div><pre><span></span><code><span class=nd>@check_packet</span><span class=p>(</span><span class=mi>3</span><span class=p>)</span>
 <span class=k>async</span> <span class=k>def</span> <span class=nf>handle_weather</span><span class=p>(</span>
     <span class=bp>self</span><span class=p>,</span>
     <span class=n>packet</span><span class=p>:</span> <span class=n>Tuple</span><span class=p>[</span><span class=nb>bytes</span><span class=p>,</span> <span class=o>...</span><span class=p>],</span>
@@ -1525,7 +1521,9 @@
     <span class=bp>self</span><span class=o>.</span><span class=n>send_lines</span><span class=p>(</span><span class=o>*</span><span class=n>packets</span><span class=p>)</span>
     <span class=k>return</span> <span class=kc>True</span><span class=p>,</span> <span class=kc>True</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h3 id=pyfsd.protocol.client.ClientProtocol.line_received class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code> <span class="doc doc-object-name doc-function-name">line_received</span> <a href=#pyfsd.protocol.client.ClientProtocol.line_received class=headerlink title="Permanent link">&para;</a></h3> <div class="doc-signature highlight"><pre><span></span><code><span class=n>line_received</span><span class=p>(</span><span class=n>line</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#bytes">bytes</a></span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span>
-</code></pre></div> <div class="doc doc-contents "> <p>Handle a line.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>908</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Handle a line.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/protocol/client.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>906</span>
+<span class=normal>907</span>
+<span class=normal>908</span>
 <span class=normal>909</span>
 <span class=normal>910</span>
 <span class=normal>911</span>
@@ -1562,9 +1560,9 @@
 <span class=normal>942</span>
 <span class=normal>943</span>
 <span class=normal>944</span>
-<span class=normal>945</span>
-<span class=normal>946</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>line_received</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>line</span><span class=p>:</span> <span class=nb>bytes</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=normal>945</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>line_received</span><span class=p>(</span><span class=bp>self</span><span class=p>,</span> <span class=n>line</span><span class=p>:</span> <span class=nb>bytes</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Handle a line.&quot;&quot;&quot;</span>
+    <span class=bp>self</span><span class=o>.</span><span class=n>reset_timeout_killer</span><span class=p>()</span>
 
     <span class=k>async</span> <span class=k>def</span> <span class=nf>handle</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
         <span class=n>result</span><span class=p>:</span> <span class=s2>&quot;PyFSDHandledLineResult | PluginHandledEventResult&quot;</span>  <span class=c1># noqa: UP037</span>
@@ -1709,7 +1707,7 @@
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Reset timeout killer.&quot;&quot;&quot;</span>
 
     <span class=k>async</span> <span class=k>def</span> <span class=nf>timeout_killer</span><span class=p>()</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
-        <span class=k>await</span> <span class=n>asleep</span><span class=p>(</span><span class=mi>800</span><span class=p>)</span>
+        <span class=k>await</span> <span class=n>asleep</span><span class=p>(</span><span class=mi>500</span><span class=p>)</span>
         <span class=bp>self</span><span class=o>.</span><span class=n>send_line</span><span class=p>(</span><span class=sa>b</span><span class=s2>&quot;# Timeout&quot;</span><span class=p>)</span>
         <span class=n>kill_after_1sec</span><span class=p>(</span><span class=bp>self</span><span class=o>.</span><span class=n>transport</span><span class=o>.</span><span class=n>close</span><span class=p>)</span>
 
