@@ -89,7 +89,9 @@ class TestUtils(TestCase):
             self.assertEqual(await func(), 1)
 
         self.assertEqual(func.__doc__, "Docstring.")
-        new_event_loop().run_until_complete(check())
+        loop = new_event_loop()
+        loop.run_until_complete(check())
+        loop.close()
         self.assertTrue(k)
 
     def test_task_keeper(self) -> None:
@@ -110,6 +112,7 @@ class TestUtils(TestCase):
                 loop.call_soon(make_task)
                 loop.run_forever()
                 self.assertFalse(keeper.tasks)
+        loop.close()
 
     def test_MRand(self) -> None:  # noqa: N802
         """Test if MRand works."""

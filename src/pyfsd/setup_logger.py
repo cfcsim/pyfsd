@@ -1,11 +1,18 @@
 # https://www.structlog.org/en/stable/standard-library.html
 """Logger configurer."""
 
+from logging import CRITICAL, DEBUG, ERROR, INFO, NOTSET, WARNING
 from logging.config import dictConfig
 from sys import version_info
-from typing import Dict, List, Literal, TypedDict, Union
+from typing import Dict, List, Literal, Type, TypedDict, Union
 
-from structlog import configure, dev, processors, reset_defaults, stdlib
+from structlog import (
+    configure,
+    dev,
+    processors,
+    reset_defaults,
+    stdlib,
+)
 
 if version_info >= (3, 11):
     from typing import NotRequired  # type: ignore[attr-defined,unused-ignore]
@@ -64,6 +71,56 @@ class PyFSDLoggerConfig(TypedDict):
     include_extra: NotRequired[bool]
     extract_record: NotRequired[bool]
     time: NotRequired[TimeFormatConfig]
+
+
+def make_filtering_stdlib_bound_logger(min_level: int) -> Type[stdlib.BoundLogger]:
+    """Create a new BoundLogger that only logs min_level or higher."""
+    if min_level == NOTSET:
+        return stdlib.BoundLogger
+
+    def do_nothing(*_: object, **__: object) -> None:
+        return None
+
+    async def async_do_nothing(*_: object, **__: object) -> None:
+        return None
+
+    class BoundLogger(stdlib.BoundLogger):
+        def log(
+            self, level: int, event: str | None = None, *args: object, **kw: object
+        ) -> object:
+            if level < min_level:
+                return None
+            return super().log(level, event, *args, **kw)
+
+        async def alog(
+            self, level: object, event: str, *args: object, **kw: object
+        ) -> None:
+            if isinstance(level, int) and level < min_level:
+                return None
+            return await super().alog(level, event, *args, **kw)
+
+        if min_level > CRITICAL:  # how
+            critical = do_nothing
+            fatal = do_nothing
+            acritical = async_do_nothing
+            afatal = async_do_nothing
+        elif min_level > ERROR:
+            error = do_nothing
+            exception = do_nothing
+            aerror = async_do_nothing
+            aexception = async_do_nothing
+        elif min_level > WARNING:
+            warning = do_nothing
+            warn = do_nothing
+            awarning = async_do_nothing
+        elif min_level > INFO:
+            info = do_nothing
+            ainfo = async_do_nothing
+        elif min_level > DEBUG:
+            debug = do_nothing
+            adebug = async_do_nothing
+
+    return BoundLogger
 
 
 def setup_logger(config: PyFSDLoggerConfig) -> None:
@@ -158,6 +215,15 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
             stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
         logger_factory=stdlib.LoggerFactory(),
-        wrapper_class=stdlib.BoundLogger,
+        wrapper_class=make_filtering_stdlib_bound_logger(
+            {
+                "NOTSET": 0,
+                "DEBUG": 10,
+                "INFO": 20,
+                "WARNING": 30,
+                "ERROR": 40,
+                "CRITICAL": 50,
+            }[config["logger"]["level"]]
+        ),
         cache_logger_on_first_use=True,
     )
