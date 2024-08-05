@@ -68,7 +68,6 @@ version = pyfsd_version.encode("ascii")
 _T_ClientProtocol = TypeVar("_T_ClientProtocol", bound="ClientProtocol")
 
 
-# Notice: here comes a bunch of type annotation.
 def check_packet(
     require_parts: int,
     callsign_position: int = 0,
@@ -184,6 +183,7 @@ class ClientProtocol(LineProtocol):
         async def timeout_killer() -> None:
             await asleep(500)
             self.send_line(b"# Timeout")
+            await logger.ainfo(f"Kicking {self.get_description()}: timeout")
             kill_after_1sec(self.transport.close)
 
         if hasattr(self, "timeout_killer_task"):
@@ -195,7 +195,7 @@ class ClientProtocol(LineProtocol):
         super().connection_made(transport)
         ip = self.transport.get_extra_info("peername")[0]
         if ip in self.factory.blacklist:
-            logger.info(f"Kicking {ip}")
+            logger.info(f"Kicking {ip}: blacklist")
             self.transport.close()
             return
 
@@ -221,17 +221,18 @@ class ClientProtocol(LineProtocol):
         """
         if errno < 0 or errno > 13:
             raise ValueError("Invalid errno")
-        err_bytes = FSDErrors.error_names[errno].encode("ascii")
+        err_string = FSDErrors.error_names[errno]
         self.send_lines(
             make_packet(
                 FSDClientCommand.ERROR + b"server",
                 self.client.callsign if self.client is not None else b"unknown",
                 f"{errno:03d}".encode(),  # = str(errno).rjust(3, "0")
                 env,
-                err_bytes,
+                err_string.encode("ascii"),
             ),
         )
         if fatal:
+            logger.info(f"Kicking {self.get_description()}: {err_string}")
             kill_after_1sec(self.transport.close)
 
     def send_motd(self) -> None:
@@ -487,6 +488,7 @@ class ClientProtocol(LineProtocol):
     def handle_remove_client(self, _: Tuple[bytes, ...]) -> HandleResult:
         """Handle remove client request."""
         assert self.client is not None
+        logger.info(f"Kicking {self.get_description()}: client asked to remove")
         kill_after_1sec(self.transport.close)
         return True, True
 
@@ -900,6 +902,13 @@ class ClientProtocol(LineProtocol):
             callsign_kill,
             make_packet(FSDClientCommand.KILL + b"SERVER", callsign_kill, reason),
         )
+        ip_kill = self.factory.clients[callsign_kill].transport.get_extra_info(
+            "peername"
+        )[0]
+        logger.info(
+            f"Kicking {ip_kill}({callsign_kill.decode(errors='replace')}): "
+            f"killed by {self.client.callsign.decode(errors='replace')}"
+        )
         kill_after_1sec(self.factory.clients[callsign_kill].transport.close)
         return True, True
 
@@ -1045,18 +1054,22 @@ class ClientProtocol(LineProtocol):
         self.send_error(FSDErrors.ERR_SYNTAX)
         return False, False
 
+    def get_description(self) -> str:
+        """Get text description of this client."""
+        if self.client is not None:
+            return (
+                cast(str, self.transport.get_extra_info("peername")[0])
+                + f"({self.client.callsign.decode(errors='replace')})"
+            )
+
+        return cast(str, self.transport.get_extra_info("peername")[0])
+
     def connection_lost(self, _: Optional[BaseException] = None) -> None:  # pyright: ignore
         """Handle connection lost."""
         if hasattr(self, "timeout_killer_task"):
             self.timeout_killer_task.cancel()
         client = None
         if self.client is not None:
-            logger.info(
-                f"{self.transport.get_extra_info('peername')[0]} "
-                f"({self.client.callsign.decode(errors='replace')}) "
-                "disconnected.",
-            )
-
             self.factory.broadcast(
                 make_packet(
                     (
@@ -1071,9 +1084,8 @@ class ClientProtocol(LineProtocol):
             )
             del self.factory.clients[self.client.callsign]
             client = self.client
-            self.client = None
-        else:
-            logger.info(f"{self.transport.get_extra_info('peername')[0]} disconnected.")
+        logger.info(f"{self.get_description()} disconnected.")
+        self.client = None
         for pending_task in self.tasks:
             pending_task.cancel()
         mustdone_task_keeper.add(
