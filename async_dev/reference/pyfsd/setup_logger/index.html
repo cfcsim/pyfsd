@@ -198,7 +198,8 @@
 <span class=normal>226</span>
 <span class=normal>227</span>
 <span class=normal>228</span>
-<span class=normal>229</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>setup_logger</span><span class=p>(</span><span class=n>config</span><span class=p>:</span> <span class=n>PyFSDLoggerConfig</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=normal>229</span>
+<span class=normal>230</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>setup_logger</span><span class=p>(</span><span class=n>config</span><span class=p>:</span> <span class=n>PyFSDLoggerConfig</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Setup logger with config.&quot;&quot;&quot;</span>
     <span class=n>reset_defaults</span><span class=p>()</span>
     <span class=n>include_extra</span><span class=p>,</span> <span class=n>extract_record</span><span class=p>,</span> <span class=n>time</span> <span class=o>=</span> <span class=p>(</span>
@@ -215,6 +216,7 @@
         <span class=c1># Add the log level and a timestamp to the event_dict if the log entry</span>
         <span class=c1># is not from structlog.</span>
         <span class=n>stdlib</span><span class=o>.</span><span class=n>add_log_level</span><span class=p>,</span>
+        <span class=n>stdlib</span><span class=o>.</span><span class=n>add_logger_name</span><span class=p>,</span>
         <span class=n>timestamper</span><span class=p>,</span>
     <span class=p>]</span>
     <span class=k>if</span> <span class=n>include_extra</span><span class=p>:</span>
