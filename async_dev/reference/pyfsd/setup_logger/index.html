@@ -46,7 +46,11 @@
 <span class=normal>120</span>
 <span class=normal>121</span>
 <span class=normal>122</span>
-<span class=normal>123</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>make_filtering_stdlib_bound_logger</span><span class=p>(</span><span class=n>min_level</span><span class=p>:</span> <span class=nb>int</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Type</span><span class=p>[</span><span class=n>stdlib</span><span class=o>.</span><span class=n>BoundLogger</span><span class=p>]:</span>
+<span class=normal>123</span>
+<span class=normal>124</span>
+<span class=normal>125</span>
+<span class=normal>126</span>
+<span class=normal>127</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>make_filtering_stdlib_bound_logger</span><span class=p>(</span><span class=n>min_level</span><span class=p>:</span> <span class=nb>int</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=n>Type</span><span class=p>[</span><span class=n>stdlib</span><span class=o>.</span><span class=n>BoundLogger</span><span class=p>]:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Create a new BoundLogger that only logs min_level or higher.&quot;&quot;&quot;</span>
     <span class=k>if</span> <span class=n>min_level</span> <span class=o>==</span> <span class=n>NOTSET</span><span class=p>:</span>
         <span class=k>return</span> <span class=n>stdlib</span><span class=o>.</span><span class=n>BoundLogger</span>
@@ -59,7 +63,11 @@
 
     <span class=k>class</span> <span class=nc>BoundLogger</span><span class=p>(</span><span class=n>stdlib</span><span class=o>.</span><span class=n>BoundLogger</span><span class=p>):</span>
         <span class=k>def</span> <span class=nf>log</span><span class=p>(</span>
-            <span class=bp>self</span><span class=p>,</span> <span class=n>level</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span> <span class=n>event</span><span class=p>:</span> <span class=nb>str</span> <span class=o>|</span> <span class=kc>None</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span> <span class=o>*</span><span class=n>args</span><span class=p>:</span> <span class=nb>object</span><span class=p>,</span> <span class=o>**</span><span class=n>kw</span><span class=p>:</span> <span class=nb>object</span>
+            <span class=bp>self</span><span class=p>,</span>
+            <span class=n>level</span><span class=p>:</span> <span class=nb>int</span><span class=p>,</span>
+            <span class=n>event</span><span class=p>:</span> <span class=n>Union</span><span class=p>[</span><span class=nb>str</span><span class=p>,</span> <span class=kc>None</span><span class=p>]</span> <span class=o>=</span> <span class=kc>None</span><span class=p>,</span>
+            <span class=o>*</span><span class=n>args</span><span class=p>:</span> <span class=nb>object</span><span class=p>,</span>
+            <span class=o>**</span><span class=n>kw</span><span class=p>:</span> <span class=nb>object</span><span class=p>,</span>
         <span class=p>)</span> <span class=o>-&gt;</span> <span class=nb>object</span><span class=p>:</span>
             <span class=k>if</span> <span class=n>level</span> <span class=o>&lt;</span> <span class=n>min_level</span><span class=p>:</span>
                 <span class=k>return</span> <span class=kc>None</span>
@@ -95,11 +103,7 @@
 
     <span class=k>return</span> <span class=n>BoundLogger</span>
 </code></pre></div></td></tr></table></div> </details> </div> </div> <div class="doc doc-object doc-function"> <h2 id=pyfsd.setup_logger.setup_logger class="doc doc-heading"> <code class="doc-symbol doc-symbol-heading doc-symbol-function"></code> <span class="doc doc-object-name doc-function-name">setup_logger</span> <a href=#pyfsd.setup_logger.setup_logger class=headerlink title="Permanent link">&para;</a></h2> <div class="doc-signature highlight"><pre><span></span><code><span class=n>setup_logger</span><span class=p>(</span><span class=n>config</span><span class=p>:</span> <span class=n><a class="autorefs autorefs-internal" title="pyfsd.setup_logger.PyFSDLoggerConfig" href="#pyfsd.setup_logger.PyFSDLoggerConfig">PyFSDLoggerConfig</a></span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span>
-</code></pre></div> <div class="doc doc-contents "> <p>Setup logger with config.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/setup_logger.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>126</span>
-<span class=normal>127</span>
-<span class=normal>128</span>
-<span class=normal>129</span>
-<span class=normal>130</span>
+</code></pre></div> <div class="doc doc-contents "> <p>Setup logger with config.</p> <details class=quote> <summary>Source code in <code>src/pyfsd/setup_logger.py</code></summary> <div class=highlight><table class=highlighttable><tr><td class=linenos><div class=linenodiv><pre><span></span><span class=normal>130</span>
 <span class=normal>131</span>
 <span class=normal>132</span>
 <span class=normal>133</span>
@@ -199,7 +203,11 @@
 <span class=normal>227</span>
 <span class=normal>228</span>
 <span class=normal>229</span>
-<span class=normal>230</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>setup_logger</span><span class=p>(</span><span class=n>config</span><span class=p>:</span> <span class=n>PyFSDLoggerConfig</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
+<span class=normal>230</span>
+<span class=normal>231</span>
+<span class=normal>232</span>
+<span class=normal>233</span>
+<span class=normal>234</span></pre></div></td><td class=code><div><pre><span></span><code><span class=k>def</span> <span class=nf>setup_logger</span><span class=p>(</span><span class=n>config</span><span class=p>:</span> <span class=n>PyFSDLoggerConfig</span><span class=p>)</span> <span class=o>-&gt;</span> <span class=kc>None</span><span class=p>:</span>
 <span class=w>    </span><span class=sd>&quot;&quot;&quot;Setup logger with config.&quot;&quot;&quot;</span>
     <span class=n>reset_defaults</span><span class=p>()</span>
     <span class=n>include_extra</span><span class=p>,</span> <span class=n>extract_record</span><span class=p>,</span> <span class=n>time</span> <span class=o>=</span> <span class=p>(</span>
