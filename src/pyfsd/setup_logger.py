@@ -86,7 +86,11 @@ def make_filtering_stdlib_bound_logger(min_level: int) -> Type[stdlib.BoundLogge
 
     class BoundLogger(stdlib.BoundLogger):
         def log(
-            self, level: int, event: str | None = None, *args: object, **kw: object
+            self,
+            level: int,
+            event: Union[str, None] = None,
+            *args: object,
+            **kw: object,
         ) -> object:
             if level < min_level:
                 return None
