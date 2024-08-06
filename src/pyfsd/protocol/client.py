@@ -1059,7 +1059,7 @@ class ClientProtocol(LineProtocol):
         if self.client is not None:
             return (
                 cast(str, self.transport.get_extra_info("peername")[0])
-                + f"({self.client.callsign.decode(errors='replace')})"
+                + f" ({self.client.callsign.decode(errors='replace')})"
             )
 
         return cast(str, self.transport.get_extra_info("peername")[0])

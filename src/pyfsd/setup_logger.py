@@ -140,6 +140,7 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
         # Add the log level and a timestamp to the event_dict if the log entry
         # is not from structlog.
         stdlib.add_log_level,
+        stdlib.add_logger_name,
         timestamper,
     ]
     if include_extra:
