@@ -43,7 +43,6 @@ from ..define.utils import (
     mustdone_task_keeper,
     str_to_float,
     str_to_int,
-    task_keeper,
 )
 from ..metar.profile import WeatherProfile
 from ..object.client import Client, ClientType
@@ -137,16 +136,6 @@ def check_packet(
     return decorator
 
 
-def kill_after_1sec(kill_func: Callable) -> None:
-    """Kill the client after 1 second by kill_func."""
-
-    async def kill() -> None:
-        await asleep(1)
-        kill_func()
-
-    task_keeper.add(create_task(kill()))
-
-
 class ClientProtocol(LineProtocol):
     """PyFSD client protocol.
 
@@ -159,7 +148,7 @@ class ClientProtocol(LineProtocol):
     """
 
     factory: "ClientFactory"
-    timeout_killer_task: "Task[None]"
+    timeout_killer_task: "Task[None] | None"
     transport: "Transport"
     tasks: Set["Task"]
     client: Optional[Client]
@@ -170,12 +159,22 @@ class ClientProtocol(LineProtocol):
         self.factory = factory
         self.tasks = set()
         self.client = None
+        self.timeout_killer_task = None
         # timeout_killer_task and transport will be initialized in connection_made.
 
     def add_task(self, task: "Task") -> None:
         """Store a task's strong reference to keep it away from disappear."""
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
+
+    def kill_after_1sec(self) -> None:
+        """Kill this client after 1 second by kill_func."""
+
+        async def kill() -> None:
+            await asleep(1)
+            self.transport.close()
+
+        self.add_task(create_task(kill()))
 
     def reset_timeout_killer(self) -> None:
         """Reset timeout killer."""
@@ -184,9 +183,9 @@ class ClientProtocol(LineProtocol):
             await asleep(500)
             self.send_line(b"# Timeout")
             await logger.ainfo(f"Kicking {self.get_description()}: timeout")
-            kill_after_1sec(self.transport.close)
+            self.kill_after_1sec()
 
-        if hasattr(self, "timeout_killer_task"):
+        if self.timeout_killer_task:
             self.timeout_killer_task.cancel()
         self.timeout_killer_task = create_task(timeout_killer())
 
@@ -233,7 +232,7 @@ class ClientProtocol(LineProtocol):
         )
         if fatal:
             logger.info(f"Kicking {self.get_description()}: {err_string}")
-            kill_after_1sec(self.transport.close)
+            self.kill_after_1sec()
 
     def send_motd(self) -> None:
         """Send motd to client."""
@@ -417,7 +416,7 @@ class ClientProtocol(LineProtocol):
             return False, False
 
         if callsign in self.factory.clients:
-            self.send_error(FSDErrors.ERR_CSINUSE)
+            self.send_error(FSDErrors.ERR_CSINUSE, fatal=True)
             return True, False
 
         rating = await self.factory.check_auth(cid_str, pwd_str)
@@ -484,12 +483,12 @@ class ClientProtocol(LineProtocol):
         )
         return True, True
 
-    @check_packet(1, check_callsign=False)
+    @check_packet(1)
     def handle_remove_client(self, _: Tuple[bytes, ...]) -> HandleResult:
         """Handle remove client request."""
         assert self.client is not None
         logger.info(f"Kicking {self.get_description()}: client asked to remove")
-        kill_after_1sec(self.transport.close)
+        self.kill_after_1sec()
         return True, True
 
     @check_packet(17)
@@ -909,7 +908,18 @@ class ClientProtocol(LineProtocol):
             f"Kicking {ip_kill}({callsign_kill.decode(errors='replace')}): "
             f"killed by {self.client.callsign.decode(errors='replace')}"
         )
-        kill_after_1sec(self.factory.clients[callsign_kill].transport.close)
+        transport_to_kill = self.factory.clients[callsign_kill].transport
+        if kill_func := getattr(
+            transport_to_kill.get_protocol(), "kill_after_1sec", None
+        ):
+            kill_func()
+        else:
+
+            async def killer() -> None:
+                await asleep(1)
+                transport_to_kill.close()
+
+            self.add_task(create_task(killer()))
         return True, True
 
     def line_received(self, line: bytes) -> None:
@@ -1066,8 +1076,10 @@ class ClientProtocol(LineProtocol):
 
     def connection_lost(self, _: Optional[BaseException] = None) -> None:  # pyright: ignore
         """Handle connection lost."""
-        if hasattr(self, "timeout_killer_task"):
+        if self.timeout_killer_task:
             self.timeout_killer_task.cancel()
+        for pending_task in self.tasks:
+            pending_task.cancel()
         client = None
         if self.client is not None:
             self.factory.broadcast(
@@ -1086,8 +1098,7 @@ class ClientProtocol(LineProtocol):
             client = self.client
         logger.info(f"{self.get_description()} disconnected.")
         self.client = None
-        for pending_task in self.tasks:
-            pending_task.cancel()
+
         mustdone_task_keeper.add(
             create_task(
                 self.factory.plugin_manager.trigger_event(
