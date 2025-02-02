@@ -1074,7 +1074,7 @@ class ClientProtocol(LineProtocol):
 
         return cast(str, self.transport.get_extra_info("peername")[0])
 
-    def connection_lost(self, _: Optional[BaseException] = None) -> None:  # pyright: ignore
+    def connection_lost(self, reason: Optional[BaseException] = None) -> None:  # pyright: ignore
         """Handle connection lost."""
         if self.timeout_killer_task:
             self.timeout_killer_task.cancel()
@@ -1096,7 +1096,7 @@ class ClientProtocol(LineProtocol):
             )
             del self.factory.clients[self.client.callsign]
             client = self.client
-        logger.info(f"{self.get_description()} disconnected.")
+        logger.info(f"{self.get_description()} disconnected because {reason}.")
         self.client = None
 
         mustdone_task_keeper.add(
