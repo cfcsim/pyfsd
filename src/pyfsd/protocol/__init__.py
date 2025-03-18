@@ -23,7 +23,7 @@ class LineReceiver(Protocol, metaclass=ABCMeta):
 
     buffer: bytes = b""
     delimiter: bytes = b"\r\n"
-    max_length: int = 1024  # 1kb
+    max_length: int = 1024*128  # 128kb
 
     @abstractmethod
     def line_received(self, line: bytes) -> None:

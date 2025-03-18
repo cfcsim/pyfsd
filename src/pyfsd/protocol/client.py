@@ -155,6 +155,11 @@ class ClientProtocol(LineProtocol):
         self.timeout_killer_task = None
         # timeout_killer_task and transport will be initialized in connection_made.
 
+    def max_length_exceed(self, length: int) -> None:
+        """Called when line length exceed max length."""
+        logger.info(f"Kicking {self.get_description()}: max length exceeded")
+        return super().max_length_exceed(length)
+
     def add_task(self, task: "Task") -> None:
         """Store a task's strong reference to keep it away from disappear."""
         self.tasks.add(task)
