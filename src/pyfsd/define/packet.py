@@ -23,13 +23,13 @@ from typing import (
 from .utils import ascii_only
 
 __all__ = [
-    "make_packet",
+    "CLIENT_USED_COMMAND",
+    "SPLIT_SIGN",
+    "CompatibleString",
+    "FSDClientCommand",
     "break_packet",
     "join_lines",
-    "FSDClientCommand",
-    "CLIENT_USED_COMMAND",
-    "CompatibleString",
-    "SPLIT_SIGN",
+    "make_packet",
 ]
 
 _T_str = TypeVar("_T_str", str, bytes, "CompatibleString")
@@ -106,6 +106,8 @@ class CompatibleString:
         Args:
             value: str, bytes or CompatibleString.
         """
+        if self is value:
+            return True
         if isinstance(value, CompatibleString):
             return self.string == value.string
         if isinstance(value, str):

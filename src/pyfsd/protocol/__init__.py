@@ -9,7 +9,7 @@ from ..define.packet import join_lines
 if TYPE_CHECKING:
     from asyncio import Transport
 
-__all__ = ["LineReceiver", "LineProtocol"]
+__all__ = ["LineProtocol", "LineReceiver"]
 
 
 class LineReceiver(Protocol, metaclass=ABCMeta):

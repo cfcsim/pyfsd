@@ -122,6 +122,7 @@ class PluginManager:
     # ruff: noqa: C901, PLR0912, PLR0915, BLE001
     async def pick_plugins(self, plugin_config_root: dict) -> None:
         """Pick all plugins into self.all_plugins & self.sorted_plugins."""
+
         def setattr1(obj: object, name: str, val: object) -> None:
             """Set attribute forcefully."""
             object.__setattr__(obj, name, val)
@@ -167,7 +168,9 @@ class PluginManager:
                 or (not callable(getattr(plugin, "setup", None)))
             ):
                 await logger.aerror(
-                    f"Cannot load plugin {plugin.name if plugin_name_ok else default_name}: malformed plugin",
+                    "Cannot load plugin "
+                    + (plugin.name if plugin_name_ok else default_name)
+                    + ": malformed plugin",
                 )
                 continue
 

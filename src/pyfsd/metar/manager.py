@@ -128,7 +128,9 @@ class MetarManager:
         for need_fetcher in self.config["fetchers"]:
             found = 0
             # once only or cron with once fallback
-            if (is_once_mode or has_once_fallback) and need_fetcher in self.fetchers["once"]:
+            if (is_once_mode or has_once_fallback) and need_fetcher in self.fetchers[
+                "once"
+            ]:
                 found += 1
                 used["once"][need_fetcher] = self.fetchers["once"][need_fetcher]
             # cron

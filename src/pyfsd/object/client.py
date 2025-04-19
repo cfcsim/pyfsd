@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Literal, Optional, Tuple
 if TYPE_CHECKING:
     from asyncio import Transport
 
-__all__ = ["Position", "FlightPlan", "Client", "ClientType"]
+__all__ = ["Client", "ClientType", "FlightPlan", "Position"]
 
 Position = Tuple[float, float]
 ClientType = Literal["ATC", "PILOT"]

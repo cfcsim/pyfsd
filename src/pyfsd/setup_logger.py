@@ -13,7 +13,7 @@ from structlog import (
     reset_defaults,
     stdlib,
 )
-from structlog.typing import EventDict, Processor, ProcessorReturnValue
+from structlog.typing import EventDict
 
 if version_info >= (3, 11):
     from typing import NotRequired  # type: ignore[attr-defined,unused-ignore]
@@ -130,6 +130,7 @@ def make_filtering_stdlib_bound_logger(min_level: int) -> Type[stdlib.BoundLogge
 
 def setup_logger(config: PyFSDLoggerConfig) -> None:
     """Setup logger with config."""
+
     def append_funcname_lieneno(_: object, __: str, event: EventDict) -> EventDict:
         event["logger_name"] = f"{event.pop('func_name')}:{event.pop('lineno')}"
         return event
@@ -217,10 +218,12 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
     )
     configure(
         processors=[
-            processors.CallsiteParameterAdder([
-                processors.CallsiteParameter.FUNC_NAME,
-                processors.CallsiteParameter.LINENO,
-            ]),
+            processors.CallsiteParameterAdder(
+                [
+                    processors.CallsiteParameter.FUNC_NAME,
+                    processors.CallsiteParameter.LINENO,
+                ]
+            ),
             append_funcname_lieneno,
             stdlib.add_log_level,
             stdlib.add_logger_name,

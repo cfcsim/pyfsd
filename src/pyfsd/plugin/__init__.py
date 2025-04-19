@@ -91,7 +91,11 @@ class Plugin:
         if value is self:
             return True
         if isinstance(value, Plugin):
-            return (self.name == value.name and self.api == value.api and self.version == value.version)
+            return (
+                self.name == value.name
+                and self.api == value.api
+                and self.version == value.version
+            )
         return NotImplemented
 
     def __repr__(self) -> str:
@@ -110,6 +114,7 @@ class Plugin:
 @dataclass(frozen=True, eq=False, repr=False)
 class StubPlugin(Plugin):
     """Stub plugin that does nothing."""
+
     # TODO: Currently we have to copy these attributes until python 3.10
     # see github issue microsoft/vscode-python#20378
     name: str
@@ -125,6 +130,7 @@ class SimplePlugin(Plugin):
     Attributes:
         listeners: Event listeners.
     """
+
     # TODO: see `pyfsd.plugin.StubPlugin`
     name: str
     api: Tuple[int, int]

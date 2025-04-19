@@ -153,7 +153,8 @@ async def launch(config: RootPyFSDConfig, wait_all_tasks_done: bool = True) -> N
                 if not pending:
                     break
                 await logger.adebug(
-                    f"Waited {total_wait_seconds} second, but these tasks are still running",
+                    f"Waited {total_wait_seconds} second, "
+                    "but these tasks are still running",
                     stack="\n".join(f"  {task!s}" for task in tasks),
                 )
         await container.db_engine().dispose()

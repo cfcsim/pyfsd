@@ -40,8 +40,8 @@ class Container(containers.DeclarativeContainer):
     db_engine = providers.Singleton(
         create_async_engine, config.pyfsd.database.url, pool_pre_ping=True
     )
-    plugin_manager: "providers.Singleton[PluginManager]" = (
-        providers.Singleton(PluginManager)
+    plugin_manager: "providers.Singleton[PluginManager]" = providers.Singleton(
+        PluginManager
     )
     metar_manager = providers.Singleton(MetarManager, config.pyfsd.metar)
     client_factory = providers.Singleton(

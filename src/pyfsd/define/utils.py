@@ -8,7 +8,7 @@ Attributes:
 
 from asyncio import get_event_loop
 from functools import wraps
-from re import compile
+from re import compile as compile_re
 from typing import (
     TYPE_CHECKING,
     Awaitable,
@@ -31,21 +31,21 @@ if TYPE_CHECKING:
     from ..object.client import Position
 
 __all__ = [
-    "asyncify",
-    "str_to_int",
-    "str_to_float",
-    "is_callsign_valid",
-    "calc_distance",
+    "MRand",
     "ascii_only",
     "assert_no_duplicate",
+    "asyncify",
+    "calc_distance",
+    "is_callsign_valid",
     "is_empty_iterable",
-    "iterables",
     "iter_callable",
+    "iterables",
+    "str_to_float",
+    "str_to_int",
     "task_keeper",
-    "MRand",
 ]
-__str_invalid_char_regex = compile("[!@#$%*:& \t]")
-__bytes_invalid_char_regex = compile(b"[!@#$%*:& \t]")
+__str_invalid_char_regex = compile_re("[!@#$%*:& \t]")
+__bytes_invalid_char_regex = compile_re(b"[!@#$%*:& \t]")
 T = TypeVar("T")
 
 
