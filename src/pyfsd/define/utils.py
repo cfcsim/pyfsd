@@ -8,7 +8,6 @@ Attributes:
 
 from asyncio import get_event_loop
 from functools import wraps
-from re import compile as compile_re
 from typing import (
     TYPE_CHECKING,
     Awaitable,
@@ -44,8 +43,6 @@ __all__ = [
     "str_to_int",
     "task_keeper",
 ]
-__str_invalid_char_regex = compile_re("[!@#$%*:& \t]")
-__bytes_invalid_char_regex = compile_re(b"[!@#$%*:& \t]")
 T = TypeVar("T")
 
 
@@ -103,16 +100,33 @@ def calc_distance(
 
 def is_callsign_valid(callsign: Union[str, bytes]) -> bool:
     """Check if a callsign is valid or not."""
-    global __str_invalid_char_regex, __bytes_invalid_char_regex
     if len(callsign) < 2 or len(callsign) > 12:
         return False
-    return (  # type: ignore[attr-defined]
-        __str_invalid_char_regex
-        if isinstance(callsign, str)
-        else __bytes_invalid_char_regex
-    ).search(
-        callsign,  # pyright: ignore
-    ) is None
+    if isinstance(callsign, str):
+        return not (
+            ("!" in callsign)
+            or ("@" in callsign)
+            or ("#" in callsign)
+            or ("$" in callsign)
+            or ("%" in callsign)
+            or ("*" in callsign)
+            or (":" in callsign)
+            or ("&" in callsign)
+            or (" " in callsign)
+            or ("\t" in callsign)
+        )
+    return not (
+        (b"!" in callsign)
+        or (b"@" in callsign)
+        or (b"#" in callsign)
+        or (b"$" in callsign)
+        or (b"%" in callsign)
+        or (b"*" in callsign)
+        or (b":" in callsign)
+        or (b"&" in callsign)
+        or (b" " in callsign)
+        or (b"\t" in callsign)
+    )
 
 
 def ascii_only(string: Union[str, bytes]) -> bool:
