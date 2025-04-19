@@ -219,5 +219,5 @@ class ClientFactory:
 
     def remove_all_clients(self) -> None:
         """Remove all clients."""
-        for client in self.clients.values():
+        for client in self.clients.copy().values():
             client.transport.close()
