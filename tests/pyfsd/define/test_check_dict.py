@@ -1,7 +1,9 @@
 """This module tests pyfsd.define.check_dict."""
 
 from sys import version_info
-from typing import Dict, List, Literal, Tuple, Union
+
+# ruff: noqa: UP035
+from typing import Dict, Literal, Union
 from unittest import TestCase
 
 if version_info < (3, 11):
@@ -35,43 +37,46 @@ from pyfsd.define.check_dict import (
 class TestCheckDict(TestCase):
     """Test if pyfsd.define.check_dict works."""
 
-    complex_type = Union[int, Literal["1234", 5678], List[str], Dict[int, str]]
+    # ruff: noqa: PYI051, UP006
+    complex_type = Union[int, Literal["1234", 5678], list[str], Dict[int, str]]
 
     def test_explain_type(self) -> None:
         """Tests if explain_type works."""
         self.assertEqual(
             explain_type(self.complex_type),
-            "int or '1234' or 5678 or List[str] or Dict[int, str]",
+            "int or '1234' or 5678 or list[str] or Dict[int, str]",
         )
 
     def test_explain_error(self) -> None:
         """Tests if verify errors can correctly introduce themselves."""
         self.assertEqual(
             str(VerifyTypeError("abcd", self.complex_type, b"")),
-            "'abcd' must be int or '1234' or 5678 or List[str] or Dict[int, str], "
-            "not bytes",
+            "'abcd' must be int or '1234' or 5678 or list[str] "
+            "or Dict[int, str], not bytes",
         )
-        for key_error in ("missing", "leftover"):
+        for key_error in ("missing", "extra"):
             with self.subTest(type_=key_error):
                 self.assertEqual(
-                    str(VerifyKeyError("abcd", "efgh", key_error)),  # type: ignore[arg-type]
-                    f"abcd['efgh'] {key_error}",
+                    str(VerifyKeyError("abcd", "efgh", key_error)),
+                    f"abcd['efgh'] is {key_error}",
                 )
 
     def test_check_simple_type(self) -> None:
         """Tests if check_simple_type works."""
 
-        def generate_simple_case(correctv, typ, wrongv):  # type: ignore[no-untyped-def]
+        def generate_simple_case(
+            correctv: object, typ: object, wrongv: object
+        ) -> tuple[object, object, object, tuple[VerifyTypeError]]:
             return (correctv, typ, wrongv, (VerifyTypeError("obj", typ, wrongv),))
 
-        # (correct_value, type, wrong_value, expected_exceptions)
+        # case like (correct_value, type, wrong_value, expected_exceptions)
         cases = (
             generate_simple_case(1, Union[int, bytes], "1"),
             generate_simple_case(b"1", Union[int, bytes], "1"),
             generate_simple_case("1234", Literal["1234", 5678], "5678"),
             (
                 ["123", "456"],
-                List[str],
+                list[str],
                 [123, 456],
                 (
                     VerifyTypeError("obj[0]", str, 123),
@@ -80,7 +85,7 @@ class TestCheckDict(TestCase):
             ),
             (
                 {1: "1", 2: "2"},
-                Dict[int, str],
+                dict[int, str],
                 {"1": 1, "2": 2},
                 (
                     VerifyTypeError("obj['1']", int, "1"),
@@ -104,7 +109,7 @@ class TestCheckDict(TestCase):
 
     def test_lookup_required(self) -> None:
         """Tests if lookup_required works."""
-        some_optional_dict = {"a": int, "b": NotRequired[str]}  # pyright: ignore
+        some_optional_dict = {"a": int, "b": NotRequired[str]}
         self.assertEqual(tuple(lookup_required(some_optional_dict)), ("a",))
         for typed_dict in available_typeddict:
             with self.subTest(typeddict_source=typed_dict.__module__):
@@ -113,9 +118,14 @@ class TestCheckDict(TestCase):
                     a: int
                     b: NotRequired[str]  # type: ignore[valid-type]
 
-                self.assertEqual(tuple(lookup_required(SomeOptionalDict)), ("a",))
+                some_optional_dict_struct = {"a": int, "b": NotRequired[str]}
 
-                class AllOptionalDict(  # pyright: ignore
+                self.assertEqual(tuple(lookup_required(SomeOptionalDict)), ("a",))
+                self.assertEqual(
+                    tuple(lookup_required(some_optional_dict_struct)), ("a",)
+                )
+
+                class AllOptionalDict(
                     typed_dict,  # type: ignore[misc, valid-type]
                     total=False,  # type: ignore[call-arg]
                 ):
@@ -127,7 +137,7 @@ class TestCheckDict(TestCase):
     def test_check_dict(self) -> None:
         """Tests if check_dict works."""
         #                        (  expected_errors  )  (all)ow_unexpected_keys
-        cases: Tuple[Tuple[dict, Tuple[Exception, ...], bool], ...] = (
+        cases: tuple[tuple[dict, tuple[Exception, ...], bool], ...] = (
             (
                 {
                     "a": 1,
@@ -173,7 +183,7 @@ class TestCheckDict(TestCase):
                 },
                 (
                     VerifyKeyError("dict_obj", "a", "missing"),
-                    VerifyKeyError("dict_obj", "e", "leftover"),
+                    VerifyKeyError("dict_obj", "e", "extra"),
                 ),
                 False,
             ),
@@ -187,54 +197,132 @@ class TestCheckDict(TestCase):
                     class ATypedDict(typed_dict):  # type: ignore[misc, valid-type]
                         a: Union[int, str]
                         b: Literal[1234, "5678"]
-                        c: List[int]
-                        d: NotRequired[Dict[int, str]]  # type: ignore[valid-type]
+                        c: list[int]
+                        d: NotRequired[dict[int, str]]  # type: ignore[valid-type]
+
+                    a_struct = {
+                        "a": Union[int, str],
+                        "b": Literal[1234, "5678"],
+                        "c": list[int],
+                        "d": NotRequired[dict[int, str]],
+                    }
 
                     if vaild:
                         self.assertFalse(
                             tuple(
                                 check_dict(
-                                    dict_obj, ATypedDict, "dict_obj", allow_unexp_keys
+                                    dict_obj,
+                                    ATypedDict,
+                                    name="dict_obj",
+                                    allow_extra_keys=allow_unexp_keys,
                                 )
                             )
                         )
-                        assert_dict(dict_obj, ATypedDict, "dict_obj", allow_unexp_keys)
+                        self.assertFalse(
+                            tuple(
+                                check_dict(
+                                    dict_obj,
+                                    a_struct,
+                                    name="dict_obj",
+                                    allow_extra_keys=allow_unexp_keys,
+                                )
+                            )
+                        )
+                        assert_dict(
+                            dict_obj,
+                            ATypedDict,
+                            name="dict_obj",
+                            allow_extra_keys=allow_unexp_keys,
+                        )
+                        assert_dict(
+                            dict_obj,
+                            a_struct,
+                            name="dict_obj",
+                            allow_extra_keys=allow_unexp_keys,
+                        )
                     else:
                         self.assertEqual(
                             tuple(
                                 check_dict(
-                                    dict_obj, ATypedDict, "dict_obj", allow_unexp_keys
+                                    dict_obj,
+                                    ATypedDict,
+                                    name="dict_obj",
+                                    allow_extra_keys=allow_unexp_keys,
+                                )
+                            ),
+                            exp_errs,
+                        )
+                        self.assertEqual(
+                            tuple(
+                                check_dict(
+                                    dict_obj,
+                                    a_struct,
+                                    name="dict_obj",
+                                    allow_extra_keys=allow_unexp_keys,
                                 )
                             ),
                             exp_errs,
                         )
                         with self.assertRaises((VerifyKeyError, VerifyTypeError)) as cm:
                             assert_dict(
-                                dict_obj, ATypedDict, "dict_obj", allow_unexp_keys
+                                dict_obj,
+                                ATypedDict,
+                                name="dict_obj",
+                                allow_extra_keys=allow_unexp_keys,
+                            )
+                        self.assertEqual(cm.exception, exp_errs[0])
+                        with self.assertRaises((VerifyKeyError, VerifyTypeError)) as cm:
+                            assert_dict(
+                                dict_obj,
+                                a_struct,
+                                name="dict_obj",
+                                allow_extra_keys=allow_unexp_keys,
                             )
                         self.assertEqual(cm.exception, exp_errs[0])
         # dict
         structure = {
             "a": Union[int, str],
             "b": Literal[1234, "5678"],
-            "c": List[int],
-            "d": NotRequired[Dict[int, str]],  # pyright: ignore
+            "c": list[int],
+            "d": NotRequired[dict[int, str]],
         }
         for dict_obj, exp_errs, allow_unexp_keys in cases:
             vaild = not exp_errs
 
             if vaild:
                 self.assertFalse(
-                    tuple(check_dict(dict_obj, structure, "dict_obj", allow_unexp_keys))
+                    tuple(
+                        check_dict(
+                            dict_obj,
+                            structure,
+                            name="dict_obj",
+                            allow_extra_keys=allow_unexp_keys,
+                        )
+                    )
                 )
-                assert_dict(dict_obj, structure, "dict_obj", allow_unexp_keys)
+                assert_dict(
+                    dict_obj,
+                    structure,
+                    name="dict_obj",
+                    allow_extra_keys=allow_unexp_keys,
+                )
             else:
                 self.assertEqual(
                     tuple(
-                        check_dict(dict_obj, structure, "dict_obj", allow_unexp_keys)
+                        check_dict(
+                            dict_obj,
+                            structure,
+                            name="dict_obj",
+                            allow_extra_keys=allow_unexp_keys,
+                        )
                     ),
                     exp_errs,
                 )
                 with self.assertRaises((VerifyKeyError, VerifyTypeError)) as cm:
-                    assert_dict(dict_obj, structure, "dict_obj", allow_unexp_keys)
+                    assert_dict(
+                        dict_obj,
+                        structure,
+                        name="dict_obj",
+                        allow_extra_keys=allow_unexp_keys,
+                    )
                 self.assertEqual(cm.exception, exp_errs[0])

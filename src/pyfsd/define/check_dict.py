@@ -8,14 +8,10 @@ Example::
     check_dict({ "a": 1 }, TypedDict("A", { "a": int }))
 """
 
+from collections.abc import Hashable, Iterable, Mapping
 from sys import version_info
 from typing import (
-    Hashable,
-    Iterable,
     Literal,
-    Mapping,
-    Tuple,
-    Type,
     TypedDict,
     Union,
     get_args,
@@ -28,25 +24,34 @@ if version_info >= (3, 11):
         NotRequired,
         is_typeddict,
     )
-
-    new_get_type_hints = get_type_hints
+    from typing import (
+        get_type_hints as new_get_type_hints,
+    )
 else:
-    from typing_extensions import NotRequired, is_typeddict
+    # ruff: noqa: UP035
+    from typing_extensions import (
+        NotRequired,
+        is_typeddict,
+    )
+
+    # We'll use only compatible signature so that should be ok
     from typing_extensions import (  # type: ignore[assignment]
         get_type_hints as new_get_type_hints,
     )
 
+from typing_extensions import NotRequired as NotRequired_ext
+
 from .utils import is_empty_iterable
 
 __all__ = [
-    "explain_type",
     "VerifyKeyError",
     "VerifyTypeError",
-    "check_simple_type",
-    "assert_simple_type",
-    "lookup_required",
-    "check_dict",
     "assert_dict",
+    "assert_simple_type",
+    "check_dict",
+    "check_simple_type",
+    "explain_type",
+    "lookup_required",
 ]
 
 # Currently we have no choice to make Literal[...] works, so temporaily type it as Any
@@ -65,7 +70,7 @@ def explain_type(typ: TypeHint) -> str:
     Raises:
         TypeError: When a unsupported/invalid type passed.
     """
-    if is_typeddict(typ):
+    if isinstance(typ, dict) or is_typeddict(typ):
         return "dict"
     if type_origin := get_origin(typ):  # elif (t_o is not None)
         if type_origin is Union:
@@ -73,7 +78,7 @@ def explain_type(typ: TypeHint) -> str:
         if type_origin is Literal:
             return " or ".join(repr(sub_value) for sub_value in get_args(typ))
         if type_origin in (list, dict):
-            return str(typ)[len(typ.__module__) + 1 :]
+            return str(typ).removeprefix(typ.__module__ + ".")
         raise TypeError(f"Unsupported type: {type_origin!r}")
     if isinstance(typ, type):
         return typ.__name__
@@ -123,6 +128,8 @@ class VerifyTypeError(TypeError):
         Returns:
             Equals or not.
         """
+        if self is other:
+            return True
         if isinstance(other, VerifyTypeError):
             return (
                 self.name == other.name
@@ -133,27 +140,27 @@ class VerifyTypeError(TypeError):
 
 
 class VerifyKeyError(KeyError):
-    """A exception describes a key missing/leftover in a dict.
+    """A exception describes a missing or extra key in a dict.
 
     Attritubes:
         dict_name: The dict name.
         key: The key name.
-        type: Type of error, a missing or leftover key found.
+        type: Type of error, a missing or extra key found.
     """
 
     dict_name: str
     key: Hashable
-    type: Literal["missing", "leftover"]
+    type: Literal["missing", "extra"]
 
     def __init__(
-        self, dict_name: str, key: Hashable, type_: Literal["missing", "leftover"]
+        self, dict_name: str, key: Hashable, type_: Literal["missing", "extra"]
     ) -> None:
         """Create a VerifyKeyError instance.
 
         Args:
             dict_name: The dict name.
             key: The key name.
-            type_: Type of error, a missing or leftover key found.
+            type_: Type of error, a missing or extra key found.
         """
         self.dict_name = dict_name
         self.key = key
@@ -166,7 +173,7 @@ class VerifyKeyError(KeyError):
         Returns:
             The formated string, includes name, error type
         """
-        return f"{self.dict_name}[{self.key!r}] {self.type}"
+        return f"{self.dict_name}[{self.key!r}] is {self.type}"
 
     def __eq__(self, other: object) -> bool:
         """Check if another object equals to this ConfigKeyError.
@@ -174,6 +181,8 @@ class VerifyKeyError(KeyError):
         Returns:
             Equals or not.
         """
+        if self is other:
+            return True
         if isinstance(other, VerifyKeyError):
             return self.dict_name == other.dict_name and self.type == other.type
         return NotImplemented
@@ -269,7 +278,7 @@ def assert_simple_type(
 
 
 DictStructure = Union[
-    Type[TypedDict],  # type: ignore[valid-type]
+    type[TypedDict],  # type: ignore[valid-type]
     Mapping,  # It should be Mapping[Hashable, Union[TypeHint, DictStructure]
     # (but it's invariant)
 ]
@@ -285,39 +294,36 @@ def lookup_required(structure: DictStructure) -> Iterable[Hashable]:
         Keys that are required. In normal usage, str was yielded.
     """
     if is_typeddict(structure):
-        # Python < 3.8 not supported
+        # Python < 3.9 not supported
         # ---------
         # Mypy bug, ignore it
         if not structure.__total__:  # type: ignore[union-attr]
             # Nothing is required
             return
-        if hasattr(structure, "__required_keys__"):
-            if (
-                NotRequired.__module__ == "typing"
-            ):  # Python 3.11+, not need to Workaround
-                yield from structure.__required_keys__  # type: ignore[union-attr]
-                return
-            # Python 3.9, 3.10
-            type_hints = get_type_hints(structure)
-            for may_required_keys in structure.__required_keys__:  # type: ignore[union-attr]
-                if get_origin(type_hints[may_required_keys]) is not NotRequired:
-                    yield may_required_keys
-        else:
-            # Python 3.8
-            for key, typ in get_type_hints(structure).items():
-                if get_origin(typ) is not NotRequired:
-                    yield key
+        if NotRequired.__module__ == "typing":  # Python 3.11+, not need to Workaround
+            yield from structure.__required_keys__  # type: ignore[union-attr]
+            return
+        # Python 3.9, 3.10
+        type_hints = get_type_hints(structure)
+        for may_required_keys in structure.__required_keys__:  # type: ignore[union-attr]
+            if get_origin(type_hints[may_required_keys]) not in (
+                NotRequired,
+                NotRequired_ext,
+            ):
+                yield may_required_keys
     else:
         for may_required_keys, type_ in structure.items():  # type: ignore[union-attr]
-            if get_origin(type_) is not NotRequired:
+            if get_origin(type_) not in (NotRequired, NotRequired_ext):
                 yield may_required_keys
 
 
+# ruff: noqa: C901, PLR0912
 def check_dict(
     dict_obj: dict,
     structure: DictStructure,
+    *,
     name: str = "dict",
-    allow_unexpected_key: bool = False,
+    allow_extra_keys: bool = False,
 ) -> Iterable[Union[VerifyTypeError, VerifyKeyError]]:
     """Check type of a dict accord TypedDict.
 
@@ -325,20 +331,20 @@ def check_dict(
         dict_obj: The dict to be checked.
         structure: Expected type.
         name: Name of the dict.
-        allow_unexpected_key: Allow leftover keys in dict_obj. Example::
+        allow_extra_keys: Allow extra keys in dict_obj. Example::
             class AType(TypedDict):
                 a: int
             check_dict(
                 { "a": 114514 }, AType,
-                allow_unexpected_key=False
+                allow_extra_keys=False
             ) # Okay
             check_dict(
                 { "a": 114514, "b": 1919810 }, AType,
-                allow_unexpected_key=True
+                allow_extra_keys=True
             ) # Okay
             check_dict(
                 { "a": 114514, "b": 1919810 }, AType,
-                allow_unexpected_key=False
+                allow_extra_keys=False
             ) # Not okay
 
     Yields:
@@ -350,18 +356,18 @@ def check_dict(
 
     def deal_dict_not_required(
         dic: Mapping,
-    ) -> Iterable[Tuple[Hashable, Union[TypeHint, DictStructure]]]:
+    ) -> Iterable[tuple[Hashable, Union[TypeHint, DictStructure]]]:
         for key, typ in dic.items():
-            if get_origin(typ) is NotRequired:
+            if get_origin(typ) in (NotRequired, NotRequired_ext):
                 yield key, get_args(typ)[0]
             else:
                 yield key, typ
 
     left_keys = list(dict_obj.keys())
     required_keys = tuple(lookup_required(structure))
-    # New get_type_hints will change NotRequired[...] into ..., so not caring about it
+    # New get_type_hints will change NotRequired[...] into ...
     for key, type_ in (
-        new_get_type_hints(structure).items()  # pyright: ignore
+        new_get_type_hints(structure).items()
         if is_typeddict(structure)
         else deal_dict_not_required(structure)  # type: ignore[arg-type]
     ):
@@ -372,7 +378,7 @@ def check_dict(
                 yield VerifyKeyError(name, key, "missing")
             continue
         else:
-            if not allow_unexpected_key:
+            if not allow_extra_keys:
                 left_keys.remove(key)
         if is_typeddict(type_) or isinstance(type_, dict):
             if not isinstance(value, dict):
@@ -382,20 +388,21 @@ def check_dict(
                     value,
                     type_,  # type: ignore[arg-type]
                     name=f"{name}[{key!r}]",
-                    allow_unexpected_key=allow_unexpected_key,
+                    allow_extra_keys=allow_extra_keys,
                 )
         else:
             yield from check_simple_type(value, type_, name=f"{name}[{key!r}]")
-    if not allow_unexpected_key and left_keys:
+    if not allow_extra_keys and left_keys:
         for left_key in left_keys:
-            yield VerifyKeyError(name, left_key, "leftover")
+            yield VerifyKeyError(name, left_key, "extra")
 
 
 def assert_dict(
     dict_obj: dict,
     structure: DictStructure,
+    *,
     name: str = "dict",
-    allow_unexpected_key: bool = False,
+    allow_extra_keys: bool = False,
 ) -> None:
     """Wrapper of check_dict, but it raises first error.
 
@@ -405,20 +412,20 @@ def assert_dict(
         dict_obj: The dict to be checked.
         structure: Expected type.
         name: Name of the dict.
-        allow_unexpected_key: Allow leftover keys in dict_obj. Example::
+        allow_extra_keys: Allow extra keys in dict_obj. Example::
             class AType(TypedDict):
                 a: int
             check_dict(
                 { "a": 114514 }, AType,
-                allow_unexpected_key=False
+                allow_extra_keys=False
             ) # Okay
             check_dict(
                 { "a": 114514, "b": 1919810 }, AType,
-                allow_unexpected_key=True
+                allow_extra_keys=True
             ) # Okay
             check_dict(
                 { "a": 114514, "b": 1919810 }, AType,
-                allow_unexpected_key=False
+                allow_extra_keys=False
             ) # Not okay
 
     Raises:
@@ -432,8 +439,8 @@ def assert_dict(
                 check_dict(
                     dict_obj,
                     structure,
-                    name,
-                    allow_unexpected_key=allow_unexpected_key,
+                    name=name,
+                    allow_extra_keys=allow_extra_keys,
                 )
             )
         )
