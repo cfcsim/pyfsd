@@ -2,29 +2,25 @@
 
 Note:
     I don't know what variation means, it was copied from FSD.
-
-Attributes:
-    last_update_variation_hour: Last hour that we updated variation.
-    variation: ?
-    VAR_*: ?
-    mrand: Basically a random number generator, used to compatible with FSD's.
 """
+# ruff: noqa: PLR2004
 
 import contextlib
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import InitVar, dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from math import fabs, pi, sin
-from typing import TYPE_CHECKING, Optional, Tuple
+from time import time
+from typing import TYPE_CHECKING, Optional
 
-from ..define.simulation import Int32MRand
+from metar.Metar import Metar
+
+from pyfsd.define.simulation import Int32MRand
 
 if TYPE_CHECKING:
-    from metar.Metar import Metar
+    from pyfsd.object.client import Position
 
-    from ..object.client import Position
-
-last_update_variation_hour = -1
-variation = (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 mrand = Int32MRand()
 
 VAR_UPDIRECTION = 0
@@ -39,39 +35,39 @@ VAR_MIDTEMP = 8
 VAR_LOWTEMP = 9
 
 
-def check_variation() -> bool:
+@lru_cache(maxsize=1)
+def get_now_variation(
+    seed: int,
+) -> tuple[int, int, int, int, int, int, int, int, int, int]:
     """Check and update variation if it's outdated.
 
     Returns:
         Updated variation or not.
     """
-    global variation
-
-    now = datetime.now(timezone.utc)
-    if now.hour - last_update_variation_hour > 0:
-        mrand.srand(now.hour * (now.year - 1900) * now.month)
-        variation = (
-            mrand(),
-            mrand(),
-            mrand(),
-            mrand(),
-            mrand(),
-            mrand(),
-            mrand(),
-            mrand(),
-            mrand(),
-            mrand(),
-        )
-        return True
-    return False
+    mrand.srand(seed)
+    return (
+        mrand(),
+        mrand(),
+        mrand(),
+        mrand(),
+        mrand(),
+        mrand(),
+        mrand(),
+        mrand(),
+        mrand(),
+        mrand(),
+    )
 
 
-def get_variation(num: int, min_: int, max_: int) -> int:
+def get_variation(now: datetime, num: int, min_: int, max_: int) -> int:
     """Get variation."""
-    return (abs(variation[num]) % (max_ - min_ + 1)) + min_
+    return (
+        abs(get_now_variation(now.hour * (now.year - 1900) * now.month)[num])
+        % (max_ - min_ + 1)
+    ) + min_
 
 
-def get_season(month: int, swap: bool) -> int:
+def get_season(month: int, *, swap: bool) -> int:
     """Get season by month.
 
     Args:
@@ -138,9 +134,8 @@ class WeatherProfile:
     """Profile of weather.
 
     Attributes:
+        metar: Original METAR.
         creation: Create time of the profile.
-        origin: The profile's source, used in multi-server
-        metar: The parsed metar.
         name: Metar station.
         season: Season of the metar's time.
         active: The profile is activate or not.
@@ -149,16 +144,15 @@ class WeatherProfile:
         barometer: Barometer.
     """
 
-    creation: int
-    origin: Optional[str]
-    metar: "Metar"
+    metar: str
+    creation: int = field(default_factory=lambda: int(time()))
     name: Optional[str] = None
     season: int = 0
     active: bool = False
     dew_point: int = 0
     visibility: float = 15.0
     barometer: int = 2950
-    winds: Tuple[WindLayer, WindLayer, WindLayer, WindLayer] = field(
+    winds: tuple[WindLayer, WindLayer, WindLayer, WindLayer] = field(
         default_factory=lambda: (
             WindLayer(-1, -1),
             WindLayer(10400, 2500),
@@ -166,7 +160,7 @@ class WeatherProfile:
             WindLayer(90000, 20700),
         ),
     )
-    temps: Tuple[TempLayer, TempLayer, TempLayer, TempLayer] = field(
+    temps: tuple[TempLayer, TempLayer, TempLayer, TempLayer] = field(
         default_factory=lambda: (
             TempLayer(100),
             TempLayer(10000),
@@ -174,24 +168,33 @@ class WeatherProfile:
             TempLayer(35000),
         ),
     )
-    clouds: Tuple[CloudLayer, CloudLayer] = field(
+    clouds: tuple[CloudLayer, CloudLayer] = field(
         default_factory=lambda: (CloudLayer(-1, -1), CloudLayer(-1, -1)),
     )
     tstorm: CloudLayer = field(default_factory=lambda: CloudLayer(-1, -1))
+    skip_parse: InitVar[bool] = field(default=False)
 
-    def __post_init__(self) -> None:
-        """Initialize this dataclass from metar."""
-        if self.metar.station_id is not None:
-            self.name = self.metar.station_id
-        self.feed_metar(self.metar)
+    def __post_init__(self, skip_parse: bool) -> None:
+        """Call feed_metar conditionally."""
+        if not skip_parse:
+            self.feed_metar()
 
-    def feed_metar(self, metar: "Metar") -> None:
+    def clone(self) -> "WeatherProfile":
+        """Clone myself."""
+        return deepcopy(self)
+
+    # ruff: noqa: PLR0912, PLR0915, C901
+    def feed_metar(self) -> None:
         """Parse metar.
 
         Note:
             I don't know what does ceiling or floor stands for,
             these code are heavily based on FSD.
         """
+        metar = Metar(self.metar, strict=False)
+        if metar.station_id is not None:
+            self.name = metar.station_id
+
         # Wind
         if metar.wind_speed is not None and metar.wind_dir is not None:
             if metar.wind_gust is not None:
@@ -216,7 +219,7 @@ class WeatherProfile:
             else:
                 self.visibility = metar.vis.value("MI")
         # Runway visual range: nothing
-        # Weather: nothing
+        # Weather parsing: nothing
         # Sky
         sky_coverage = {
             "SKC": 0,
@@ -276,9 +279,9 @@ class WeatherProfile:
         """Fix this profile at a point."""
         a1 = position[0]
         a2 = fabs(position[1] / 18)
-        season = get_season(datetime.now().month, a1 < 0)
-        check_variation()
-        lat_var = get_variation(VAR_UPDIRECTION, -25, 25)
+        now = datetime.now(timezone.utc)
+        season = get_season(now.month, swap=a1 < 0)
+        lat_var = get_variation(now, VAR_UPDIRECTION, -25, 25)
         self.winds[3].direction = round(6 if a1 > 0 else -6 * a1 + lat_var + a2)
         self.winds[3].direction = (self.winds[3].direction + 360) % 360
 
@@ -292,19 +295,19 @@ class WeatherProfile:
 
         self.winds[3].speed = round(fabs(sin(a1 * pi / 180.0)) * max_velocity)
         # ------
-        lat_var = get_variation(VAR_MIDDIRECTION, 10, 45)
-        coriolis_var = get_variation(VAR_MIDCOR, 10, 30)
+        lat_var = get_variation(now, VAR_MIDDIRECTION, 10, 45)
+        coriolis_var = get_variation(now, VAR_MIDCOR, 10, 30)
         self.winds[2].direction = round(
             6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var,
         )
         self.winds[2].direction = (self.winds[2].direction + 360) % 360
 
         self.winds[2].speed = int(
-            self.winds[3].speed * (get_variation(VAR_MIDSPEED, 500, 800) / 1000.0),
+            self.winds[3].speed * (get_variation(now, VAR_MIDSPEED, 500, 800) / 1000.0),
         )
         # ------
-        coriolis_var_low = coriolis_var + get_variation(VAR_LOWCOR, 10, 30)
-        lat_var = get_variation(VAR_LOWDIRECTION, 10, 45)
+        coriolis_var_low = coriolis_var + get_variation(now, VAR_LOWCOR, 10, 30)
+        lat_var = get_variation(now, VAR_LOWDIRECTION, 10, 45)
         self.winds[1].direction = round(
             6 if a1 > 0 else -6 * a1 + lat_var + a2 - coriolis_var_low,
         )
@@ -312,6 +315,6 @@ class WeatherProfile:
 
         self.winds[1].speed = (self.winds[0].speed + self.winds[1].speed) // 2
         # ------
-        self.temps[3].temp = -57 + get_variation(VAR_UPTEMP, -4, 4)
-        self.temps[2].temp = -21 + get_variation(VAR_MIDTEMP, -7, 7)
-        self.temps[1].temp = -5 + get_variation(VAR_LOWTEMP, -12, 12)
+        self.temps[3].temp = -57 + get_variation(now, VAR_UPTEMP, -4, 4)
+        self.temps[2].temp = -21 + get_variation(now, VAR_MIDTEMP, -7, 7)
+        self.temps[1].temp = -5 + get_variation(now, VAR_LOWTEMP, -12, 12)

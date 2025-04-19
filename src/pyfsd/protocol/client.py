@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from asyncio import Task, Transport
 
     from ..factory.client import ClientFactory
-    from ..plugin.types import PluginHandledEventResult, PyFSDHandledLineResult
+    from ..plugin import PluginHandledEventResult, PyFSDHandledEventResult
 
 logger = get_logger(__name__)
 P = ParamSpec("P")
@@ -200,12 +200,8 @@ class ClientProtocol(LineProtocol):
 
         self.reset_timeout_killer()
         logger.info(f"New connection from {ip}.")
-        mustdone_task_keeper.add(
-            create_task(
-                self.factory.plugin_manager.trigger_event(
-                    "new_connection_established", (self,), {}
-                )
-            )
+        self.factory.plugin_manager.trigger_event_auditers_nonblock(
+            "new_connection_established", (self,), {}
         )
 
     def send_error(self, errno: int, env: bytes = b"", fatal: bool = False) -> None:
@@ -472,13 +468,14 @@ class ClientProtocol(LineProtocol):
                 from_client=client,
             )
         self.send_motd()
-        await logger.ainfo(
-            "New client %s (%s) from %s.",
+        callsign_str, ip = (
             callsign.decode(errors="backslashreplace"),
-            cid_str,
             self.transport.get_extra_info("peername")[0],
         )
-        await self.factory.plugin_manager.trigger_event(
+        await logger.ainfo(
+            f"New client {callsign_str} ({cid_str}) from {ip}.",
+        )
+        self.factory.plugin_manager.trigger_event_auditers_nonblock(
             "new_client_created", (self,), {}
         )
         return True, True
@@ -927,18 +924,17 @@ class ClientProtocol(LineProtocol):
         self.reset_timeout_killer()
 
         async def handle() -> None:
-            result: "PyFSDHandledLineResult | PluginHandledEventResult"  # noqa: UP037
+            result: "PyFSDHandledEventResult | PluginHandledEventResult"  # noqa: UP037
             # First try to let plugins to process
-            plugin_result = await self.factory.plugin_manager.trigger_event(
+            plugin_result = await self.factory.plugin_manager.trigger_event_handlers(
                 "line_received_from_client",
                 (self, line),
                 {},
-                prevent_able=True,
             )
             if plugin_result is None:  # Not handled by plugin
                 packet_ok, has_result = await self.handle_line(line)
                 result = cast(
-                    "PyFSDHandledLineResult",
+                    "PyFSDHandledEventResult",
                     {
                         "handled_by_plugin": False,
                         "success": packet_ok and has_result,
@@ -950,8 +946,8 @@ class ClientProtocol(LineProtocol):
             else:
                 result = plugin_result
 
-            await self.factory.plugin_manager.trigger_event(
-                "audit_line_from_client",
+            self.factory.plugin_manager.trigger_event_auditers_nonblock(
+                "line_received_from_client",
                 (self, line, result),
                 {},
             )
@@ -1099,12 +1095,8 @@ class ClientProtocol(LineProtocol):
         logger.info(f"{self.get_description()} disconnected because {reason}.")
         self.client = None
 
-        mustdone_task_keeper.add(
-            create_task(
-                self.factory.plugin_manager.trigger_event(
-                    "client_disconnected",
-                    (self, client),
-                    {},
-                )
-            )
+        self.factory.plugin_manager.trigger_event_auditers_nonblock(
+            "client_disconnected",
+            (self, client),
+            {},
         )

@@ -7,14 +7,11 @@ from asyncio import CancelledError, create_task
 from asyncio import sleep as asleep
 from typing import (
     TYPE_CHECKING,
-    Dict,
-    Iterable,
-    List,
     Literal,
     NoReturn,
     Optional,
-    Tuple,
     TypedDict,
+    TypeVar,
     Union,
 )
 from warnings import filterwarnings
@@ -22,22 +19,26 @@ from warnings import filterwarnings
 from structlog import get_logger
 from typing_extensions import NotRequired
 
-from ..define.check_dict import VerifyKeyError, VerifyTypeError
+from pyfsd.define.check_dict import VerifyKeyError, VerifyTypeError
+
 from .fetch import (
-    MetarFetcher,
+    CronFetcher,
     MetarInfoDict,
-    NOAAMetarFetcher,
+    OnceFetcher,
+    noaa_fetch_all,
+    noaa_fetch_once,
 )
 
 if TYPE_CHECKING:
     from asyncio import Task
 
-    from metar.Metar import Metar
-
-    from ..plugin.manager import PluginManager
+    from .profile import WeatherProfile
 
 logger = get_logger(__name__)
-__all__ = ["suppress_metar_parser_warning", "MetarManager"]
+__all__ = ["MetarManager", "suppress_metar_parser_warning"]
+
+CF = TypeVar("CF", bound=CronFetcher)
+OF = TypeVar("OF", bound=OnceFetcher)
 
 
 class PyFSDMetarConfig(TypedDict):
@@ -63,61 +64,80 @@ def suppress_metar_parser_warning() -> None:
     filterwarnings("ignore", category=RuntimeWarning, module="metar.Metar")
 
 
+class MetarFetchers(TypedDict):
+    """A dict that stores METAR fetchers."""
+
+    cron: dict[str, CronFetcher]
+    once: dict[str, OnceFetcher]
+
+
 class MetarManager:
     """The PyFSD metar manager.
 
     Attributes:
-        fetchers: All fetchers.
+        fetchers: All registered fetchers.
+        used_fetchers: Fetchers that we're going to use.
         metar_cache: Metars fetched in cron mode.
         config: pyfsd.metar section of config.
         cron_time: Interval time between every two cron fetch. None if not in cron mode.
-        plugin_manager: Plugin manager, used later in load_fetchers.
         cron_task: Task to perform cron metar cache.
     """
 
-    plugin_manager: "PluginManager"
-    fetchers: Tuple[MetarFetcher, ...]
+    fetchers: MetarFetchers
+    used_fetchers: MetarFetchers
     metar_cache: MetarInfoDict
     config: Union[dict, PyFSDMetarConfig]
     cron_time: Optional[float]
-    cron_task: "Task[NoReturn] | None"
+    cron_task: Optional["Task[NoReturn]"]
 
-    def __init__(
-        self, config: Union[dict, PyFSDMetarConfig], plugin_manager: "PluginManager"
-    ) -> None:
+    def __init__(self, config: Union[dict, PyFSDMetarConfig]) -> None:
         """Create a MetarManager instance.
 
         Args:
             config: pyfsd.metar section of config.
-            plugin_manager: The plugin manager.
         """
+        self.fetchers = {
+            "cron": {"noaa": noaa_fetch_all},
+            "once": {"noaa": noaa_fetch_once},
+        }
+        self.used_fetchers = {"cron": {}, "once": {}}
         self.cron_time = config.get("cron_time") if config["mode"] == "cron" else None
         self.cron_task = None
         self.config = config
         self.metar_cache = {}
-        self.plugin_manager = plugin_manager
 
-    def load_fetchers(self) -> int:
-        """Try to load all specified metar fetchers according config.
+    def register_cron_fetcher(self, name: str, fetcher: CF) -> CF:
+        """Register a cron mode fetcher."""
+        if name in self.fetchers["cron"]:
+            raise RuntimeError(f"cron fetcher '{name}' already exists")
+        self.fetchers["cron"][name] = fetcher
+        return fetcher
 
-        Returns:
-            How much fetchers were loaded.
-        """
-        count = 1  # NOAAMetarFetcher
-        temp_fetchers: Dict[str, MetarFetcher] = {
-            NOAAMetarFetcher.metar_source: NOAAMetarFetcher()
-        }
-        fetchers: List[MetarFetcher] = []
-        for fetcher in self.plugin_manager.get_plugins(MetarFetcher):  # type: ignore[type-abstract]
-            count += 1
-            temp_fetchers[fetcher.metar_source] = fetcher
+    def register_once_fetcher(self, name: str, fetcher: OF) -> OF:
+        """Register a once mode fetcher."""
+        if name in self.fetchers["once"]:
+            raise RuntimeError(f"once fetcher '{name}' already exists")
+        self.fetchers["once"][name] = fetcher
+        return fetcher
+
+    def check_fetchers(self) -> None:
+        """Check if all specified metar fetchers in config is already here."""
+        used: MetarFetchers = {"cron": {}, "once": {}}
+        is_once_mode = self.cron_time is None
+        has_once_fallback = not is_once_mode and self.config.get("fallback_once", False)
         for need_fetcher in self.config["fetchers"]:
-            if need_fetcher not in temp_fetchers:
-                logger.error(f"No such METAR fetcher: {need_fetcher}")
-            else:
-                fetchers.append(temp_fetchers[need_fetcher])
-        self.fetchers = tuple(fetchers)
-        return count
+            found = 0
+            # once only or cron with once fallback
+            if (is_once_mode or has_once_fallback) and need_fetcher in self.fetchers["once"]:
+                found += 1
+                used["once"][need_fetcher] = self.fetchers["once"][need_fetcher]
+            # cron
+            if not is_once_mode and need_fetcher in self.fetchers["cron"]:
+                found += 1
+                used["cron"][need_fetcher] = self.fetchers["cron"][need_fetcher]
+            if not found:
+                logger.error("No such METAR fetcher: %s", need_fetcher)
+        self.used_fetchers = used
 
     async def cache_metar(self) -> None:
         """Perform a cron fetch.
@@ -127,18 +147,17 @@ class MetarManager:
         """
         await logger.ainfo("Fetching METAR")
 
-        for fetcher in self.fetchers:
+        for name, fetcher in self.used_fetchers["cron"].items():
             try:
-                metars = await fetcher.fetch_all(self.config)
-            except NotImplementedError:
-                continue
+                metars = await fetcher(self.config)
+            # ruff: noqa: PERF203
             except (VerifyKeyError, VerifyTypeError) as err:
                 await logger.aerror(
-                    f"Metar fetcher {fetcher.metar_source} doesn't"
-                    f" work because {err!s}"
+                    f"Metar fetcher {name} doesn't work because {err!s}"
                 )
             except CancelledError:
-                raise CancelledError from None
+                raise
+            # ruff: noqa: BLE001
             except BaseException:
                 await logger.aexception("Exception raised when caching metar")
             else:
@@ -162,7 +181,7 @@ class MetarManager:
 
         async def runner() -> NoReturn:
             if self.cron_time is None:
-                raise RuntimeError("***BUG cron_time become None")
+                raise RuntimeError("***BUG: cron_time is None")
             while True:
                 await self.cache_metar()
                 await asleep(self.cron_time)
@@ -173,9 +192,9 @@ class MetarManager:
     async def fetch_once(
         self,
         icao: str,
-        ignored_sources: Iterable[str] = (),
+        *,
         ignore_case: bool = True,
-    ) -> "Metar | None":
+    ) -> "WeatherProfile | None":
         """Try to fetch metar from fetchers by MetarFetcher.fetch.
 
         Args:
@@ -186,31 +205,27 @@ class MetarManager:
         Returns:
             The parsed Metar or None if nothing fetched.
         """
-        ignored_sources_tuple = tuple(ignored_sources)
         if ignore_case:
             icao = icao.upper()
 
-        for fetcher in self.fetchers:
-            if fetcher.metar_source in ignored_sources_tuple:
-                continue
+        for name, fetcher in self.used_fetchers["once"].items():
             try:
-                metar = await fetcher.fetch(self.config, icao)
+                metar = await fetcher(self.config, icao)
                 if metar is not None:
                     return metar
-            except NotImplementedError:
-                continue
             except CancelledError:
-                raise CancelledError from None
+                raise
             except (VerifyKeyError, VerifyTypeError) as err:
                 await logger.aerror(
-                    f"Metar fetcher {fetcher.metar_source} doesn't"
-                    f" work because {err!s}"
+                    f"Metar fetcher {name} doesn't work because {err!s}"
                 )
             except BaseException:
                 await logger.aexception("Exception raised when fetching metar")
         return None
 
-    async def fetch(self, icao: str, ignore_case: bool = True) -> Optional["Metar"]:
+    async def fetch(
+        self, icao: str, *, ignore_case: bool = True
+    ) -> "WeatherProfile | None":
         """Try to fetch metar.
 
         If in cron mode, we'll try to get metar from cron cache.

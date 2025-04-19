@@ -13,10 +13,10 @@ from asyncio import (
     current_task,
     gather,
     get_event_loop,
+    run,
     wait,
 )
-from signal import SIGHUP, SIGINT, SIGTERM
-from typing import Awaitable, List, TypedDict, cast
+from typing import TypedDict, cast
 
 from dependency_injector.wiring import register_loader_containers
 from structlog import get_logger
@@ -29,7 +29,6 @@ from .define.utils import mustdone_task_keeper, task_keeper
 from .dependencies import Container
 from .factory.client import PyFSDClientConfig
 from .metar.manager import PyFSDMetarConfig, suppress_metar_parser_warning
-from .plugin.interfaces import AwaitableMaker
 from .setup_logger import PyFSDLoggerConfig, setup_logger
 
 try:
@@ -102,28 +101,23 @@ async def launch(config: RootPyFSDConfig, wait_all_tasks_done: bool = True) -> N
     register_loader_containers(container)  # Register
     # Then load plugins to wire them
     pm = container.plugin_manager()
-    pm.pick_plugins(config.get("plugin", {}))
-    container.metar_manager().load_fetchers()
+    await pm.pick_plugins(config.get("plugin", {}))
+    container.metar_manager().check_fetchers()
     # Initialize database
     async with container.db_engine().begin() as conn:
         await conn.run_sync(metadata.create_all)
-    # =============== Load AwaitableMaker plugins
-    awaitable_generators = []
-    awaitables: List[Awaitable] = []
-    for plugin in pm.get_plugins(AwaitableMaker):  # type: ignore[type-abstract]
-        generator = plugin()
-        awaitable = next(generator)
-        if awaitable is not None:
-            awaitables.append(awaitable)
-        awaitable_generators.append(generator)
     # =============== Startup
     loop = get_event_loop()
     client_server = await loop.create_server(
         container.client_factory(), port=config["pyfsd"]["client"]["port"]
     )
-    await container.plugin_manager().trigger_event("before_start", (), {})
+    await container.plugin_manager().trigger_event_auditers("before_start", (), {})
     await logger.ainfo(f"PyFSD {version}")
-    await logger.ainfo(f"{pm.plugins_count()} plugins: {pm!s}")
+
+    plugins_count = pm.plugins_count()
+    await logger.ainfo(
+        f"{pm.plugins_count()} plugins{': ' if plugins_count else ''}{pm!s}"
+    )
     tasks_pyfsd = (
         container.metar_manager().get_cron_task(),
         container.client_factory().get_heartbeat_task(),
@@ -133,20 +127,14 @@ async def launch(config: RootPyFSDConfig, wait_all_tasks_done: bool = True) -> N
         async with client_server:
             await gather(
                 *tasks_pyfsd,
-                *awaitables,
             )
     except CancelledError:
         # =========== Stop
         container.client_factory().remove_all_clients()
-        await container.plugin_manager().trigger_event("before_stop", (), {})
+        await container.plugin_manager().trigger_event_auditers("before_stop", (), {})
         await logger.ainfo("Stopping")
         client_server.close()
         await client_server.wait_closed()
-        for generator in awaitable_generators:
-            try:  # noqa: SIM105
-                next(generator)
-            except StopIteration:
-                pass
         for task in tasks_pyfsd:
             task.cancel()
         for task in task_keeper.tasks:
@@ -165,11 +153,11 @@ async def launch(config: RootPyFSDConfig, wait_all_tasks_done: bool = True) -> N
                 if not pending:
                     break
                 await logger.adebug(
-                    "Waited %d second, but some tasks are still running: \n    %s",
-                    total_wait_seconds,
-                    "\n    ".join(str(task) for task in tasks),
+                    f"Waited {total_wait_seconds} second, but these tasks are still running",
+                    stack="\n".join(f"  {task!s}" for task in tasks),
                 )
         await container.db_engine().dispose()
+        raise
 
 
 def main() -> None:
@@ -212,25 +200,9 @@ def main() -> None:
             db_url = "oracle+oracledb_async://" + url
         elif scheme == "mssql":
             db_url = "mssql+aioodbc://" + url
-        # else I have nothing to do :(
+        # else we have nothing to do :)
         config["pyfsd"]["database"]["url"] = db_url
 
     suppress_metar_parser_warning()
     setup_logger(config["pyfsd"]["logger"])
-
-    loop = get_event_loop()
-
-    def handle_main_task_finished(task: Task) -> None:
-        try:
-            task.result()
-        except BaseException:
-            logger.exception("Error happened when launching PyFSD")
-        loop.stop()
-
-    main_task = loop.create_task(launch(cast(RootPyFSDConfig, config)))
-    main_task.add_done_callback(handle_main_task_finished)
-
-    for signal in [SIGINT, SIGTERM, SIGHUP]:
-        loop.add_signal_handler(signal, main_task.cancel)
-    loop.run_forever()  # complete after loop.stop()
-    loop.close()
+    run(launch(cast(RootPyFSDConfig, config)))
