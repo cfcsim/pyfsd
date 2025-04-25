@@ -6,7 +6,8 @@ Example:
 
 from typing import Callable, Optional
 
-from ..object.client import Client
+from pyfsd.object.client import Client
+
 from .utils import calc_distance
 
 BroadcastChecker = Callable[[Optional[Client], Client], bool]
@@ -83,7 +84,7 @@ def broadcast_message_checker(from_client: Optional[Client], to_client: Client) 
     if from_client.type == "PILOT" and to_client.type == "PILOT":
         visual_range = x + y
     else:
-        visual_range = x if x > y else y
+        visual_range = max(y, x)
     distance = calc_distance(from_client.position, to_client.position)
     return distance < visual_range
 
@@ -157,8 +158,4 @@ def is_multicast(callsign: str) -> bool:
     Returns:
         Is multicast or not.
     """
-    return (
-        callsign == "*"
-        or callsign == "*A"
-        or (callsign == "*P" or callsign.startswith("@"))
-    )
+    return callsign in {"*", "*A"} or (callsign == "*P" or callsign.startswith("@"))

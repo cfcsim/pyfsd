@@ -1,17 +1,13 @@
 """Protocol factory -- client."""
 
-# from ..protocol.client import ClientProtocol
 from asyncio import create_task
 from asyncio import sleep as asleep
 from hashlib import sha256
 from random import randint
 from typing import (
     TYPE_CHECKING,
-    Dict,
-    List,
     NoReturn,
     Optional,
-    Tuple,
     TypedDict,
     cast,
 )
@@ -20,23 +16,24 @@ from argon2 import PasswordHasher, exceptions
 from sqlalchemy import select, update
 from structlog import get_logger
 
-from ..db_tables import users_table
-from ..define.packet import FSDClientCommand, join_lines, make_packet
-from ..protocol.client import ClientProtocol
+from pyfsd.db_tables import users_table
+from pyfsd.define.packet import FSDClientCommand, join_lines, make_packet
+from pyfsd.protocol.client import ClientProtocol
 
 if TYPE_CHECKING:
     from asyncio import Task
 
     from sqlalchemy.ext.asyncio import AsyncEngine
 
-    from ..define.broadcast import BroadcastChecker
-    from ..metar.manager import MetarManager
-    from ..object.client import Client
-    from ..plugin.manager import PluginManager
+    from pyfsd.define.broadcast import BroadcastChecker
+    from pyfsd.metar.manager import MetarManager
+    from pyfsd.object.client import Client
+    from pyfsd.plugin.manager import PluginManager
 
 __all__ = ["ClientFactory"]
 
 logger = get_logger(__name__)
+SHA256_HEX_LENGTH = 64
 
 
 class PyFSDClientConfig(TypedDict):
@@ -60,19 +57,19 @@ class ClientFactory:
         password_hasher: Argon2 password hasher.
     """
 
-    clients: Dict[bytes, "Client"]
+    clients: dict[bytes, "Client"]
     heartbeat_task: "Task[NoReturn] | None"
     metar_manager: "MetarManager"
     plugin_manager: "PluginManager"
     db_engine: "AsyncEngine"
-    motd: List[bytes]
-    blacklist: List[str]
+    motd: list[bytes]
+    blacklist: list[str]
     password_hasher: "PasswordHasher"
 
     def __init__(
         self,
         motd: bytes,
-        blacklist: List[str],
+        blacklist: list[str],
         metar_manager: "MetarManager",
         plugin_manager: "PluginManager",
         db_engine: "AsyncEngine",
@@ -162,9 +159,10 @@ class ClientFactory:
         data = join_lines(*lines, newline=auto_newline)
         try:
             self.clients[callsign].transport.write(data)
-            return True
         except KeyError:
             return False
+        else:
+            return True
 
     async def check_auth(self, username: str, password: str) -> Optional[int]:
         """Check if password and username is correct."""
@@ -191,10 +189,10 @@ class ClientFactory:
             return None
         if len(infos) != 1:  # User duplicated
             raise RuntimeError(f"Duplicated callsign in users database: {username}")
-        hashed, rating = cast(Tuple[str, int], infos[0])
+        hashed, rating = cast("tuple[str, int]", infos[0])
 
         # =============== Check if hash is sha256
-        if len(hashed) == 64:  # hash is sha256
+        if len(hashed) == SHA256_HEX_LENGTH:
             if sha256(password.encode()).hexdigest() == hashed:  # correct
                 # Now we have the plain password, save it as argon2
                 new_hashed = self.password_hasher.hash(password)
@@ -208,9 +206,6 @@ class ClientFactory:
             return None
         except exceptions.InvalidHashError:
             await logger.aerror(f"Invalid hash found in users table: {hashed}")
-            return None
-        except BaseException:  # What happened?
-            await logger.aexception("Uncaught exception when vaildating password")
             return None
         # Check if need rehash
         if self.password_hasher.check_needs_rehash(hashed):

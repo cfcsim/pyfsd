@@ -1,41 +1,44 @@
 """FSD client protocol errors."""
 
-__all__ = ["FSDErrors"]
+__all__ = ["FSDClientError"]
 
 
-from typing import Final
+from enum import IntEnum
 
 
-class FSDErrors:
+class FSDClientError(IntEnum):
     """Errno constants."""
 
-    ERR_OK = 0
-    ERR_CSINUSE = 1
-    ERR_CSINVALID = 2
-    ERR_REGISTERED = 3
-    ERR_SYNTAX = 4
-    ERR_SRCINVALID = 5
-    ERR_CIDINVALID = 6
-    ERR_NOSUCHCS = 7
-    ERR_NOFP = 8
-    ERR_NOWEATHER = 9
-    ERR_REVISION = 10
-    ERR_LEVEL = 11
-    ERR_SERVFULL = 12
-    ERR_CSSUSPEND = 13
-    error_names: Final = [
-        "No error",
-        "Callsign in use",
-        "Invalid callsign",
-        "Already registerd",
-        "Syntax error",
-        "Invalid source callsign",
-        "Invalid CID/password",
-        "No such callsign",
-        "No flightplan",
-        "No such weather profile",
-        "Invalid protocol revision",
-        "Requested level too high",
-        "Too many clients connected",
-        "CID/PID was suspended",
-    ]
+    OK = 0
+    CSINUSE = 1
+    CSINVALID = 2
+    REGISTERED = 3
+    SYNTAX = 4
+    SRCINVALID = 5
+    CIDINVALID = 6
+    NOSUCHCS = 7
+    NOFP = 8
+    NOWEATHER = 9
+    REVISION = 10
+    LEVEL = 11
+    SERVFULL = 12
+    CSSUSPEND = 13
+
+    def __str__(self) -> str:
+        """Return the error string."""
+        return (
+            "No error",
+            "Callsign in use",
+            "Invalid callsign",
+            "Already registerd",
+            "Syntax error",
+            "Invalid source callsign",
+            "Invalid CID/password",
+            "No such callsign",
+            "No flightplan",
+            "No such weather profile",
+            "Invalid protocol revision",
+            "Requested level too high",
+            "Too many clients connected",
+            "CID/PID was suspended",
+        )[int(self)]

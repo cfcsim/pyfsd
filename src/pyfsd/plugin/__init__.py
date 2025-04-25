@@ -7,16 +7,12 @@ Attributes:
     EventResult: event handle result for handleable events.
 """
 
+from collections.abc import Awaitable
 from dataclasses import dataclass, field
 from typing import (
-    Awaitable,
     Callable,
-    Dict,
-    List,
     Literal,
     Optional,
-    Tuple,
-    Type,
     TypedDict,
     TypeVar,
     Union,
@@ -30,7 +26,7 @@ __all__ = [
     "PluginHandledEventResult",
     "PreventEvent",
     "PyFSDHandledEventResult",
-    "SimpleEventListenerPlugin",
+    "SimplePlugin",
     "StubPlugin",
 ]
 
@@ -60,8 +56,8 @@ class PreventEvent(BaseException):
 class EventListenersDict(TypedDict):
     """Dict that stores event listeners (handlers & auditers)."""
 
-    handlers: Dict[str, List[Callable[..., Awaitable]]]
-    auditers: Dict[str, List[Callable[..., Awaitable]]]
+    handlers: dict[str, list[Callable[..., Awaitable]]]
+    auditers: dict[str, list[Callable[..., Awaitable]]]
 
 
 class Plugin:
@@ -77,9 +73,9 @@ class Plugin:
     """
 
     name: str
-    api: Tuple[int, int]
-    version: Tuple[int, str]
-    expected_config: Union[Type[TypedDict], dict, None]  # type: ignore[valid-type]
+    api: tuple[int, int]
+    version: tuple[int, str]
+    expected_config: Union[type[TypedDict], dict, None]  # type: ignore[valid-type]
 
     def __hash__(self) -> int:
         """Return hash of this plugin."""
@@ -118,9 +114,9 @@ class StubPlugin(Plugin):
     # TODO: Currently we have to copy these attributes until python 3.10
     # see github issue microsoft/vscode-python#20378
     name: str
-    api: Tuple[int, int]
-    version: Tuple[int, str]
-    expected_config: Union[Type[TypedDict], dict, None]  # type: ignore[valid-type]
+    api: tuple[int, int]
+    version: tuple[int, str]
+    expected_config: Union[type[TypedDict], dict, None]  # type: ignore[valid-type]
 
 
 @dataclass(frozen=True, eq=False, repr=False)
@@ -133,9 +129,9 @@ class SimplePlugin(Plugin):
 
     # TODO: see `pyfsd.plugin.StubPlugin`
     name: str
-    api: Tuple[int, int]
-    version: Tuple[int, str]
-    expected_config: Union[Type[TypedDict], dict, None]  # type: ignore[valid-type]
+    api: tuple[int, int]
+    version: tuple[int, str]
+    expected_config: Union[type[TypedDict], dict, None]  # type: ignore[valid-type]
     listeners: EventListenersDict = field(  # type: ignore[assignment]
         default_factory=lambda: {"auditers": {}, "handlers": {}}
     )

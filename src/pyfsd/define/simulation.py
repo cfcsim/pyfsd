@@ -21,7 +21,7 @@ class Int32MRand(MRand):
         return self._really_randseed
 
     @mrandseed.setter
-    def mrandseed(self, value: int) -> None:  # pyright: ignore
+    def mrandseed(self, value: int) -> None:  # pyright: ignore[reportIncompatibleVariableOverride]
         """Set mrandseed. Simulates int32 overflow."""
         # https://stackoverflow.com/a/7771363
         if not INT_MIN <= value <= INT_MAX:

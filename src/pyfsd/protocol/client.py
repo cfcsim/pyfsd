@@ -3,16 +3,12 @@
 
 from asyncio import Lock, create_task
 from asyncio import sleep as asleep
+from collections.abc import Awaitable
 from inspect import isawaitable
-from time import time
 from typing import (
     TYPE_CHECKING,
-    Awaitable,
     Callable,
-    List,
     Optional,
-    Set,
-    Tuple,
     TypeVar,
     Union,
     cast,
@@ -21,8 +17,8 @@ from typing import (
 from structlog import get_logger
 from typing_extensions import Concatenate, ParamSpec
 
-from .._version import version as pyfsd_version
-from ..define.broadcast import (
+from pyfsd._version import version as pyfsd_version
+from pyfsd.define.broadcast import (
     BroadcastChecker,
     all_ATC_checker,
     all_pilot_checker,
@@ -31,32 +27,28 @@ from ..define.broadcast import (
     broadcast_position_checker,
     is_multicast,
 )
-from ..define.errors import FSDErrors
-from ..define.packet import (
+from pyfsd.define.errors import FSDClientError
+from pyfsd.define.packet import (
     CLIENT_USED_COMMAND,
     FSDClientCommand,
     break_packet,
     make_packet,
 )
-from ..define.utils import (
-    is_callsign_valid,
-    str_to_float,
-    str_to_int,
-)
-from ..metar.profile import WeatherProfile
-from ..object.client import Client, ClientType
+from pyfsd.define.utils import is_callsign_valid, str_to_float, str_to_int
+from pyfsd.object.client import Client, ClientType
+
 from . import LineProtocol
 
 if TYPE_CHECKING:
     from asyncio import Task, Transport
 
-    from ..factory.client import ClientFactory
-    from ..plugin import PluginHandledEventResult, PyFSDHandledEventResult
+    from pyfsd.factory.client import ClientFactory
+    from pyfsd.plugin import PluginHandledEventResult, PyFSDHandledEventResult
 
 logger = get_logger(__name__)
 P = ParamSpec("P")
 T = TypeVar("T")
-HandleResult = Tuple[bool, bool]  # (packet_ok, has_result)
+HandleResult = tuple[bool, bool]  # (packet_ok, has_result)
 
 __all__ = ["ClientProtocol", "check_packet"]
 
@@ -69,17 +61,18 @@ _T_ClientProtocol = TypeVar("_T_ClientProtocol", bound="ClientProtocol")
 def check_packet(
     require_parts: int,
     callsign_position: int = 0,
+    *,
     check_callsign: bool = True,
     need_login: bool = True,
 ) -> Callable[
     [
         Callable[
-            Concatenate[_T_ClientProtocol, Tuple[bytes, ...], P],
+            Concatenate[_T_ClientProtocol, tuple[bytes, ...], P],
             Union[Awaitable[HandleResult], HandleResult],
         ]
     ],
     Callable[
-        Concatenate[_T_ClientProtocol, Tuple[bytes, ...], P], Awaitable[HandleResult]
+        Concatenate[_T_ClientProtocol, tuple[bytes, ...], P], Awaitable[HandleResult]
     ],
 ]:
     """Create a decorator to auto check packet format and ensure awaitable.
@@ -103,32 +96,33 @@ def check_packet(
 
     def decorator(
         func: Callable[
-            Concatenate[_T_ClientProtocol, Tuple[bytes, ...], P],
+            Concatenate[_T_ClientProtocol, tuple[bytes, ...], P],
             Union[Awaitable[HandleResult], HandleResult],
         ],
     ) -> Callable[
-        Concatenate[_T_ClientProtocol, Tuple[bytes, ...], P],
+        Concatenate[_T_ClientProtocol, tuple[bytes, ...], P],
         Awaitable[HandleResult],
     ]:
         async def realfunc(
             self: _T_ClientProtocol,
-            packet: Tuple[bytes, ...],
+            packet: tuple[bytes, ...],
+            /,
             *args: P.args,
             **kwargs: P.kwargs,
         ) -> HandleResult:
             if len(packet) < require_parts:
-                self.send_error(FSDErrors.ERR_SYNTAX)
+                self.send_error(FSDClientError.SYNTAX)
                 return (False, False)
             if need_login:
                 if self.client is None:
                     return (False, False)
                 if check_callsign and self.client.callsign != packet[callsign_position]:
-                    self.send_error(FSDErrors.ERR_SRCINVALID, env=packet[0])
+                    self.send_error(FSDClientError.SRCINVALID, env=packet[0])
                     return (False, False)
             result = func(self, packet, *args, **kwargs)
             if isawaitable(result):
-                return await cast(Awaitable[HandleResult], result)
-            return cast(HandleResult, result)
+                return await cast("Awaitable[HandleResult]", result)
+            return cast("HandleResult", result)
 
         return realfunc
 
@@ -147,9 +141,9 @@ class ClientProtocol(LineProtocol):
     """
 
     factory: "ClientFactory"
-    timeout_killer_task: "Task[None] | None"
+    timeout_killer_task: Optional["Task[None]"]
     transport: "Transport"
-    tasks: Set["Task"]
+    tasks: set["Task"]
     client: Optional[Client]
     lock = Lock()
 
@@ -193,17 +187,19 @@ class ClientProtocol(LineProtocol):
         super().connection_made(transport)
         ip = self.transport.get_extra_info("peername")[0]
         if ip in self.factory.blacklist:
-            logger.info(f"Kicking {ip}: blacklist")
+            logger.info("Kicking %s: blacklist", ip)
             self.transport.close()
             return
 
         self.reset_timeout_killer()
-        logger.info(f"New connection from {ip}.")
+        logger.info("New connection from %s.", ip)
         self.factory.plugin_manager.trigger_event_auditers_nonblock(
             "new_connection_established", (self,), {}
         )
 
-    def send_error(self, errno: int, env: bytes = b"", fatal: bool = False) -> None:
+    def send_error(
+        self, errno: FSDClientError, *, env: bytes = b"", fatal: bool = False
+    ) -> None:
         """Send an error to client.
 
         $ERserver:(callsign):(errno):(env):error_text
@@ -213,38 +209,35 @@ class ClientProtocol(LineProtocol):
             env: The error env.
             fatal: Disconnect after the error is sent or not.
         """
-        if errno < 0 or errno > 13:
-            raise ValueError("Invalid errno")
-        err_string = FSDErrors.error_names[errno]
+        error_string = str(errno)
         self.send_lines(
             make_packet(
                 FSDClientCommand.ERROR + b"server",
                 self.client.callsign if self.client is not None else b"unknown",
-                f"{errno:03d}".encode(),  # = str(errno).rjust(3, "0")
+                f"{int(errno):03d}".encode(),
                 env,
-                err_string.encode("ascii"),
+                error_string.encode("ascii"),
             ),
         )
         if fatal:
-            logger.info(f"Kicking {self.get_description()}: {err_string}")
+            logger.info("Kicking %s: %s", self.get_description(), error_string)
             self.kill_after_1sec()
 
     def send_motd(self) -> None:
         """Send motd to client."""
         if not self.client:
             raise RuntimeError("No client registered.")
-        motd_lines: List[bytes] = [
+        self.send_lines(
             b"#TMserver:%s:PyFSD %s" % (self.client.callsign, version),
-        ]
-        for line in self.factory.motd:
-            motd_lines.append(
+            *(
                 make_packet(
                     FSDClientCommand.MESSAGE + b"server",
                     self.client.callsign,
                     line,
-                ),
-            )
-        self.send_lines(*motd_lines)
+                )
+                for line in self.factory.motd
+            ),
+        )
 
     def multicast(
         self,
@@ -295,8 +288,9 @@ class ClientProtocol(LineProtocol):
 
     def handle_cast(
         self,
-        packet: Tuple[bytes, ...],
+        packet: tuple[bytes, ...],
         command: FSDClientCommand,
+        *,
         require_parts: int = 2,
         multicast_able: bool = True,
         custom_at_checker: Optional[BroadcastChecker] = None,
@@ -319,12 +313,12 @@ class ClientProtocol(LineProtocol):
         # Check common things first
         packet_len: int = len(packet)
         if packet_len < require_parts:
-            self.send_error(FSDErrors.ERR_SYNTAX)
+            self.send_error(FSDClientError.SYNTAX)
             return False, False
         if self.client is None:
             return False, False
         if self.client.callsign != packet[0]:
-            self.send_error(FSDErrors.ERR_SRCINVALID, env=packet[0])
+            self.send_error(FSDClientError.SRCINVALID, env=packet[0])
             return False, False
 
         to_callsign = packet[1]
@@ -334,6 +328,7 @@ class ClientProtocol(LineProtocol):
         to_packet = make_packet(
             command + self.client.callsign,
             to_callsign,
+            # ruff: noqa: PLR2004
             *packet[2:] if packet_len > 2 else [b""],
         )
 
@@ -352,9 +347,10 @@ class ClientProtocol(LineProtocol):
         )
 
     @check_packet(7, need_login=False)
+    # ruff: noqa: PLR0911, PLR0912, C901
     async def handle_add_client(
         self,
-        packet: Tuple[bytes, ...],
+        packet: tuple[bytes, ...],
         client_type: ClientType,
     ) -> HandleResult:
         """Handle add client request.
@@ -364,11 +360,11 @@ class ClientProtocol(LineProtocol):
             client_type: Type of client, ATC or PILOT
         """
         if self.client is not None:
-            self.send_error(FSDErrors.ERR_REGISTERED)
+            self.send_error(FSDClientError.REGISTERED)
             return False, False
         if client_type == "PILOT":
             if len(packet) < 8:
-                self.send_error(FSDErrors.ERR_SYNTAX)
+                self.send_error(FSDClientError.SYNTAX)
                 return False, False
             (
                 callsign,
@@ -398,32 +394,32 @@ class ClientProtocol(LineProtocol):
             req_rating_int = str_to_int(req_rating, default_value=0)
         protocol_int = str_to_int(protocol, default_value=-1)
         if not is_callsign_valid(callsign):
-            self.send_error(FSDErrors.ERR_CSINVALID, fatal=True)
+            self.send_error(FSDClientError.CSINVALID, fatal=True)
             return False, False
         if protocol_int != 9:
-            self.send_error(FSDErrors.ERR_REVISION, fatal=True)
+            self.send_error(FSDClientError.REVISION, fatal=True)
             return False, False
         try:
             cid_str = cid.decode("utf-8")
             pwd_str = password.decode("utf-8")
         except UnicodeDecodeError:
-            self.send_error(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
+            self.send_error(FSDClientError.CIDINVALID, env=cid, fatal=True)
             return False, False
 
         if callsign in self.factory.clients:
-            self.send_error(FSDErrors.ERR_CSINUSE, fatal=True)
+            self.send_error(FSDClientError.CSINUSE, fatal=True)
             return True, False
 
         rating = await self.factory.check_auth(cid_str, pwd_str)
         if rating is None:
-            self.send_error(FSDErrors.ERR_CIDINVALID, env=cid, fatal=True)
+            self.send_error(FSDClientError.CIDINVALID, env=cid, fatal=True)
             return True, False
         if rating == 0:
-            self.send_error(FSDErrors.ERR_CSSUSPEND, fatal=True)
+            self.send_error(FSDClientError.CSSUSPEND, fatal=True)
             return True, False
         if rating < req_rating_int:
             self.send_error(
-                FSDErrors.ERR_LEVEL,
+                FSDClientError.LEVEL,
                 env=req_rating,
                 fatal=True,
             )
@@ -480,15 +476,15 @@ class ClientProtocol(LineProtocol):
         return True, True
 
     @check_packet(1)
-    def handle_remove_client(self, _: Tuple[bytes, ...]) -> HandleResult:
+    def handle_remove_client(self, _: tuple[bytes, ...]) -> HandleResult:
         """Handle remove client request."""
         assert self.client is not None
-        logger.info(f"Kicking {self.get_description()}: client asked to remove")
+        logger.info("Kicking %s: client asked to remove", self.get_description())
         self.kill_after_1sec()
         return True, True
 
     @check_packet(17)
-    def handle_plan(self, packet: Tuple[bytes, ...]) -> HandleResult:
+    def handle_plan(self, packet: tuple[bytes, ...]) -> HandleResult:
         """Handle plan update request."""
         assert self.client is not None
         (
@@ -568,7 +564,7 @@ class ClientProtocol(LineProtocol):
     @check_packet(10, callsign_position=1)
     def handle_pilot_position_update(
         self,
-        packet: Tuple[bytes, ...],
+        packet: tuple[bytes, ...],
     ) -> HandleResult:
         """Handle pilot position update request."""
         assert self.client is not None
@@ -598,9 +594,10 @@ class ClientProtocol(LineProtocol):
             or lon_float < -180.0
         ):
             logger.debug(
-                "Invalid position: "
-                + self.client.callsign.decode(errors="replace")
-                + f" with {lat_float}, {lon_float}",
+                "Got invalid position (%f, %f) from %s",
+                lat_float,
+                lon_float,
+                self.get_description(),
             )
         self.client.update_pilot_position(
             mode,
@@ -633,7 +630,7 @@ class ClientProtocol(LineProtocol):
     @check_packet(8)
     def handle_ATC_position_update(  # noqa: N802
         self,
-        packet: Tuple[bytes, ...],
+        packet: tuple[bytes, ...],
     ) -> HandleResult:
         """Handle ATC position update request."""
         assert self.client is not None
@@ -659,9 +656,10 @@ class ClientProtocol(LineProtocol):
             or lon_float < -180.0
         ):
             logger.debug(
-                "Invalid position: "
-                + self.client.callsign.decode(errors="replace")
-                + f" with {lat_float}, {lon_float}",
+                "Got invalid position (%f, %f) from %s",
+                lat_float,
+                lon_float,
+                self.get_description(),
             )
         self.client.update_ATC_position(
             frequency_int,
@@ -688,7 +686,7 @@ class ClientProtocol(LineProtocol):
         return True, True
 
     @check_packet(2)
-    def handle_server_ping(self, packet: Tuple[bytes, ...]) -> HandleResult:
+    def handle_server_ping(self, packet: tuple[bytes, ...]) -> HandleResult:
         """Handle server ping request."""
         assert self.client is not None
         self.send_line(
@@ -703,7 +701,7 @@ class ClientProtocol(LineProtocol):
     @check_packet(3)
     async def handle_weather(
         self,
-        packet: Tuple[bytes, ...],
+        packet: tuple[bytes, ...],
     ) -> HandleResult:
         """Handle weather request."""
         assert self.client is not None
@@ -711,73 +709,58 @@ class ClientProtocol(LineProtocol):
             packet[2].decode("ascii", "ignore")
         )
         if not metar:
-            self.send_error(FSDErrors.ERR_NOWEATHER, packet[2])
+            self.send_error(FSDClientError.NOWEATHER, env=packet[2])
             return True, False
-        packets = []
-        profile = WeatherProfile(int(time()), None, metar)
+        profile = metar.clone()
         profile.fix(self.client.position)
 
-        temps: List[bytes] = []
-        for temp in profile.temps:
-            temps.append(b"%d:%d" % (temp.ceiling, temp.temp))
-        packets.append(
+        self.send_lines(
             make_packet(
                 FSDClientCommand.TEMP_DATA + b"server",
                 self.client.callsign,
-                *temps,
+                *(b"%d:%d" % (temp.ceiling, temp.temp) for temp in profile.temps),
                 b"%d" % profile.barometer,
             ),
-        )
-
-        winds: List[bytes] = []
-        for wind in profile.winds:
-            winds.append(
-                b"%d:%d:%d:%d:%d:%d"
-                % (
-                    wind.ceiling,
-                    wind.floor,
-                    wind.direction,
-                    wind.speed,
-                    wind.gusting,
-                    wind.turbulence,
-                ),
-            )
-        packets.append(
             make_packet(
                 FSDClientCommand.WIND_DATA + b"server",
                 self.client.callsign,
-                *winds,
-            ),
-        )
-
-        clouds: List[bytes] = []
-        for cloud in (*profile.clouds, profile.tstorm):
-            clouds.append(
-                b"%d:%d:%d:%d:%d"
-                % (
-                    cloud.ceiling,
-                    cloud.floor,
-                    cloud.coverage,
-                    cloud.icing,
-                    cloud.turbulence,
+                *(
+                    b"%d:%d:%d:%d:%d:%d"
+                    % (
+                        wind.ceiling,
+                        wind.floor,
+                        wind.direction,
+                        wind.speed,
+                        wind.gusting,
+                        wind.turbulence,
+                    )
+                    for wind in profile.winds
                 ),
-            )
-        packets.append(
+            ),
             make_packet(
                 FSDClientCommand.CLOUD_DATA + b"server",
                 self.client.callsign,
-                *clouds,
+                *(
+                    b"%d:%d:%d:%d:%d"
+                    % (
+                        cloud.ceiling,
+                        cloud.floor,
+                        cloud.coverage,
+                        cloud.icing,
+                        cloud.turbulence,
+                    )
+                    for cloud in (*profile.clouds, profile.tstorm)
+                ),
                 b"%.2f" % profile.visibility,
             ),
         )
 
-        self.send_lines(*packets)
         return True, True
 
     @check_packet(3)
     async def handle_acars(
         self,
-        packet: Tuple[bytes, ...],
+        packet: tuple[bytes, ...],
     ) -> HandleResult:
         """Handle acars request."""
         assert self.client is not None
@@ -788,7 +771,7 @@ class ClientProtocol(LineProtocol):
             )
 
             if metar is None:
-                self.send_error(FSDErrors.ERR_NOWEATHER, packet[3])
+                self.send_error(FSDClientError.NOWEATHER, env=packet[3])
                 return True, False
 
             self.send_line(
@@ -796,14 +779,14 @@ class ClientProtocol(LineProtocol):
                     FSDClientCommand.REPLY_ACARS + b"server",
                     self.client.callsign,
                     b"METAR",
-                    metar.code.encode("ascii"),
+                    metar.metar.encode("ascii"),
                 ),
             )
             return True, True
         return True, True  # yep
 
     @check_packet(3)
-    def handle_CQ(self, packet: Tuple[bytes, ...]) -> HandleResult:  # noqa: N802
+    def handle_CQ(self, packet: tuple[bytes, ...]) -> HandleResult:  # noqa: N802
         """Handle $CQ request."""
         # Behavior may differ from FSD.
         assert self.client is not None
@@ -818,14 +801,14 @@ class ClientProtocol(LineProtocol):
         if packet[2].lower() == b"fp":
             # Get flight plan.
             if len(packet) < 4:
-                self.send_error(FSDErrors.ERR_SYNTAX)
+                self.send_error(FSDClientError.SYNTAX)
                 return True, False
             callsign = packet[3]
             if (client := self.factory.clients.get(callsign)) is None:
-                self.send_error(FSDErrors.ERR_NOSUCHCS, env=callsign)
+                self.send_error(FSDClientError.NOSUCHCS, env=callsign)
                 return True, False
             if (plan := client.flight_plan) is None:
-                self.send_error(FSDErrors.ERR_NOFP)
+                self.send_error(FSDClientError.NOFP)
                 return True, False
             if self.client.type != "ATC":
                 return False, False
@@ -851,7 +834,7 @@ class ClientProtocol(LineProtocol):
                 ),
             )
         elif packet[2].upper() == b"RN":
-            # XXX: Implemention maybe incorrect
+            # TODO: Implemention maybe incorrect
             # Get realname?
             callsign = packet[1]
             if (client := self.factory.clients.get(callsign)) is not None:
@@ -870,12 +853,12 @@ class ClientProtocol(LineProtocol):
         return True, True
 
     @check_packet(3, check_callsign=False)
-    def handle_kill(self, packet: Tuple[bytes, ...]) -> HandleResult:
+    def handle_kill(self, packet: tuple[bytes, ...]) -> HandleResult:
         """Handle kill request."""
         assert self.client is not None
         _, callsign_kill, reason = packet[:3]
         if callsign_kill not in self.factory.clients:
-            self.send_error(FSDErrors.ERR_NOSUCHCS, env=callsign_kill)
+            self.send_error(FSDClientError.NOSUCHCS, env=callsign_kill)
             return True, False
         if self.client.rating < 11:
             self.send_line(
@@ -897,25 +880,33 @@ class ClientProtocol(LineProtocol):
             callsign_kill,
             make_packet(FSDClientCommand.KILL + b"SERVER", callsign_kill, reason),
         )
-        ip_kill = self.factory.clients[callsign_kill].transport.get_extra_info(
-            "peername"
-        )[0]
-        logger.info(
-            f"Kicking {ip_kill}({callsign_kill.decode(errors='replace')}): "
-            f"killed by {self.client.callsign.decode(errors='replace')}"
-        )
-        transport_to_kill = self.factory.clients[callsign_kill].transport
-        if kill_func := getattr(
-            transport_to_kill.get_protocol(), "kill_after_1sec", None
+        client_to_kill = self.factory.clients[callsign_kill]
+        transport_to_kill = client_to_kill.transport
+
+        if isinstance(
+            protocol_to_kill := transport_to_kill.get_protocol(), ClientProtocol
         ):
-            kill_func()
+            description = protocol_to_kill.get_description()
+            kill_it = protocol_to_kill.kill_after_1sec
         else:
+            ip_kill = self.factory.clients[callsign_kill].transport.get_extra_info(
+                "peername"
+            )[0]
+            description = f"{ip_kill}({callsign_kill.decode(errors='replace')})"
 
-            async def killer() -> None:
-                await asleep(1)
-                transport_to_kill.close()
+            def kill_it() -> None:
+                async def killer() -> None:
+                    await asleep(1)
+                    transport_to_kill.close()
 
-            self.add_task(create_task(killer()))
+                self.add_task(create_task(killer()))
+
+        logger.info(
+            "Kicking %s: killed by %s",
+            description,
+            self.client.callsign.decode(errors="replace"),
+        )
+        kill_it()
         return True, True
 
     def line_received(self, line: bytes) -> None:
@@ -967,7 +958,7 @@ class ClientProtocol(LineProtocol):
             return True, True
         command, packet = break_packet(byte_line, CLIENT_USED_COMMAND)
         if command is None:
-            self.send_error(FSDErrors.ERR_SYNTAX)
+            self.send_error(FSDClientError.SYNTAX)
             return False, False
         if command is FSDClientCommand.ADD_ATC or command is FSDClientCommand.ADD_PILOT:
             return await self.handle_add_client(
@@ -1056,20 +1047,20 @@ class ClientProtocol(LineProtocol):
             return await self.handle_CQ(packet)
         if command is FSDClientCommand.KILL:
             return await self.handle_kill(packet)
-        self.send_error(FSDErrors.ERR_SYNTAX)
+        self.send_error(FSDClientError.SYNTAX)
         return False, False
 
     def get_description(self) -> str:
         """Get text description of this client."""
         if self.client is not None:
             return (
-                cast(str, self.transport.get_extra_info("peername")[0])
+                cast("str", self.transport.get_extra_info("peername")[0])
                 + f" ({self.client.callsign.decode(errors='replace')})"
             )
 
-        return cast(str, self.transport.get_extra_info("peername")[0])
+        return cast("str", self.transport.get_extra_info("peername")[0])
 
-    def connection_lost(self, reason: Optional[BaseException] = None) -> None:  # pyright: ignore
+    def connection_lost(self, exc: Optional[BaseException] = None) -> None:
         """Handle connection lost."""
         if self.timeout_killer_task:
             self.timeout_killer_task.cancel()
@@ -1091,7 +1082,11 @@ class ClientProtocol(LineProtocol):
             )
             del self.factory.clients[self.client.callsign]
             client = self.client
-        logger.info(f"{self.get_description()} disconnected because {reason}.")
+        logger.info(
+            "%s disconnected%s.",
+            self.get_description(),
+            f" due to {exc}" if exc else "",
+        )
         self.client = None
 
         self.factory.plugin_manager.trigger_event_auditers_nonblock(

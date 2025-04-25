@@ -6,8 +6,9 @@ from argon2 import PasswordHasher
 from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 
-from ...db_tables import users_table
-from ...define.check_dict import assert_dict
+from pyfsd.db_tables import users_table
+from pyfsd.define.check_dict import assert_dict
+
 from .formats import formats
 
 try:
@@ -45,7 +46,7 @@ def main() -> None:
                 "database": {"url": str},
             }
         },
-        allow_unexpected_key=True,
+        allow_extra_keys=True,
     )
 
     reader = formats[args.format]
@@ -57,15 +58,22 @@ def main() -> None:
     with db_engine.connect() as conn:
         for user in users:
             if args.verbose:
+                # ruff: noqa: T201
                 print("Converting", *user)
-            if not reader.argon2_hashed:
-                user = (user[0], hasher.hash(user[1]), user[2])
             try:
-                conn.execute(users_table.insert().values(user))
+                conn.execute(
+                    users_table.insert().values(
+                        user
+                        if reader.argon2_hashed
+                        else (user[0], hasher.hash(user[1]), user[2])
+                    )
+                )
             except IntegrityError:
+                # ruff: noqa: T201
                 print("Callsign already exist:", user[0])
             else:
                 import_users += 1
         conn.commit()
 
+    # ruff: noqa: T201
     print(f"Done. ({import_users})")

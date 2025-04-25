@@ -3,15 +3,16 @@
 from dataclasses import dataclass, field
 from math import sqrt
 from time import time
-from typing import TYPE_CHECKING, Literal, Optional, Tuple
+from typing import TYPE_CHECKING, Literal, Optional
 
 if TYPE_CHECKING:
     from asyncio import Transport
 
 __all__ = ["Client", "ClientType", "FlightPlan", "Position"]
 
-Position = Tuple[float, float]
+Position = tuple[float, float]
 ClientType = Literal["ATC", "PILOT"]
+INVALID_ALTITUDE = 100000
 
 
 @dataclass
@@ -40,6 +41,7 @@ class FlightPlan:
     route: bytes
 
 
+# ruff: noqa: PLR0913
 @dataclass
 class Client:
     """This dataclass stores a client."""
@@ -70,12 +72,12 @@ class Client:
     @property
     def position_ok(self) -> bool:
         """The position is vaild or not."""
-        return self.position != (0, 0) and self.altitude < 100000
+        return self.position != (0, 0) and self.altitude < INVALID_ALTITUDE
 
     @property
     def frequency_ok(self) -> bool:
         """The frequency is vaild or not."""
-        return self.frequency != 0 and self.frequency < 100000
+        return self.frequency != 0 and self.frequency < INVALID_ALTITUDE
 
     def update_plan(
         self,
@@ -156,6 +158,7 @@ class Client:
         self.altitude = altitude
         self.last_updated = int(time())
 
+    # ruff: noqa: PLR0911, PLR2004
     def get_range(self) -> int:
         """Get visual range."""
         if self.type == "PILOT":
@@ -165,7 +168,7 @@ class Client:
             else:
                 altitude = self.altitude
             return int(10 + 1.414 * sqrt(altitude))
-        if self.facility_type == 2 or self.facility_type == 3:
+        if self.facility_type in {2, 3}:
             # CLR_DEL or GROUND
             return 5
         if self.facility_type == 4:
@@ -177,7 +180,7 @@ class Client:
         if self.facility_type == 6:
             # CENTER
             return 400
-        if self.facility_type == 1 or self.facility_type == 7:
+        if self.facility_type in {1, 7}:
             # FSS or MONITOR
             return 1500
         # Unknown

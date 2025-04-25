@@ -4,7 +4,7 @@
 from logging import CRITICAL, DEBUG, ERROR, INFO, NOTSET, WARNING
 from logging.config import dictConfig
 from sys import version_info
-from typing import Dict, List, Literal, Type, TypedDict, Union
+from typing import Optional, TypedDict, Union
 
 from structlog import (
     configure,
@@ -26,7 +26,7 @@ HandlerConfig = TypedDict(
         "class": str,
         "level": NotRequired[str],
         "formatter": NotRequired[str],
-        "filters": NotRequired[List[str]],
+        "filters": NotRequired[list[str]],
     },
 )
 
@@ -36,8 +36,8 @@ class LoggerConfig(TypedDict, total=False):
 
     level: str
     propagate: bool
-    filters: List[str]
-    handlers: List[str]
+    filters: list[str]
+    handlers: list[str]
 
 
 class TimeFormatConfig(TypedDict):
@@ -52,7 +52,7 @@ class TimeFormatConfig(TypedDict):
         key: Target key in event_dict for added timestamps.
     """
 
-    fmt: Union[str, Literal["iso", "timestamp"], None]
+    fmt: Optional[str]
     utc: bool
     key: str
 
@@ -67,14 +67,15 @@ class PyFSDLoggerConfig(TypedDict):
         extract_record: Extract thread and process names and add them to the event dict.
     """
 
-    handlers: Dict[str, Union[dict, HandlerConfig]]  # Allow extra keys
+    handlers: dict[str, Union[dict, HandlerConfig]]  # Allow extra keys
     logger: Union[dict, LoggerConfig]
     include_extra: NotRequired[bool]
     extract_record: NotRequired[bool]
     time: NotRequired[TimeFormatConfig]
 
 
-def make_filtering_stdlib_bound_logger(min_level: int) -> Type[stdlib.BoundLogger]:
+# ruff: noqa: C901
+def make_filtering_stdlib_bound_logger(min_level: int) -> type[stdlib.BoundLogger]:
     """Create a new BoundLogger that only logs min_level or higher."""
     if min_level == NOTSET:
         return stdlib.BoundLogger
@@ -158,8 +159,7 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
 
     def suppress_extra(_: object, __: str, event_dict: dict) -> dict:
         """Remove log's extra."""
-        if "extra" in event_dict:
-            del event_dict["extra"]
+        event_dict.pop("extra", None)
         return event_dict
 
     def extract_from_record(_: object, __: str, event_dict: dict) -> dict:

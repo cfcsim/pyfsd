@@ -7,9 +7,9 @@ Attributes:
 
 from csv import reader
 from sqlite3 import connect
-from typing import ClassVar, Dict, Protocol, Tuple
+from typing import ClassVar, Protocol
 
-User = Tuple[str, str, int]
+User = tuple[str, str, int]
 
 
 class Format(Protocol):
@@ -21,13 +21,13 @@ class Format(Protocol):
 
     argon2_hashed: bool
 
-    def read_all(self, filename: str) -> Tuple[User, ...]:
+    def read_all(self, filename: str) -> tuple[User, ...]:
         """Read all users from database.
 
         Args:
             filename: The filename of the database.
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class PyFSDFormat:
@@ -36,7 +36,7 @@ class PyFSDFormat:
     argon2_hashed: ClassVar = True
 
     @staticmethod
-    def read_all(filename: str) -> Tuple[User, ...]:
+    def read_all(filename: str) -> tuple[User, ...]:
         """Read all users."""
         db = connect(filename)
         cur = db.cursor()
@@ -52,7 +52,7 @@ class CFCSIMFSDFormat:
     argon2_hashed: ClassVar = False
 
     @staticmethod
-    def read_all(filename: str) -> Tuple[User, ...]:
+    def read_all(filename: str) -> tuple[User, ...]:
         """Read all users."""
         db = connect(filename)
         cur = db.cursor()
@@ -68,7 +68,7 @@ class FSDTextFormat:
     argon2_hashed: ClassVar = False
 
     @staticmethod
-    def read_all(filename: str) -> Tuple[User, ...]:
+    def read_all(filename: str) -> tuple[User, ...]:
         """Read all users."""
         users = []
         with open(filename) as file:
@@ -79,7 +79,7 @@ class FSDTextFormat:
         return tuple(users)
 
 
-formats: Dict[str, Format] = {
+formats: dict[str, Format] = {
     "cfcsim": CFCSIMFSDFormat,
     "fsd": FSDTextFormat,
     "pyfsd": PyFSDFormat,

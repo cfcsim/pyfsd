@@ -7,14 +7,11 @@ Attributes:
 """
 
 from asyncio import get_event_loop
+from collections.abc import Awaitable, Hashable, Iterable
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
-    Awaitable,
     Callable,
-    Hashable,
-    Iterable,
-    Set,
     TypeVar,
     Union,
     cast,
@@ -27,11 +24,10 @@ from typing_extensions import ParamSpec
 if TYPE_CHECKING:
     from asyncio import Task
 
-    from ..object.client import Position
+    from pyfsd.object.client import Position
 
 __all__ = [
     "MRand",
-    "ascii_only",
     "assert_no_duplicate",
     "asyncify",
     "calc_distance",
@@ -95,12 +91,16 @@ def calc_distance(
     Returns:
         The distance.
     """
-    return cast(float, haversine(from_position, to_position, unit=unit))
+    return cast("float", haversine(from_position, to_position, unit=unit))
+
+
+CALLSIGN_MIN_LEN = 2
+CALLSIGN_MAX_LEN = 12
 
 
 def is_callsign_valid(callsign: Union[str, bytes]) -> bool:
     """Check if a callsign is valid or not."""
-    if len(callsign) < 2 or len(callsign) > 12:
+    if not CALLSIGN_MIN_LEN < len(callsign) < CALLSIGN_MAX_LEN:
         return False
     if isinstance(callsign, str):
         return not (
@@ -127,13 +127,6 @@ def is_callsign_valid(callsign: Union[str, bytes]) -> bool:
         or (b" " in callsign)
         or (b"\t" in callsign)
     )
-
-
-def ascii_only(string: Union[str, bytes]) -> bool:
-    """Check if a string contains only ascii chars."""
-    if isinstance(string, str):
-        return all(ord(char) < 128 for char in string)
-    return all(char < 128 for char in string)
 
 
 def assert_no_duplicate(
@@ -187,7 +180,7 @@ def iterables(*iterators: Iterable) -> Iterable:
         yield from iterator
 
 
-def iter_callable(obj: object, ignore_private: bool = True) -> Iterable[Callable]:
+def iter_callable(obj: object, *, ignore_private: bool = True) -> Iterable[Callable]:
     """Yields all callable attribute in a object.
 
     Args:
@@ -247,7 +240,6 @@ class MRand:
         part1 = (self.mrandseed << 1) & 0xFFFFFFFF
         part2 = self.mrandseed >> 31
         self.mrandseed ^= part1 | part2
-        # self.mrandseed &= 0xFFFFFFFF
         return self.mrandseed
 
     def srand(self, seed: int) -> None:
@@ -263,7 +255,7 @@ class TaskKeeper:
         use `pyfsd.define.utils.task_keeper` instead.
     """
 
-    tasks: Set["Task"]
+    tasks: set["Task"]
 
     def __init__(self) -> None:
         """Create a TaskKeeper instance."""

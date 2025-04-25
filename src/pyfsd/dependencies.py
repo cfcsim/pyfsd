@@ -16,9 +16,10 @@ if TYPE_CHECKING:
 class RootPyFSDConfigProvider(providers.Configuration):
     """Customized providers.Configuration with correct type annotation."""
 
-    def from_dict(  # pyright: ignore
+    def from_dict(  # pyright: ignore[reportIncompatibleMethodOverride]
         self,
         options: "RootPyFSDConfig",  # type: ignore[override]
+        *,
         required: bool = False,
     ) -> None:
         """Load configuration from dict."""

@@ -93,7 +93,7 @@ formatter = "colored"
 """
 
 
-async def launch(config: RootPyFSDConfig, wait_all_tasks_done: bool = True) -> None:
+async def launch(config: RootPyFSDConfig, *, wait_all_tasks_done: bool = True) -> None:
     """Launch PyFSD."""
     # =============== Initialize dependencies
     container = Container()
@@ -142,7 +142,7 @@ async def launch(config: RootPyFSDConfig, wait_all_tasks_done: bool = True) -> N
 
         if wait_all_tasks_done:
             tasks = all_tasks()
-            tasks.discard(cast(Task, current_task()))
+            tasks.discard(cast("Task", current_task()))
         else:
             tasks = mustdone_task_keeper.tasks
         if tasks:
@@ -183,7 +183,7 @@ def main() -> None:
     assert_dict(
         config,
         RootPyFSDConfig,
-        "config",
+        name="config",
     )
     # Replace database scheme with async dialect
     db_url: str = config["pyfsd"]["database"]["url"]
@@ -206,4 +206,4 @@ def main() -> None:
 
     suppress_metar_parser_warning()
     setup_logger(config["pyfsd"]["logger"])
-    run(launch(cast(RootPyFSDConfig, config)))
+    run(launch(cast("RootPyFSDConfig", config)))

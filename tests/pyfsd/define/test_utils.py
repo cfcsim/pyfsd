@@ -4,9 +4,9 @@ from asyncio import create_task, new_event_loop
 from unittest import TestCase
 
 from haversine import Unit
+
 from pyfsd.define.utils import (
     MRand,
-    ascii_only,
     assert_no_duplicate,
     asyncify,
     calc_distance,
@@ -23,13 +23,6 @@ from pyfsd.define.utils import (
 
 class TestUtils(TestCase):
     """Test if pyfsd.define.utils works."""
-
-    def test_ascii_only(self) -> None:
-        """Test if ascii_only works."""
-        self.assertTrue(ascii_only("abcd"))
-        self.assertTrue(ascii_only(b"abcd"))
-        self.assertFalse(ascii_only("好好好"))
-        self.assertFalse(ascii_only(chr(114514).encode()))
 
     def test_assert_no_duplicate(self) -> None:
         """Test if ascii_only works."""

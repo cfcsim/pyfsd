@@ -5,22 +5,16 @@ Attributes:
     SPLIT_SIGN: FSD client packet's split sign.
 """
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from enum import Enum
 from typing import (
     AnyStr,
-    Iterable,
-    List,
     Optional,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     cast,
     overload,
 )
-
-from .utils import ascii_only
 
 __all__ = [
     "CLIENT_USED_COMMAND",
@@ -64,7 +58,7 @@ class CompatibleString:
         Raises:
             ValueError: When the value contains non-ascii characters.
         """
-        if not ascii_only(value):
+        if not value.isascii():
             raise ValueError("String can only contain ASCII characters")
         self.string = value
 
@@ -96,7 +90,7 @@ class CompatibleString:
         """Return hash(self.string)."""
         return hash(self.string)
 
-    def __getnewargs__(self) -> Tuple[str]:
+    def __getnewargs__(self) -> tuple[str]:
         """Return self.string in tuple, for pickle."""
         return (self.string[:],)
 
@@ -249,7 +243,7 @@ class CompatibleString:
             return template % self.string.encode()
         return NotImplemented
 
-    def as_type(self, type_: Type[AnyStr]) -> AnyStr:
+    def as_type(self, type_: type[AnyStr]) -> AnyStr:
         """Convert this CompatibleString into specified type.
 
         Args:
@@ -262,14 +256,13 @@ class CompatibleString:
         raise TypeError(f"Invalid string type: {type_}")
 
 
-Sequence.register(CompatibleString)  # pyright: ignore
+Sequence.register(CompatibleString)  # pyright: ignore[reportAttributeAccessIssue]
 SPLIT_SIGN = CompatibleString(":")
 
 
 class FSDClientCommand(CompatibleString, Enum):
     """FSD client command."""
 
-    # __init__ = Enum.__init__  # type: ignore[assignment]
     ADD_ATC = "#AA"
     REMOVE_ATC = "#DA"
     ADD_PILOT = "#AP"
@@ -306,35 +299,35 @@ def make_packet(*parts: Union[AnyStr, FSDClientCommand]) -> AnyStr:
     for part in parts:
         result += part + SPLIT_SIGN  # type: ignore[assignment]
     if isinstance(result, FSDClientCommand):
-        raise ValueError("Must have str or bytes item")
-    return cast(AnyStr, result[:-1])
+        raise TypeError("Must have str or bytes item")
+    return cast("AnyStr", result[:-1])
 
 
 @overload
 def break_packet(
     packet: AnyStr,
     possibly_commands: Iterable[AnyStr],
-) -> Tuple[Optional[AnyStr], Tuple[AnyStr, ...]]: ...
+) -> tuple[Optional[AnyStr], tuple[AnyStr, ...]]: ...
 
 
 @overload
 def break_packet(
     packet: AnyStr,
     possibly_commands: Iterable[FSDClientCommand],
-) -> Tuple[Optional[FSDClientCommand], Tuple[AnyStr, ...]]: ...
+) -> tuple[Optional[FSDClientCommand], tuple[AnyStr, ...]]: ...
 
 
 @overload
 def break_packet(
     packet: AnyStr,
     possibly_commands: Iterable[Union[AnyStr, FSDClientCommand]],
-) -> Tuple[Optional[Union[AnyStr, FSDClientCommand]], Tuple[AnyStr, ...]]: ...
+) -> tuple[Optional[Union[AnyStr, FSDClientCommand]], tuple[AnyStr, ...]]: ...
 
 
 def break_packet(
     packet: AnyStr,
     possibly_commands: Iterable[Union[AnyStr, FSDClientCommand]],
-) -> Tuple[Optional[Union[AnyStr, FSDClientCommand]], Tuple[AnyStr, ...]]:
+) -> tuple[Optional[Union[AnyStr, FSDClientCommand]], tuple[AnyStr, ...]]:
     """Break a packet into command and parts.
 
     #APzzz1:zzz3:zzz4
@@ -351,7 +344,7 @@ def break_packet(
     """
     packet_type = type(packet)
     command: Optional[Union[AnyStr, FSDClientCommand]] = None
-    splited_packet: List[AnyStr]
+    splited_packet: list[AnyStr]
     for possibly_command in possibly_commands:
         command_str: AnyStr
         if isinstance(possibly_command, FSDClientCommand):
@@ -361,7 +354,9 @@ def break_packet(
         if packet.startswith(command_str):
             command = possibly_command
             break
-    splited_packet = packet.split(SPLIT_SIGN.as_type(packet_type))  # pyright: ignore
+    splited_packet = packet.split(  # pyright: ignore[reportAssignmentType]
+        SPLIT_SIGN.as_type(packet_type)
+    )
     if command is not None:
         splited_packet[0] = splited_packet[0][len(command) :]
     return (command, tuple(splited_packet))
@@ -382,7 +377,7 @@ def join_lines(*lines: AnyStr, newline: bool = True) -> AnyStr:
     for line in lines:
         # Ignore type errors. Just let it raise.
         result += line + split_sign if newline else line  # type: ignore[assignment]
-    return cast(AnyStr, result)
+    return cast("AnyStr", result)
 
 
 CLIENT_USED_COMMAND = [

@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from asyncio import Protocol
 from typing import TYPE_CHECKING
 
-from ..define.packet import join_lines
+from pyfsd.define.packet import join_lines
 
 if TYPE_CHECKING:
     from asyncio import Transport
@@ -66,6 +66,7 @@ class LineProtocol(LineReceiver):
         """Save transport after the connection was made."""
         self.transport = transport
 
+    # ruff: noqa: ARG002
     def max_length_exceed(self, length: int) -> None:
         """Kill when line length exceed max length."""
         self.transport.close()
