@@ -1064,6 +1064,7 @@ class ClientProtocol(LineProtocol):
         """Handle connection lost."""
         if self.timeout_killer_task:
             self.timeout_killer_task.cancel()
+            self.timeout_killer_task = None
         for pending_task in self.tasks:
             pending_task.cancel()
         client = None
