@@ -157,7 +157,7 @@ class ClientProtocol(LineProtocol):
 
     def max_length_exceed(self, length: int) -> None:
         """Called when line length exceed max length."""
-        logger.info(f"Kicking {self.get_description()}: max length exceeded")
+        logger.info("Kicking %s: max length exceeded", self.get_description())
         return super().max_length_exceed(length)
 
     def add_task(self, task: "Task") -> None:
