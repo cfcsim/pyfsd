@@ -157,7 +157,7 @@ class MetarManager:
                 await logger.aerror(
                     f"Metar fetcher {name} doesn't work because {err!s}"
                 )
-            except CancelledError:
+            except (KeyboardInterrupt, CancelledError):
                 raise
             # ruff: noqa: BLE001
             except BaseException:
@@ -215,7 +215,7 @@ class MetarManager:
                 metar = await fetcher(self.config, icao)
                 if metar is not None:
                     return metar
-            except CancelledError:
+            except (KeyboardInterrupt, CancelledError):
                 raise
             except (VerifyKeyError, VerifyTypeError) as err:
                 await logger.aerror(

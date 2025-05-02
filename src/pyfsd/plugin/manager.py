@@ -67,6 +67,12 @@ def deal_exception(name: str) -> None:
     """Handle exceptions when importing plugins."""
     type_, exception, traceback = exc_info()
 
+    if exception is not None and type_ in (
+        KeyboardInterrupt,
+        CancelledError,
+    ):
+        raise exception.with_traceback(traceback)
+
     # Cut traceback to plugin file
     current_traceback = traceback
     while (
@@ -227,7 +233,7 @@ class PluginManager:
             try:
                 if handlers := await plugin.setup():
                     plugins_handlers[plugin] = handlers
-            except CancelledError:
+            except (KeyboardInterrupt, CancelledError):
                 raise
             except BaseException:
                 await logger.aexception(
@@ -293,7 +299,7 @@ class PluginManager:
                     handled_by_plugin=True,
                     plugin=plugin,
                 )
-            except CancelledError:
+            except (KeyboardInterrupt, CancelledError):
                 raise
             except BaseException:
                 await logger.aexception(
@@ -314,7 +320,7 @@ class PluginManager:
         async def auditer_runner(auditer: Callable[..., Awaitable], name: str) -> None:
             try:
                 await auditer(*args, **kwargs)
-            except CancelledError:
+            except (KeyboardInterrupt, CancelledError):
                 raise
             except BaseException:
                 await logger.aexception(f"Error happened when calling plugin {name}")
