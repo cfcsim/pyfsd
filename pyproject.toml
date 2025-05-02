@@ -37,6 +37,7 @@ dependencies = [
     "structlog~=25.2",
     "colorama~=0.4; sys_platform == \"win32\"",
     "better-exceptions~=0.3",
+    "uvloop~=0.21; sys_platform != \"win32\"",
 ]
 
 [project.urls]

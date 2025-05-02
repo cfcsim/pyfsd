@@ -13,7 +13,6 @@ from asyncio import (
     current_task,
     gather,
     get_event_loop,
-    run,
     wait,
 )
 from typing import TypedDict, cast
@@ -36,6 +35,11 @@ try:
     from tomllib import loads  # type: ignore[import-not-found,unused-ignore]
 except ImportError:
     from tomli import loads  # type: ignore[no-redef,import-not-found,unused-ignore]
+
+try:
+    from uvloop import run  # type: ignore[import-not-found,unused-ignore]
+except ImportError:
+    from asyncio import run  # type: ignore[no-redef,assignment,unused-ignore]
 
 
 class PyFSDDatabaseConfig(TypedDict):
