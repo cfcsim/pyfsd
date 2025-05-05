@@ -23,7 +23,7 @@ class LineReceiver(Protocol, metaclass=ABCMeta):
 
     buffer: bytes = b""
     delimiter: bytes = b"\r\n"
-    max_length: int = 1024*128  # 128kb
+    buffer_size: int = 1024 * 512  # 512kb
 
     @abstractmethod
     def line_received(self, line: bytes) -> None:
@@ -31,25 +31,24 @@ class LineReceiver(Protocol, metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def max_length_exceed(self, length: int) -> None:
-        """Called when line length exceed max length."""
+    def buffer_size_exceed(self, length: int) -> None:
+        """Called when buffer exceed max size."""
         raise NotImplementedError
 
     def data_received(self, data: bytes) -> None:
         """Handle datas and call line_received as soon as we received a line."""
-        if self.max_length != -1:
+        if self.buffer_size != -1:
             length = len(self.buffer) + len(data)
-            if length > self.max_length:
-                self.max_length_exceed(length)
+            if length > self.buffer_size:
+                self.buffer_size_exceed(length)
 
-        if self.delimiter in data:
-            *lines, left = data.split(self.delimiter)
-            lines[0] = self.buffer + lines[0]
-            self.buffer = left
+        self.buffer += data
+        del data
+        if self.delimiter in self.buffer:
+            *lines, left = self.buffer.split(self.delimiter)
             for line in lines:
                 self.line_received(line)
-        else:
-            self.buffer += data
+            self.buffer = left
 
 
 class LineProtocol(LineReceiver):
@@ -67,7 +66,7 @@ class LineProtocol(LineReceiver):
         self.transport = transport
 
     # ruff: noqa: ARG002
-    def max_length_exceed(self, length: int) -> None:
+    def buffer_size_exceed(self, length: int) -> None:
         """Kill when line length exceed max length."""
         self.transport.close()
 

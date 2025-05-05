@@ -1,7 +1,7 @@
 # ruff: noqa: S101
 """PyFSD client protocol."""
 
-from asyncio import Lock, create_task
+from asyncio import Queue, create_task
 from asyncio import sleep as asleep
 from collections.abc import Awaitable
 from inspect import isawaitable
@@ -34,7 +34,12 @@ from pyfsd.define.packet import (
     break_packet,
     make_packet,
 )
-from pyfsd.define.utils import is_callsign_valid, str_to_float, str_to_int
+from pyfsd.define.utils import (
+    is_callsign_valid,
+    mustdone_task_keeper,
+    str_to_float,
+    str_to_int,
+)
 from pyfsd.object.client import Client, ClientType
 
 from . import LineProtocol
@@ -142,28 +147,123 @@ class ClientProtocol(LineProtocol):
 
     factory: "ClientFactory"
     timeout_killer_task: Optional["Task[None]"]
+    worker_task: Optional["Task[None]"]
+    worker_queue: Queue[bytes]
     transport: "Transport"
-    tasks: set["Task"]
     client: Optional[Client]
-    lock = Lock()
 
     def __init__(self, factory: "ClientFactory") -> None:
         """Create a ClientProtocol instance."""
         self.factory = factory
-        self.tasks = set()
         self.client = None
         self.timeout_killer_task = None
-        # timeout_killer_task and transport will be initialized in connection_made.
+        self.worker_task = None
+        self.worker_queue = Queue()
+        super().__init__()
+        # timeout_killer_task and worker_task and transport will be
+        # initialized in connection_made.
 
-    def max_length_exceed(self, length: int) -> None:
-        """Called when line length exceed max length."""
-        logger.info("Kicking %s: max length exceeded", self.get_description())
-        return super().max_length_exceed(length)
+    async def handle_line_worker_func(self) -> None:
+        """Worker processes line."""
+        result: "PyFSDHandledEventResult | PluginHandledEventResult"  # noqa: UP037
 
-    def add_task(self, task: "Task") -> None:
-        """Store a task's strong reference to keep it away from disappear."""
-        self.tasks.add(task)
-        task.add_done_callback(self.tasks.discard)
+        while True:
+            line = await self.worker_queue.get()
+
+            # First try to let plugins to process
+            plugin_result = await self.factory.plugin_manager.trigger_event_handlers(
+                "line_received_from_client",
+                (self, line),
+                {},
+            )
+            if plugin_result is None:  # Not handled by plugin
+                packet_ok, has_result = await self.handle_line(line)
+                result = cast(
+                    "PyFSDHandledEventResult",
+                    {
+                        "handled_by_plugin": False,
+                        "success": packet_ok and has_result,
+                        "packet": line,
+                        "packet_ok": packet_ok,
+                        "has_result": has_result,
+                    },
+                )
+            else:
+                result = plugin_result
+
+            self.factory.plugin_manager.trigger_event_auditers_nonblock(
+                "line_received_from_client",
+                (self, line, result),
+                {},
+            )
+
+    def connection_made(self, transport: "Transport") -> None:  # type: ignore[override]
+        """Initialize something after the connection is made."""
+        super().connection_made(transport)
+        ip = self.transport.get_extra_info("peername")[0]
+        if ip in self.factory.blacklist:
+            logger.info("Kicking %s: blacklist", ip)
+            self.transport.close()
+            return
+
+        self.worker_task = create_task(self.handle_line_worker_func())
+        self.reset_timeout_killer()
+        logger.info("New connection from %s.", ip)
+        self.factory.plugin_manager.trigger_event_auditers_nonblock(
+            "new_connection_established", (self,), {}
+        )
+
+    def line_received(self, line: bytes) -> None:
+        """Handle a line."""
+        self.reset_timeout_killer()
+        self.worker_queue.put_nowait(line)
+
+    def connection_lost(self, exc: Optional[BaseException] = None) -> None:
+        """Handle connection lost."""
+        if self.timeout_killer_task:
+            self.timeout_killer_task.cancel()
+            self.timeout_killer_task = None
+        if self.worker_task:
+            self.worker_task.cancel()
+            self.worker_task = None
+
+        client = None
+        if self.client is not None:
+            self.factory.broadcast(
+                make_packet(
+                    (
+                        FSDClientCommand.REMOVE_ATC
+                        if self.client.type == "ATC"
+                        else FSDClientCommand.REMOVE_PILOT
+                    )
+                    + self.client.callsign,
+                    self.client.cid.encode(),
+                ),
+                from_client=self.client,
+            )
+            del self.factory.clients[self.client.callsign]
+            client = self.client
+        logger.info(
+            "%s disconnected%s.",
+            self.get_description(),
+            f" due to {exc}" if exc else "",
+        )
+        self.client = None
+
+        self.factory.plugin_manager.trigger_event_auditers_nonblock(
+            "client_disconnected",
+            (self, client),
+            {},
+        )
+
+    def buffer_size_exceed(self, length: int) -> None:
+        """Called when client exceed max buffer size."""
+        logger.info(
+            "Kicking %s: buffer size exceeded (%d)",
+            self.get_description(),
+            length,
+        )
+        return super().buffer_size_exceed(length)
 
     def kill_after_1sec(self) -> None:
         """Kill this client after 1 second by kill_func."""
@@ -172,7 +272,17 @@ class ClientProtocol(LineProtocol):
             await asleep(1)
             self.transport.close()
 
-        self.add_task(create_task(kill()))
+        mustdone_task_keeper.add(create_task(kill()))
+
+    def get_description(self) -> str:
+        """Get text description of this client."""
+        if self.client is not None:
+            return (
+                cast("str", self.transport.get_extra_info("peername")[0])
+                + f" ({self.client.callsign.decode(errors='replace')})"
+            )
+
+        return cast("str", self.transport.get_extra_info("peername")[0])
 
     def reset_timeout_killer(self) -> None:
         """Reset timeout killer."""
@@ -186,21 +296,6 @@ class ClientProtocol(LineProtocol):
         if self.timeout_killer_task:
             self.timeout_killer_task.cancel()
         self.timeout_killer_task = create_task(timeout_killer())
-
-    def connection_made(self, transport: "Transport") -> None:  # type: ignore[override]
-        """Initialize something after the connection is made."""
-        super().connection_made(transport)
-        ip = self.transport.get_extra_info("peername")[0]
-        if ip in self.factory.blacklist:
-            logger.info("Kicking %s: blacklist", ip)
-            self.transport.close()
-            return
-
-        self.reset_timeout_killer()
-        logger.info("New connection from %s.", ip)
-        self.factory.plugin_manager.trigger_event_auditers_nonblock(
-            "new_connection_established", (self,), {}
-        )
 
     def send_error(
         self, errno: FSDClientError, *, env: bytes = b"", fatal: bool = False
@@ -904,7 +999,7 @@ class ClientProtocol(LineProtocol):
                     await asleep(1)
                     transport_to_kill.close()
 
-                self.add_task(create_task(killer()))
+                mustdone_task_keeper.add(create_task(killer()))
 
         logger.info(
             "Kicking %s: killed by %s",
@@ -913,46 +1008,6 @@ class ClientProtocol(LineProtocol):
         )
         kill_it()
         return True, True
-
-    def line_received(self, line: bytes) -> None:
-        """Handle a line."""
-        self.reset_timeout_killer()
-
-        async def handle() -> None:
-            result: "PyFSDHandledEventResult | PluginHandledEventResult"  # noqa: UP037
-            # First try to let plugins to process
-            plugin_result = await self.factory.plugin_manager.trigger_event_handlers(
-                "line_received_from_client",
-                (self, line),
-                {},
-            )
-            if plugin_result is None:  # Not handled by plugin
-                packet_ok, has_result = await self.handle_line(line)
-                result = cast(
-                    "PyFSDHandledEventResult",
-                    {
-                        "handled_by_plugin": False,
-                        "success": packet_ok and has_result,
-                        "packet": line,
-                        "packet_ok": packet_ok,
-                        "has_result": has_result,
-                    },
-                )
-            else:
-                result = plugin_result
-
-            self.factory.plugin_manager.trigger_event_auditers_nonblock(
-                "line_received_from_client",
-                (self, line, result),
-                {},
-            )
-
-        async def do_after_before_done() -> None:
-            """Wait last task done then handle this."""
-            async with self.lock:
-                await handle()
-
-        self.add_task(create_task(do_after_before_done()))
 
     async def handle_line(
         self,
@@ -1054,49 +1109,3 @@ class ClientProtocol(LineProtocol):
             return await self.handle_kill(packet)
         self.send_error(FSDClientError.SYNTAX)
         return False, False
-
-    def get_description(self) -> str:
-        """Get text description of this client."""
-        if self.client is not None:
-            return (
-                cast("str", self.transport.get_extra_info("peername")[0])
-                + f" ({self.client.callsign.decode(errors='replace')})"
-            )
-
-        return cast("str", self.transport.get_extra_info("peername")[0])
-
-    def connection_lost(self, exc: Optional[BaseException] = None) -> None:
-        """Handle connection lost."""
-        if self.timeout_killer_task:
-            self.timeout_killer_task.cancel()
-            self.timeout_killer_task = None
-        for pending_task in self.tasks:
-            pending_task.cancel()
-        client = None
-        if self.client is not None:
-            self.factory.broadcast(
-                make_packet(
-                    (
-                        FSDClientCommand.REMOVE_ATC
-                        if self.client.type == "ATC"
-                        else FSDClientCommand.REMOVE_PILOT
-                    )
-                    + self.client.callsign,
-                    self.client.cid.encode(),
-                ),
-                from_client=self.client,
-            )
-            del self.factory.clients[self.client.callsign]
-            client = self.client
-        logger.info(
-            "%s disconnected%s.",
-            self.get_description(),
-            f" due to {exc}" if exc else "",
-        )
-        self.client = None
-
-        self.factory.plugin_manager.trigger_event_auditers_nonblock(
-            "client_disconnected",
-            (self, client),
-            {},
-        )
