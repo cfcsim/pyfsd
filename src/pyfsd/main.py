@@ -210,4 +210,8 @@ def main() -> None:
 
     suppress_metar_parser_warning()
     setup_logger(config["pyfsd"]["logger"])
-    run(launch(cast("RootPyFSDConfig", config)))
+    try:
+        run(launch(cast("RootPyFSDConfig", config)))
+    finally:
+        # Ensure we have working loggers when cpython is shutting down
+        setup_logger(config["pyfsd"]["logger"], finalize=True)

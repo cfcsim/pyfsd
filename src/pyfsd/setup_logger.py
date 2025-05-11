@@ -129,8 +129,13 @@ def make_filtering_stdlib_bound_logger(min_level: int) -> type[stdlib.BoundLogge
     return BoundLogger
 
 
-def setup_logger(config: PyFSDLoggerConfig) -> None:
-    """Setup logger with config."""
+def setup_logger(config: PyFSDLoggerConfig, *, finalize: bool = False) -> None:
+    """Setup logger with config.
+
+    Args:
+        config: logger config.
+        finalize: make loggers fit finalizing phrase of cpython.
+    """
 
     def append_funcname_lieneno(_: object, __: str, event: EventDict) -> EventDict:
         event["logger_name"] = f"{event.pop('func_name')}:{event.pop('lineno')}"
@@ -144,7 +149,10 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
             "time", {"fmt": "%Y-%m-%d %H:%M:%S", "utc": False, "key": "timestamp"}
         ),
     )
-    if time["fmt"] == "timestamp":
+    if finalize:
+        # For some reason strftime() won't work when cpython is finalizing
+        time["fmt"] = "ISO"
+    elif time["fmt"] == "timestamp":
         time["fmt"] = None
     timestamper = processors.TimeStamper(**time)
     pre_chain = [
@@ -154,6 +162,7 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
         stdlib.add_logger_name,
         timestamper,
     ]
+
     if include_extra:
         pre_chain.append(stdlib.ExtraAdder())
 
@@ -186,7 +195,10 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
                         *extra_dealers,
                         stdlib.ProcessorFormatter.remove_processors_meta,
                         dev.ConsoleRenderer(
-                            colors=False, exception_formatter=dev.better_traceback
+                            colors=False,
+                            exception_formatter=dev.better_traceback
+                            if not finalize
+                            else dev.plain_traceback,
                         ),
                     ],
                     "foreign_pre_chain": pre_chain,
@@ -206,7 +218,10 @@ def setup_logger(config: PyFSDLoggerConfig) -> None:
                         *extra_dealers,
                         stdlib.ProcessorFormatter.remove_processors_meta,
                         dev.ConsoleRenderer(
-                            colors=True, exception_formatter=dev.better_traceback
+                            colors=True,
+                            exception_formatter=dev.better_traceback
+                            if not finalize
+                            else dev.plain_traceback,
                         ),
                     ],
                     "foreign_pre_chain": pre_chain,
