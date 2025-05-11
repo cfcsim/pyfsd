@@ -13,8 +13,11 @@ from asyncio import (
     current_task,
     gather,
     get_event_loop,
+    set_event_loop_policy,
     wait,
 )
+from contextlib import suppress
+from signal import SIGHUP, SIGINT, SIGTERM
 from typing import TypedDict, cast
 
 from dependency_injector.wiring import register_loader_containers
@@ -35,11 +38,6 @@ try:
     from tomllib import loads  # type: ignore[import-not-found,unused-ignore]
 except ImportError:
     from tomli import loads  # type: ignore[no-redef,import-not-found,unused-ignore]
-
-try:
-    from uvloop import run  # type: ignore[import-not-found,unused-ignore]
-except ImportError:
-    from asyncio import run  # type: ignore[no-redef,assignment,unused-ignore]
 
 
 class PyFSDDatabaseConfig(TypedDict):
@@ -165,8 +163,10 @@ async def launch(config: RootPyFSDConfig, *, wait_all_tasks_done: bool = True) -
         raise
 
 
+# ruff: noqa: C901
 def main() -> None:
     """Main function of PyFSD."""
+    # =============== Config
     parser = ArgumentParser()
     parser.add_argument(
         "-c",
@@ -208,10 +208,37 @@ def main() -> None:
         # else we have nothing to do :)
         config["pyfsd"]["database"]["url"] = db_url
 
+    # =============== Logger
     suppress_metar_parser_warning()
     setup_logger(config["pyfsd"]["logger"])
-    try:
-        run(launch(cast("RootPyFSDConfig", config)))
-    finally:
-        # Ensure we have working loggers when cpython is shutting down
-        setup_logger(config["pyfsd"]["logger"], finalize=True)
+
+    # =============== Startup
+    with suppress(ImportError):
+        from uvloop import EventLoopPolicy
+
+        set_event_loop_policy(EventLoopPolicy())
+
+    loop = get_event_loop()
+
+    async def runner() -> None:
+        try:
+            await launch(cast("RootPyFSDConfig", config))
+        except CancelledError:
+            pass
+        except BaseException:
+            logger.exception("Error happened when launching PyFSD")
+
+        await loop.shutdown_asyncgens()
+        await loop.shutdown_default_executor()
+        loop.stop()
+
+    runner_task = loop.create_task(runner())
+
+    for signal in [SIGINT, SIGTERM, SIGHUP]:
+        loop.add_signal_handler(signal, runner_task.cancel)
+    loop.run_forever()  # complete after loop.stop()
+
+    # =============== Stop
+    loop.close()
+    # Ensure we have working loggers when cpython is shutting down
+    setup_logger(config["pyfsd"]["logger"], finalize=True)
