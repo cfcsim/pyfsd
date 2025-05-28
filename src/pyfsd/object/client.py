@@ -3,15 +3,14 @@
 from dataclasses import dataclass, field
 from math import sqrt
 from time import time
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from asyncio import Transport
 
-__all__ = ["Client", "ClientType", "FlightPlan", "Position"]
+__all__ = ["Client", "FlightPlan", "Position"]
 
 Position = tuple[float, float]
-ClientType = Literal["ATC", "PILOT"]
 INVALID_ALTITUDE = 100000
 
 
@@ -46,7 +45,7 @@ class FlightPlan:
 class Client:
     """This dataclass stores a client."""
 
-    type: ClientType
+    is_controller: bool
     callsign: bytes
     rating: int
     cid: str
@@ -161,7 +160,7 @@ class Client:
     # ruff: noqa: PLR0911, PLR2004
     def get_range(self) -> int:
         """Get visual range."""
-        if self.type == "PILOT":
+        if not self.is_controller:
             altitude: int
             if self.altitude is None or self.altitude < 0:
                 altitude = 0

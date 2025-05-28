@@ -40,7 +40,7 @@ from pyfsd.define.utils import (
     str_to_float,
     str_to_int,
 )
-from pyfsd.object.client import Client, ClientType
+from pyfsd.object.client import Client
 
 from . import LineProtocol
 
@@ -233,7 +233,7 @@ class ClientProtocol(LineProtocol):
                 make_packet(
                     (
                         FSDClientCommand.REMOVE_ATC
-                        if self.client.type == "ATC"
+                        if self.client.is_controller
                         else FSDClientCommand.REMOVE_PILOT
                     )
                     + self.client.callsign,
@@ -451,18 +451,33 @@ class ClientProtocol(LineProtocol):
     async def handle_add_client(
         self,
         packet: tuple[bytes, ...],
-        client_type: ClientType,
+        # ruff: noqa: FBT001, N803
+        is_AA: bool,
     ) -> HandleResult:
         """Handle add client request.
 
         Args:
             packet: The packet.
+            is_AA: True if this packet is #AA (add atc), else #AP
             client_type: Type of client, ATC or PILOT
         """
         if self.client is not None:
             self.send_error(FSDClientError.REGISTERED)
             return False, False
-        if client_type == "PILOT":
+        if is_AA:
+            # controller
+            (
+                callsign,
+                _,
+                realname,
+                cid,
+                password,
+                req_rating,
+                protocol,
+            ) = packet[:7]
+            sim_type_int = -1
+        else:
+            # pilot
             if len(packet) < 8:
                 self.send_error(FSDClientError.SYNTAX)
                 return False, False
@@ -477,17 +492,6 @@ class ClientProtocol(LineProtocol):
                 realname,
             ) = packet[:8]
             sim_type_int = str_to_int(sim_type, default_value=0)
-        else:
-            (
-                callsign,
-                _,
-                realname,
-                cid,
-                password,
-                req_rating,
-                protocol,
-            ) = packet[:7]
-            sim_type_int = -1
         if len(req_rating) == 0:
             req_rating_int = 1
         else:
@@ -525,7 +529,7 @@ class ClientProtocol(LineProtocol):
             )
             return True, False
         client = Client(
-            client_type,
+            is_AA,
             callsign,
             req_rating_int,
             cid_str,
@@ -536,7 +540,19 @@ class ClientProtocol(LineProtocol):
         )
         self.factory.clients[callsign] = client
         self.client = client
-        if client_type == "PILOT":
+        if is_AA:
+            self.factory.broadcast(
+                make_packet(
+                    FSDClientCommand.ADD_ATC + callsign,
+                    b"SERVER",
+                    realname,
+                    cid,
+                    b"",
+                    req_rating,
+                ),
+                from_client=client,
+            )
+        else:
             self.factory.broadcast(
                 # two times of req_rating... FSD does :(
                 make_packet(
@@ -550,26 +566,8 @@ class ClientProtocol(LineProtocol):
                 ),
                 from_client=client,
             )
-        else:
-            self.factory.broadcast(
-                make_packet(
-                    FSDClientCommand.ADD_ATC + callsign,
-                    b"SERVER",
-                    realname,
-                    cid,
-                    b"",
-                    req_rating,
-                ),
-                from_client=client,
-            )
         self.send_motd()
-        callsign_str, ip = (
-            callsign.decode(errors="backslashreplace"),
-            self.transport.get_extra_info("peername")[0],
-        )
-        await logger.ainfo(
-            f"New client {callsign_str} ({cid_str}) from {ip}.",
-        )
+        await logger.ainfo(f"New client {self.get_description()}.")
         self.factory.plugin_manager.trigger_event_auditers_nonblock(
             "new_client_created", (self,), {}
         )
@@ -910,7 +908,7 @@ class ClientProtocol(LineProtocol):
             if (plan := client.flight_plan) is None:
                 self.send_error(FSDClientError.NOFP)
                 return True, False
-            if self.client.type != "ATC":
+            if not self.client.is_controller:
                 return False, False
             self.send_line(
                 make_packet(
@@ -1023,7 +1021,7 @@ class ClientProtocol(LineProtocol):
         if command is FSDClientCommand.ADD_ATC or command is FSDClientCommand.ADD_PILOT:
             return await self.handle_add_client(
                 packet,
-                "ATC" if command is FSDClientCommand.ADD_ATC else "PILOT",
+                command is FSDClientCommand.ADD_ATC
             )
         if command is FSDClientCommand.PLAN:
             return await self.handle_plan(packet)

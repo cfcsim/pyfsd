@@ -54,9 +54,9 @@ def broadcast_position_checker(
     visual_range: int
     x: int = to_client.get_range()
     y: int = from_client.get_range()
-    if to_client.type == "ATC":
+    if to_client.is_controller:
         visual_range = to_client.visual_range
-    elif from_client.type == "PILOT":
+    elif not from_client.is_controller:
         visual_range = x + y
     else:
         visual_range = max(x, y)
@@ -81,7 +81,7 @@ def broadcast_message_checker(from_client: Optional[Client], to_client: Client) 
     visual_range: int
     x: int = to_client.get_range()
     y: int = from_client.get_range()
-    if from_client.type == "PILOT" and to_client.type == "PILOT":
+    if (not from_client.is_controller) and (not to_client.is_controller):
         visual_range = x + y
     else:
         visual_range = max(y, x)
@@ -115,7 +115,7 @@ def all_ATC_checker(_: Optional[Client], to_client: Client) -> bool:  # noqa: N8
     Returns:
         The check result (send message to to_client or not).
     """
-    return to_client.type == "ATC"
+    return to_client.is_controller
 
 
 def all_pilot_checker(_: Optional[Client], to_client: Client) -> bool:
@@ -128,7 +128,7 @@ def all_pilot_checker(_: Optional[Client], to_client: Client) -> bool:
     Returns:
         The check result (send message to to_client or not).
     """
-    return to_client.type == "ATC"
+    return not to_client.is_controller
 
 
 def at_checker(from_client: Optional[Client], to_client: Client) -> bool:
