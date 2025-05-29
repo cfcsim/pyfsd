@@ -201,7 +201,6 @@ class MetarManager:
 
         Args:
             icao: ICAO of the airport.
-            ignored_sources: Ignored metar sources, won't be used in this fetch.
             ignore_case: Ignore ICAO case.
 
         Returns:

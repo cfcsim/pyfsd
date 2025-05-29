@@ -1,5 +1,6 @@
-site_name: "pyfsd"
-site_description: "An implementation of protocol 9 of FSD based on Python."
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
+site_name: "PyFSD"
+site_description: "用 Python 写成的 FSD 协议9实现"
 site_url: "https://cfcsim.github.io/pyfsd/"
 repo_url: "https://github.com/cfcsim/pyfsd"
 repo_name: "cfcsim/pyfsd"
@@ -8,16 +9,10 @@ watch: [mkdocs.yml, README.md, CONTRIBUTING.md, CHANGELOG.md, src/pyfsd]
 copyright: Copyright &copy; 2023-2024 tonestory6809
 edit_uri: edit/async_dev/docs/
 
-validation:
-  omitted_files: warn
-  absolute_links: warn
-  unrecognized_links: warn
-
 nav:
 - 首页:
   - 总览: index.md
   - 更改日志: changelog.md
-  - 制作人员: credits.md
   - 开源协议: license.md
   - 贡献指南: contributing.md
   - 行为准则: code_of_conduct.md
@@ -29,9 +24,7 @@ nav:
     - import_user: cmdline_tools/import_user.md
 - 开发指南:
   - 插件: develop/plugin.md
-  # defer to gen-files + literate-nav
-  - API参考:
-    - pyfsd: reference/
+  - API参考: develop/api.md
 
 
 theme:
@@ -47,8 +40,8 @@ theme:
   - navigation.indexes
   - navigation.sections
   - navigation.tabs
-  - navigation.tabs.sticky
   - navigation.top
+  - navigation.tracking
   - search.highlight
   - search.suggest
   - toc.follow
@@ -59,28 +52,26 @@ theme:
       name: Switch to light mode
   - media: "(prefers-color-scheme: light)"
     scheme: default
-    primary: teal
-    accent: purple
+    primary: indigo
+    accent: cyan
     toggle:
-      icon: material/weather-sunny
+      icon: material/brightness-7
       name: Switch to dark mode
   - media: "(prefers-color-scheme: dark)"
     scheme: slate
-    primary: black
-    accent: lime
+    primary: blue gray
+    accent: teal
     toggle:
-      icon: material/weather-night
+      icon: material/brightness-4
       name: Switch to system preference
-
-extra_css:
-- css/material.css
-- css/mkdocstrings.css
 
 markdown_extensions:
 - attr_list
 - admonition
 - callouts
 - footnotes
+- md_in_html
+- pymdownx.details
 - pymdownx.emoji:
 - pymdownx.magiclink
 - pymdownx.snippets:
@@ -93,22 +84,16 @@ markdown_extensions:
 
 plugins:
 - search
-- markdown-exec
-- gen-files:
-    scripts:
-    - scripts/gen_ref_nav.py
-- literate-nav:
-    nav_file: SUMMARY.txt
 - mkdocstrings:
     handlers:
       python:
         import:
         - https://docs.python.org/3/objects.inv
         options:
+          find_stubs_package: true
+          heading_level: 1
           docstring_options:
             ignore_init_summary: true
-          docstring_section_style: list
-          heading_level: 1
           merge_init_into_class: true
           separate_signature: true
           show_root_heading: true
@@ -117,10 +102,7 @@ plugins:
           show_symbol_type_heading: true
           show_symbol_type_toc: true
           signature_crossrefs: true
-- git-committers:
-    enabled: false
-    repository: cfcsim/pyfsd
-
+          show_overloads: true
 - minify:
     minify_html: true
 

@@ -459,7 +459,6 @@ class ClientProtocol(LineProtocol):
         Args:
             packet: The packet.
             is_AA: True if this packet is #AA (add atc), else #AP
-            client_type: Type of client, ATC or PILOT
         """
         if self.client is not None:
             self.send_error(FSDClientError.REGISTERED)
