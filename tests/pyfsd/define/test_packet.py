@@ -3,6 +3,9 @@
 
 from unittest import TestCase
 
+from hypothesis import given
+from hypothesis import strategies as st
+
 from pyfsd.define.packet import (
     CLIENT_USED_COMMAND,
     SPLIT_SIGN,
@@ -54,16 +57,58 @@ class TestPacket(TestCase):
 
     def test_CompatibleString(self) -> None:
         """Test if CompatibleString works."""
-        str1 = CompatibleString("1234")
-        self.assertEqual(len(str1), 4)
-        self.assertEqual(str1 + "test", "1234test")
-        self.assertEqual(str1 + b"test", b"1234test")
-        self.assertEqual(str1 + CompatibleString("test"), CompatibleString("1234test"))
-        self.assertIn("1", str1)
-        self.assertIn(b"2", str1)
-        self.assertIn(CompatibleString("3"), str1)
-        self.assertEqual(str1.as_type(str), "1234")
-        self.assertEqual(str1.as_type(bytes), b"1234")
+        str1 = CompatibleString("0123456789ABCDEF")
+        self.assertEqual(str(str1), "0123456789ABCDEF")
+        self.assertEqual(bytes(str1), b"0123456789ABCDEF")
+        self.assertEqual(repr(str1), "CompatibleString('0123456789ABCDEF')")
+        # richcmp tests taken from cpython/Lib/test/test_bytes.py
+        self.assertEqual(CompatibleString("abc") == b"abc", True)
+        self.assertEqual(CompatibleString("ab") != b"abc", True)
+        self.assertEqual(CompatibleString("ab") <= b"abc", True)
+        self.assertEqual(CompatibleString("ab") < b"abc", True)
+        self.assertEqual(CompatibleString("abc") >= b"ab", True)
+        self.assertEqual(CompatibleString("abc") > b"ab", True)
+        self.assertEqual(CompatibleString("abc") != b"abc", False)
+        self.assertEqual(CompatibleString("ab") == b"abc", False)
+        self.assertEqual(CompatibleString("ab") > b"abc", False)
+        self.assertEqual(CompatibleString("ab") >= b"abc", False)
+        self.assertEqual(CompatibleString("abc") < b"ab", False)
+        self.assertEqual(CompatibleString("abc") <= b"ab", False)
+        self.assertEqual(CompatibleString("abc") == "abc", True)
+        self.assertEqual(CompatibleString("ab") != "abc", True)
+        self.assertEqual(CompatibleString("ab") <= "abc", True)
+        self.assertEqual(CompatibleString("ab") < "abc", True)
+        self.assertEqual(CompatibleString("abc") >= "ab", True)
+        self.assertEqual(CompatibleString("abc") > "ab", True)
+        self.assertEqual(CompatibleString("abc") != "abc", False)
+        self.assertEqual(CompatibleString("ab") == "abc", False)
+        self.assertEqual(CompatibleString("ab") > "abc", False)
+        self.assertEqual(CompatibleString("ab") >= "abc", False)
+        self.assertEqual(CompatibleString("abc") < "ab", False)
+        self.assertEqual(CompatibleString("abc") <= "ab", False)
+        self.assertEqual(str1.__getnewargs__(), ("0123456789ABCDEF",))
+        self.assertEqual(CompatibleString("A%dC") % 3, CompatibleString("A3C"))
+        self.assertEqual(str1 + "test", "0123456789ABCDEFtest")
+        self.assertEqual(str1 + b"test", b"0123456789ABCDEFtest")
+        self.assertEqual(
+            str1 + CompatibleString("test"), CompatibleString("0123456789ABCDEFtest")
+        )
+        self.assertIn("ABCD", str1)
+        self.assertIn(b"ABCD", str1)
+        self.assertIn(CompatibleString("ABCD"), str1)
+        self.assertNotIn("ABCDEFG", str1)
+        self.assertNotIn(b"ABCDEFG", str1)
+        self.assertNotIn(CompatibleString("ABCDEFG"), str1)
+        self.assertEqual(str(str1 * 10), "0123456789ABCDEF" * 10)
+        self.assertEqual(bytes(str1 * 10), b"0123456789ABCDEF" * 10)
+        self.assertEqual(str1 * 10, CompatibleString("0123456789ABCDEF" * 10))
+
+    @given(st.slices(20))
+    def test_CompatibleString_slice(self, s: slice) -> None:
+        """Test if CompatibleString subscript works."""
+        self.assertEqual(
+            CompatibleString("0123456789ABCDEF")[s], b"0123456789ABCDEF"[s]
+        )
 
     def test_CLIENT_USED_COMMAND(self) -> None:
         """Test if CLIENT_USED_COMMAND works."""

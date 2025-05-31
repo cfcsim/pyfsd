@@ -68,7 +68,7 @@ class CompatibleString:
 
     def __repr__(self) -> str:
         """Return the canonical string representation."""
-        return f'CompatibleString("{self.string}")'
+        return f"CompatibleString('{self.string}')"
 
     def __int__(self) -> int:
         """Return int(self.string)."""
