@@ -931,7 +931,7 @@ class ClientProtocol(LineProtocol):
                 ),
             )
         elif packet[2].upper() == b"RN":
-            # TODO: Implemention maybe incorrect
+            # TODO: Implementation maybe incorrect
             # Get realname?
             callsign = packet[1]
             if (client := self.factory.clients.get(callsign)) is not None:

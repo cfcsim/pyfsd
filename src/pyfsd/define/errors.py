@@ -30,7 +30,7 @@ class FSDClientError(IntEnum):
             "No error",
             "Callsign in use",
             "Invalid callsign",
-            "Already registerd",
+            "Already registerd",  # codespell:ignore registerd
             "Syntax error",
             "Invalid source callsign",
             "Invalid CID/password",

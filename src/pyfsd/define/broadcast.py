@@ -16,7 +16,7 @@ BroadcastChecker = Callable[[Optional[Client], Client], bool]
 def create_broadcast_range_checker(visual_range: int) -> BroadcastChecker:
     """Create a broadcast checker which checks visual range.
 
-    Paramaters:
+    Parameters:
         visual_range: Visual range.
 
     Returns:
@@ -40,7 +40,7 @@ def broadcast_position_checker(
 ) -> bool:
     """A broadcast checker which checks visual range while broadcasting position.
 
-    Paramaters:
+    Parameters:
         from_client: The from client.
         to_client: The dest client.
 
@@ -67,7 +67,7 @@ def broadcast_position_checker(
 def broadcast_message_checker(from_client: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which checks visual range while broadcasting message.
 
-    Paramaters:
+    Parameters:
         from_client: The from client.
         to_client: The dest client.
 
@@ -92,7 +92,7 @@ def broadcast_message_checker(from_client: Optional[Client], to_client: Client) 
 def broadcast_checkers(*checkers: BroadcastChecker) -> BroadcastChecker:
     """Create a set of broadcast.
 
-    Paramaters:
+    Parameters:
         checkers: The broadcast checkers.
 
     Returns:
@@ -108,8 +108,7 @@ def broadcast_checkers(*checkers: BroadcastChecker) -> BroadcastChecker:
 def all_ATC_checker(_: Optional[Client], to_client: Client) -> bool:  # noqa: N802
     """A broadcast checker which only broadcast to ATC.
 
-    Paramaters:
-        from_client: The from client.
+    Parameters:
         to_client: The dest client.
 
     Returns:
@@ -121,8 +120,7 @@ def all_ATC_checker(_: Optional[Client], to_client: Client) -> bool:  # noqa: N8
 def all_pilot_checker(_: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which only broadcast to pilot.
 
-    Paramaters:
-        from_client: The from client.
+    Parameters:
         to_client: The dest client.
 
     Returns:
@@ -134,7 +132,7 @@ def all_pilot_checker(_: Optional[Client], to_client: Client) -> bool:
 def at_checker(from_client: Optional[Client], to_client: Client) -> bool:
     """A broadcast checker which checks visual range when dest startswith @.
 
-    Paramaters:
+    Parameters:
         from_client: The from client.
         to_client: The dest client.
 
@@ -152,7 +150,7 @@ def at_checker(from_client: Optional[Client], to_client: Client) -> bool:
 def is_multicast(callsign: str) -> bool:
     """Determine if dest callsign is multicast sign.
 
-    Paramaters:
+    Parameters:
         callsign: The dest callsign.
 
     Returns:

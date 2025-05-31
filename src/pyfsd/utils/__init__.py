@@ -1,1 +1,1 @@
-"""PyFSD cli utilies."""
+"""PyFSD CLI utilities."""

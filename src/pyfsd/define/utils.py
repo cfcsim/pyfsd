@@ -222,7 +222,7 @@ def asyncify(func: Callable[P, T]) -> Callable[P, Awaitable[T]]:
 
 
 class MRand:
-    """Python implemention of FSD MRand.
+    """Python implementation of FSD MRand.
 
     Note:
         This class does not simulate int32 overflow.

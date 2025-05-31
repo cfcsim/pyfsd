@@ -1,4 +1,4 @@
-"""Utilies to deal with FSD packet.
+"""Utilities to deal with FSD packet.
 
 Attributes:
     CLIENT_USED_COMMAND: All possibly command can be issued by user in protocol 9.

@@ -36,7 +36,7 @@ class LineReceiver(Protocol, metaclass=ABCMeta):
         raise NotImplementedError
 
     def data_received(self, data: bytes) -> None:
-        """Handle datas and call line_received as soon as we received a line."""
+        """Handle data and call line_received as soon as we received a line."""
         if self.buffer_size != -1:
             length = len(self.buffer) + len(data)
             if length > self.buffer_size:

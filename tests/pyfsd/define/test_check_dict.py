@@ -191,8 +191,8 @@ class TestCheckDict(TestCase):
         # TypedDict
         for typed_dict in available_typeddict:
             for dict_obj, exp_errs, allow_unexp_keys in cases:
-                vaild = not exp_errs
-                with self.subTest(typeddict_source=typed_dict.__module__, vaild=vaild):
+                valid = not exp_errs
+                with self.subTest(typeddict_source=typed_dict.__module__, valid=valid):
 
                     class ATypedDict(typed_dict):  # type: ignore[misc, valid-type]
                         a: Union[int, str]
@@ -207,7 +207,7 @@ class TestCheckDict(TestCase):
                         "d": NotRequired[dict[int, str]],
                     }
 
-                    if vaild:
+                    if valid:
                         self.assertFalse(
                             tuple(
                                 check_dict(
@@ -287,9 +287,9 @@ class TestCheckDict(TestCase):
             "d": NotRequired[dict[int, str]],
         }
         for dict_obj, exp_errs, allow_unexp_keys in cases:
-            vaild = not exp_errs
+            valid = not exp_errs
 
-            if vaild:
+            if valid:
                 self.assertFalse(
                     tuple(
                         check_dict(

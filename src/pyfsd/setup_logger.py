@@ -98,12 +98,14 @@ def make_filtering_stdlib_bound_logger(min_level: int) -> type[stdlib.BoundLogge
                 return None
             return super().log(level, event, *args, **kw)
 
-        async def alog(
+        async def alog(  # codespell:ignore alog
             self, level: object, event: str, *args: object, **kw: object
         ) -> None:
             if isinstance(level, int) and level < min_level:
                 return None
-            return await super().alog(level, event, *args, **kw)
+            return await super().alog(  # codespell:ignore alog
+                level, event, *args, **kw
+            )
 
         if min_level > CRITICAL:  # how
             critical = do_nothing

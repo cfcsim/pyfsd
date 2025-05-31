@@ -54,7 +54,7 @@ __all__ = [
     "lookup_required",
 ]
 
-# Currently we have no choice to make Literal[...] works, so temporaily type it as Any
+# Currently we have no choice to make Literal[...] works, so temporarily type it as Any
 TypeHint = object  # Union[TypeAlias, Type]
 
 
@@ -88,7 +88,7 @@ def explain_type(typ: TypeHint) -> str:
 class VerifyTypeError(TypeError):
     """A exception describes a value does not match specified type.
 
-    Attritubes:
+    Attributes:
         name: The name of this value.
         excepted: The expected type.
         actually: The actually value.
@@ -115,7 +115,7 @@ class VerifyTypeError(TypeError):
         """Format a VerifyTypeError to string.
 
         Returns:
-            The formated string, includes name, expected type and actually value
+            The formatted string, includes name, expected type and actually value
         """
         return (
             f"'{self.name}' must be {explain_type(self.excepted)}"
@@ -142,7 +142,7 @@ class VerifyTypeError(TypeError):
 class VerifyKeyError(KeyError):
     """A exception describes a missing or extra key in a dict.
 
-    Attritubes:
+    Attributes:
         dict_name: The dict name.
         key: The key name.
         type: Type of error, a missing or extra key found.
@@ -171,7 +171,7 @@ class VerifyKeyError(KeyError):
         """Format a VerifyKeyError to string.
 
         Returns:
-            The formated string, includes name, error type
+            The formatted string, includes name, error type
         """
         return f"{self.dict_name}[{self.key!r}] is {self.type}"
 

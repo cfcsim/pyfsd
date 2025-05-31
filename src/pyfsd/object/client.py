@@ -70,12 +70,12 @@ class Client:
 
     @property
     def position_ok(self) -> bool:
-        """The position is vaild or not."""
+        """The position is valid or not."""
         return self.position != (0, 0) and self.altitude < INVALID_ALTITUDE
 
     @property
     def frequency_ok(self) -> bool:
-        """The frequency is vaild or not."""
+        """The frequency is valid or not."""
         return self.frequency != 0 and self.frequency < INVALID_ALTITUDE
 
     def update_plan(
