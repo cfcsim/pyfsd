@@ -883,7 +883,7 @@ class ClientProtocol(LineProtocol):
         return True, True  # yep
 
     @check_packet(3)
-    def handle_CQ(self, packet: tuple[bytes, ...]) -> HandleResult:  # noqa: N802
+    def handle_client_query(self, packet: tuple[bytes, ...]) -> HandleResult:
         """Handle $CQ request."""
         # Behavior may differ from FSD.
         assert self.client is not None
@@ -891,7 +891,7 @@ class ClientProtocol(LineProtocol):
             # Multicast a message.
             return self.handle_cast(
                 packet,
-                FSDClientCommand.CQ,
+                FSDClientCommand.CLIENT_QUERY,
                 require_parts=3,
                 multicast_able=True,
             )
@@ -937,7 +937,7 @@ class ClientProtocol(LineProtocol):
             if (client := self.factory.clients.get(callsign)) is not None:
                 self.send_line(
                     make_packet(
-                        FSDClientCommand.CR + callsign,
+                        FSDClientCommand.CLIENT_RESPONSE + callsign,
                         self.client.callsign,
                         b"RN",
                         client.realname,
@@ -1019,8 +1019,7 @@ class ClientProtocol(LineProtocol):
             return False, False
         if command is FSDClientCommand.ADD_ATC or command is FSDClientCommand.ADD_PILOT:
             return await self.handle_add_client(
-                packet,
-                command is FSDClientCommand.ADD_ATC
+                packet, command is FSDClientCommand.ADD_ATC
             )
         if command is FSDClientCommand.PLAN:
             return await self.handle_plan(packet)
@@ -1060,7 +1059,7 @@ class ClientProtocol(LineProtocol):
             )
         if (
             command is FSDClientCommand.REQUEST_HANDOFF
-            or command is FSDClientCommand.AC_HANDOFF
+            or command is FSDClientCommand.ACCEPT_HANDOFF
         ):
             return self.handle_cast(
                 packet,
@@ -1068,7 +1067,10 @@ class ClientProtocol(LineProtocol):
                 require_parts=3,
                 multicast_able=False,
             )
-        if command is FSDClientCommand.SB or command is FSDClientCommand.PC:
+        if (
+            command is FSDClientCommand.SQUAWK_BOX
+            or command is FSDClientCommand.PRO_CONTROLLER
+        ):
             return self.handle_cast(
                 packet,
                 command,
@@ -1093,15 +1095,15 @@ class ClientProtocol(LineProtocol):
             )
         if command is FSDClientCommand.REQUEST_ACARS:
             return await self.handle_acars(packet)
-        if command is FSDClientCommand.CR:
+        if command is FSDClientCommand.CLIENT_RESPONSE:
             return self.handle_cast(
                 packet,
                 command,
                 require_parts=4,
                 multicast_able=False,
             )
-        if command is FSDClientCommand.CQ:
-            return await self.handle_CQ(packet)
+        if command is FSDClientCommand.CLIENT_QUERY:
+            return await self.handle_client_query(packet)
         if command is FSDClientCommand.KILL:
             return await self.handle_kill(packet)
         self.send_error(FSDClientError.SYNTAX)

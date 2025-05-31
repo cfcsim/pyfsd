@@ -274,10 +274,10 @@ class FSDClientCommand(CompatibleString, Enum):
     ATC_POSITION = "%"
     PING = "$PI"
     PONG = "$PO"
-    AC_HANDOFF = "$HA"
+    ACCEPT_HANDOFF = "$HA"
     PLAN = "$FP"
-    SB = "#SB"
-    PC = "#PC"
+    SQUAWK_BOX = "#SB"
+    PRO_CONTROLLER = "#PC"
     WEATHER = "#WX"
     CLOUD_DATA = "#CD"
     WIND_DATA = "#WD"
@@ -287,8 +287,8 @@ class FSDClientCommand(CompatibleString, Enum):
     REQUEST_ACARS = "$AX"
     REPLY_ACARS = "$AR"
     ERROR = "$ER"
-    CQ = "$CQ"
-    CR = "$CR"
+    CLIENT_QUERY = "$CQ"
+    CLIENT_RESPONSE = "$CR"
     KILL = "$!!"
     WIND_DELTA = "#DL"
 
@@ -391,15 +391,15 @@ CLIENT_USED_COMMAND = [
     FSDClientCommand.PING,
     FSDClientCommand.PONG,
     FSDClientCommand.MESSAGE,
-    FSDClientCommand.AC_HANDOFF,
+    FSDClientCommand.ACCEPT_HANDOFF,
     FSDClientCommand.PLAN,
-    FSDClientCommand.SB,
-    FSDClientCommand.PC,
+    FSDClientCommand.SQUAWK_BOX,
+    FSDClientCommand.PRO_CONTROLLER,
     FSDClientCommand.WEATHER,
     FSDClientCommand.REQUEST_COMM,
     FSDClientCommand.REPLY_COMM,
     FSDClientCommand.REQUEST_ACARS,
-    FSDClientCommand.CQ,
-    FSDClientCommand.CR,
+    FSDClientCommand.CLIENT_QUERY,
+    FSDClientCommand.CLIENT_RESPONSE,
     FSDClientCommand.KILL,
 ]
