@@ -6,7 +6,7 @@ repo_url: "https://github.com/cfcsim/pyfsd"
 repo_name: "cfcsim/pyfsd"
 site_dir: "site"
 watch: [mkdocs.yml, README.md, CONTRIBUTING.md, CHANGELOG.md, src/pyfsd]
-copyright: Copyright &copy; 2023-2024 tonestory6809
+copyright: Copyright &copy; 2023-2025 tonestory6809
 edit_uri: edit/async_dev/docs/
 
 nav:
