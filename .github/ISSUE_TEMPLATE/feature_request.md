@@ -2,8 +2,8 @@
 name: Feature request
 about: Suggest an idea for this project
 title: ''
-labels: feature
-assignees: 'gamecss'
+labels: ''
+assignees: tonestory6809
 
 ---
 
