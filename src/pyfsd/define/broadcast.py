@@ -1,7 +1,11 @@
 """The core of PyFSD broadcast system -- broadcast checker.
 
+Attributes:
+    BroadcastChecker: Type of a broadcast checker, used in
+        [pyfsd.factory.client.ClientFactory.broadcast][].
+
 Example:
-    FSDClientFactory.broadcast(..., check_func=atChecker)
+    ClientFactory.broadcast(..., check_func=at_checker)
 """
 
 from typing import Callable, Optional
@@ -9,6 +13,18 @@ from typing import Callable, Optional
 from pyfsd.object.client import Client
 
 from .utils import calc_distance
+
+__all__ = [
+    "BroadcastChecker",
+    "all_ATC_checker",
+    "all_pilot_checker",
+    "at_checker",
+    "broadcast_checkers",
+    "broadcast_message_checker",
+    "broadcast_position_checker",
+    "create_broadcast_range_checker",
+    "is_multicast",
+]
 
 BroadcastChecker = Callable[[Optional[Client], Client], bool]
 

@@ -30,20 +30,20 @@ class Container(containers.DeclarativeContainer):
     """PyFSD dependencies container.
 
     Attributes:
-        config: The root config.
-        db_engine: Async sqlalchemy database engine.
-        plugin_manager: Plugin manager.
-        metar_manager: Metar manager.
-        client_factory: Client protocol factory, which stores clients and so on.
+        config (RootPyFSDConfigProvider): The root config.
+        db_engine (providers.Singleton[sqlalchemy.ext.asyncio.AsyncEngine]): sqlalchemy
+            database engine.
+        plugin_manager (providers.Singleton[PluginManager]): Plugin manager.
+        metar_manager (providers.Singleton[MetarManager]): Metar manager.
+        client_factory (providers.Singleton[ClientFactory]): Client protocol factory,
+            which stores clients and do something else.
     """
 
     config = RootPyFSDConfigProvider()
     db_engine = providers.Singleton(
         create_async_engine, config.pyfsd.database.url, pool_pre_ping=True
     )
-    plugin_manager: "providers.Singleton[PluginManager]" = providers.Singleton(
-        PluginManager
-    )
+    plugin_manager = providers.Singleton(PluginManager)
     metar_manager = providers.Singleton(MetarManager, config.pyfsd.metar)
     client_factory = providers.Singleton(
         ClientFactory,

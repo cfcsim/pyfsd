@@ -1,8 +1,9 @@
 """Utilities to deal with FSD packet.
 
 Attributes:
-    CLIENT_USED_COMMAND: All possibly command can be issued by user in protocol 9.
-    SPLIT_SIGN: FSD client packet's split sign.
+    CLIENT_USED_COMMAND (list[FSDClientCommand]): All possibly command can be issued by
+        user in protocol 9.
+    SPLIT_SIGN (CompatibleString): FSD client packet's split sign.
 """
 
 from collections.abc import Iterable, Sequence
@@ -330,9 +331,9 @@ def break_packet(
 ) -> tuple[Optional[Union[AnyStr, FSDClientCommand]], tuple[AnyStr, ...]]:
     """Break a packet into command and parts.
 
-    #APzzz1:zzz3:zzz4
-    [^][^^^^^^^^^^^^]
-    command     parts
+        #APzzzzzzzzzzzz1:zzzzzzz3:zzzzzzz4
+        [^][^^^^^^^^^^^] [^^^^^^] [^^^^^^]
+        command parts[0] parts[1] parts[2]
 
     Args:
         packet: The original packet.

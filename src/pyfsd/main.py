@@ -1,7 +1,7 @@
 """Run PyFSD.
 
 Attributes:
-    DEFAULT_CONFIG: Default config of PyFSD.
+    DEFAULT_CONFIG (str): Default config of PyFSD.
 """
 
 from argparse import ArgumentParser
@@ -44,8 +44,8 @@ class PyFSDDatabaseConfig(TypedDict):
     """PyFSD database config.
 
     Attributes:
-        url: The database url.
-        See `SQLALchemy docs <https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls>`_.
+        url: The database url, see
+            [SQLALchemy docs](https://docs.sqlalchemy.org/en/20/core/engines.html#database-urls).
     """
 
     url: str

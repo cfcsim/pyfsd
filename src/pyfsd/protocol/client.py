@@ -86,12 +86,16 @@ def check_packet(
 
     Args:
         require_parts: How many parts required.
-            For example, #AA1012:gamecss:mentally broken
-                         [0    ] [1    ] [2            ] => 3 parts
+
+                #AA1012:gamecss:mentally broken
+                [0    ] [1    ] [2            ] => 3 parts
         callsign_position: Which part contains callsign, used when (need_login and
-            check_callsign).
-            For example, #AA1012:gamecss:mentally broken
-                         [0, cs] [1    ] [2            ] => parts[0] contains callsign.
+            check_callsign). For example:
+
+                #AA1012:gamecss:mentally broken
+                [0    ] [1    ] [2            ]
+
+            Here parts[0] is the callsign, so `callsign_position` is 0.
         need_login: Need self.client is not None (logined) or not.
         check_callsign: Check packet[callsign_position] == self.client.callsign or not.
     """
@@ -345,10 +349,11 @@ class ClientProtocol(LineProtocol):
         """Multicast lines.
 
         Args:
-            to_limiter: Dest limiter. * means every client, *A means every ATC,
-                *P means every pilots, @ means in a range (see at_checker)
+            to_limiter: Dest limiter. `*` means every client, `*A` means every ATC, `*P`
+                means every pilots, `@` means client in a range (see
+                [pyfsd.define.broadcast.at_checker][])
             lines: lines to be sent.
-            custom_at_checker: Custom checker used when to_limiter is @.
+            custom_at_checker: Custom checker used when to_limiter is `@`.
 
         Returns:
             Lines sent to at least client or not.
@@ -395,17 +400,19 @@ class ClientProtocol(LineProtocol):
         """Handle a (multi/uni)cast request.
 
         Args:
-            packet: format: (command)(self_callsign):(to_callsign):(multicast content)
-                Note that to_callsign could be multicast sign (*A, *P, etc.)
+            packet: format: `(command)(self_callsign):(to_callsign):(multicast content)`
+                Note that to_callsign could be multicast sign (`*A`, `*P`, etc.)
                 if multicast_able.
             command: The packet's command.
             require_parts: How many parts required.
-                For example, #AA1012:gamecss:happy lunar new year
-                             [0    ] [1    ] [2                 ] => 3 parts
+
+                    #AA1012:gamecss:happy lunar new year
+                    [0    ] [1    ] [2                 ] => 3 parts
+
             multicast_able: to_callsign can be multicast sign or not.
                 if not multicast_able and to_callsign is multicast sign, this function
                 will send nothing and exit with False, False.
-            custom_at_checker: Custom checker used when to_callsign is '@'.
+            custom_at_checker: Custom checker used when to_callsign is `@`.
         """
         # Check common things first
         packet_len: int = len(packet)

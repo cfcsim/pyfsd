@@ -1,24 +1,29 @@
 """PyFSD plugin manager.
 
-The plugin architecture works like that:
+Tip: how the plugin architecture works:
     Assume your plugin registered a handler and an auditer:
+
         async def setup():
             return {
                 "handler": {"some_event": (self.handle_sth,)},
                 "auditer": {"some_event": (self.audit_sth,)},
             }
-    If this event is handleable:
-        somewhere of PyFSD called
-            PluginManager.trigger_event_handlers("some_event", ...)
-        So handler in your plugin got called:
-            def handle_sth(...) -> None: pass
-        If the handler prevented the event by
-            raise PreventEvent
-        Then this event won't be passed to other plugins
-            and PyFSD won't handle the event too.
+
+    If this event is handleable, then somewhere of PyFSD will call
+
+        PluginManager.trigger_event_handlers("some_event", ...)
+
+    So handler in your plugin got called:
+
+        def handle_sth(...) -> None: pass
+
+    If the handler prevented the event by `raise PreventEvent`, then this event won't be
+        passed to other plugins and PyFSD won't handle the event too.
+
     Later after this event processed (handled by PyFSD or prevented by one plugin),
-        PyFSD'll call PluginManager.trigger_event_auditers("some_event", ...)
-    So auditer in your plugin got called:
+        PyFSD'll call `PluginManager.trigger_event_auditers("some_event", ...)`, so
+        auditer in your plugin got called:
+
         def audit_sth(..) -> None: pass
 """
 

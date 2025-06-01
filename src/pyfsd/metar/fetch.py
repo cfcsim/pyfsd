@@ -2,6 +2,8 @@
 
 Attributes:
     MetarInfoDict: Type of a dict that describes all airports' metar.
+    CronFetcher: Type of cron mode metar fetcher.
+    OnceFetcher: Type of once mode metar fetcher.
 """
 
 from asyncio import get_event_loop

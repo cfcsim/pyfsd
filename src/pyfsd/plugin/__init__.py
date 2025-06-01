@@ -2,8 +2,8 @@
 """PyFSD plugin architecture.
 
 Attributes:
-    API_LEVEL: Current PyFSD plugin api level, (<major>, <minor>)
-        If breaking changes happened, then major is increased, otherwise minor
+    API_LEVEL (tuple[int, int]): Current PyFSD plugin api level, (major, minor).
+        If changes will break something, major is increased, otherwise minor.
     EventResult: event handle result for handleable events.
 """
 

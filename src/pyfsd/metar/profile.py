@@ -1,8 +1,4 @@
-"""Python implemented fsd/wprofile.
-
-Note:
-    I don't know what variation means, it was copied from FSD.
-"""
+"""fsd/wprofile implemented in Python."""
 # ruff: noqa: PLR2004
 
 import contextlib
@@ -39,11 +35,7 @@ VAR_LOWTEMP = 9
 def get_now_variation(
     seed: int,
 ) -> tuple[int, int, int, int, int, int, int, int, int, int]:
-    """Check and update variation if it's outdated.
-
-    Returns:
-        Updated variation or not.
-    """
+    """Get current variation."""
     mrand.srand(seed)
     return (
         mrand(),

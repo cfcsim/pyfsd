@@ -1,7 +1,11 @@
 """PyFSD database tables.
 
+Attributes:
+    metadata (MetaData): SQLAlchemy metadata.
+    users_table (Table): Table used to store user info.
+
 Note:
-    These databases were initialized in pyfsd.main.main().
+    These databases were initialized in [pyfsd.main.main][]
 """
 
 from sqlalchemy import Column, Integer, MetaData, String, Table

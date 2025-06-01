@@ -1,4 +1,4 @@
-"""Start PyFSD."""
+"""PyFSD entrypoint."""
 
 from .main import main
 

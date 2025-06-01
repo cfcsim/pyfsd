@@ -87,8 +87,11 @@ plugins:
 - mkdocstrings:
     handlers:
       python:
-        import:
+        inventories:
         - https://docs.python.org/3/objects.inv
+        - https://docs.sqlalchemy.org/en/20/objects.inv
+        - https://python-dependency-injector.ets-labs.org/objects.inv
+        - https://argon2-cffi.readthedocs.io/en/stable/objects.inv
         options:
           find_stubs_package: true
           heading_level: 1

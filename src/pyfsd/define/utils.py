@@ -1,9 +1,10 @@
 """Collection of tools that are used frequently.
 
 Attributes:
-    task_keeper: Helper to keep your asyncio.Task's strong reference and cancel it when
-        PyFSD is shutting down.
-    mustdone_task_keeper: Similar to task_keeper, but PyFSD will await them before stop
+    task_keeper (TaskKeeper): Helper to keep your asyncio.Task's strong reference and
+        cancel it when PyFSD is shutting down.
+    mustdone_task_keeper (TaskKeeper): Similar to task_keeper, but PyFSD will await
+        them before stop.
 """
 
 from asyncio import get_event_loop
@@ -35,6 +36,7 @@ __all__ = [
     "is_empty_iterable",
     "iter_callable",
     "iterables",
+    "mustdone_task_keeper",
     "str_to_float",
     "str_to_int",
     "task_keeper",
@@ -86,7 +88,7 @@ def calc_distance(
     Args:
         from_position: The first point.
         to_position: The second point.
-        unit: Unit of the distance. Default nm
+        unit: Unit of the distance, nm by default.
 
     Returns:
         The distance.
@@ -248,11 +250,11 @@ class MRand:
 
 
 class TaskKeeper:
-    """Keep strong reference to running tasks.
+    """Helper to keep strong reference of running [asyncio.Task][]s.
 
     Note:
-        You're advised not to create new instance,
-        use `pyfsd.define.utils.task_keeper` instead.
+        You're advised not to create new instance and use
+            pyfsd.define.utils.task_keeper instead.
     """
 
     tasks: set["Task"]

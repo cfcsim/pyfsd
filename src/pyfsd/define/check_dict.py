@@ -3,6 +3,11 @@
 It can be used to perform config check.
 Only TypedDict, Literal, NotRequired, Union, List and Dict are supported.
 
+Attributes:
+    DictStructure: Type of a object describes structure of a dict, can be TypedDict
+        or dict.
+    TypeHint: Type of a type hint.
+
 Examples:
     >>> list(check_simple_type(1, Union[int, str]))
     []
@@ -50,6 +55,8 @@ from typing_extensions import NotRequired as NotRequired_ext
 from .utils import is_empty_iterable
 
 __all__ = [
+    "DictStructure",
+    "TypeHint",
     "VerifyKeyError",
     "VerifyTypeError",
     "assert_dict",
@@ -74,7 +81,7 @@ def explain_type(typ: TypeHint) -> str:
         Description of the type.
 
     Raises:
-        TypeError: When a unsupported/invalid type passed.
+        TypeError: When an unsupported/invalid type passed.
     """
     if isinstance(typ, dict) or is_typeddict(typ):
         return "dict"
@@ -182,11 +189,7 @@ class VerifyKeyError(KeyError):
         return f"{self.dict_name}[{self.key!r}] is {self.type}"
 
     def __eq__(self, other: object) -> bool:
-        """Check if another object equals to this ConfigKeyError.
-
-        Returns:
-            Equals or not.
-        """
+        """Return self==other."""
         if self is other:
             return True
         if isinstance(other, VerifyKeyError):
@@ -210,7 +213,7 @@ def check_simple_type(
         When a type error was detected.
 
     Raises:
-        TypeError: When a unsupported type is specified.
+        TypeError: When an unsupported type is specified.
     """
     if type_origin := get_origin(typ):  # elif (t_o is not None)
         if type_origin is Union:
@@ -273,7 +276,7 @@ def assert_simple_type(
 
     Raises:
         VerifyTypeError: When a type error detected.
-        TypeError: When a unsupported type is specified.
+        TypeError: When an unsupported type is specified.
     """
     try:
         error = next(iter(check_simple_type(obj, typ, name)))
@@ -297,7 +300,7 @@ def lookup_required(structure: DictStructure) -> Iterable[Hashable]:
         structure: The type structure, TypedDict or dict.
 
     Yields:
-        Keys that are required. In normal usage, str was yielded.
+        Keys that are required, str normally.
     """
     if is_typeddict(structure):
         # Python < 3.9 not supported
@@ -343,7 +346,7 @@ def check_dict(
         Detected type error, in VerifyTypeError / VerifyKeyError
 
     Raises:
-        TypeError: When a unsupported/invalid type passed.
+        TypeError: When an unsupported/invalid type passed.
 
     Examples:
         >>> class AType(TypedDict):
@@ -432,7 +435,7 @@ def assert_dict(
     Raises:
         VerifyTypeError: When found type error.
         VerifyKeyError: When found a type error about key.
-        TypeError: When a unsupported/invalid type passed.
+        TypeError: When an unsupported/invalid type passed.
     """
     try:
         error = next(

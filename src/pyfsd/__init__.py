@@ -1,7 +1,7 @@
 """Root package of PyFSD.
 
 Attributes:
-    __version__: Version of PyFSD.
+    __version__ (str): Version of PyFSD.
 """
 
 from ._version import version as __version__

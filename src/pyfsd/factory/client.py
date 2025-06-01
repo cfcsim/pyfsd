@@ -129,7 +129,7 @@ class ClientFactory:
             from_client: Where the message from.
 
         Return:
-            Lines sent to at least client or not.
+            Lines sent to at least one client or not.
         """
         have_one = False
         data = join_lines(*lines, newline=auto_newline)
