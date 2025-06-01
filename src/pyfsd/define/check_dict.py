@@ -3,9 +3,15 @@
 It can be used to perform config check.
 Only TypedDict, Literal, NotRequired, Union, List and Dict are supported.
 
-Example::
-    check_simple_type(1, Union[int, str])
-    check_dict({ "a": 1 }, TypedDict("A", { "a": int }))
+Examples:
+    >>> list(check_simple_type(1, Union[int, str]))
+    []
+    >>> list(check_simple_type(b"imbytes", Union[int, str]))
+    [VerifyTypeError('object', typing.Union[int, str], b'imbytes')]
+    >>> list(check_dict({ "a": 1 }, TypedDict("A", { "a": int })))
+    []
+    >>> list(check_dict({ "a": "imstr" }, TypedDict("A", { "a": int })))
+    [VerifyTypeError("dict['a']", <class 'int'>, 'imstr')]
 """
 
 from collections.abc import Hashable, Iterable, Mapping
@@ -331,27 +337,36 @@ def check_dict(
         dict_obj: The dict to be checked.
         structure: Expected type.
         name: Name of the dict.
-        allow_extra_keys: Allow extra keys in dict_obj. Example::
-            class AType(TypedDict):
-                a: int
-            check_dict(
-                { "a": 114514 }, AType,
-                allow_extra_keys=False
-            ) # Okay
-            check_dict(
-                { "a": 114514, "b": 1919810 }, AType,
-                allow_extra_keys=True
-            ) # Okay
-            check_dict(
-                { "a": 114514, "b": 1919810 }, AType,
-                allow_extra_keys=False
-            ) # Not okay
+        allow_extra_keys: Allow extra keys in dict_obj or not.
 
     Yields:
         Detected type error, in VerifyTypeError / VerifyKeyError
 
     Raises:
         TypeError: When a unsupported/invalid type passed.
+
+    Examples:
+        >>> class AType(TypedDict):
+        ...     a: int
+        ...
+        >>> list(check_dict({ "a": 114514 }, AType, allow_extra_keys=False))
+        []
+        >>> list(check_dict({ "a": "" }, AType, allow_extra_keys=False, name="mything"))
+        [VerifyTypeError("mything['a']", <class 'int'>, '')]
+        >>> list(check_dict({}, AType))
+        [VerifyKeyError('dict', 'a', 'missing')]
+        >>> list(check_dict(
+        ...     { "a": 114514, "b": 1919810 },
+        ...     AType,
+        ...     allow_extra_keys=True
+        ... ))
+        []
+        >>> list(check_dict(
+        ...     { "a": 114514, "b": 1919810 },
+        ...     AType,
+        ...     allow_extra_keys=False
+        ... ))
+        [VerifyKeyError('dict', 'b', 'extra')]
     """
 
     def deal_dict_not_required(
@@ -404,7 +419,7 @@ def assert_dict(
     name: str = "dict",
     allow_extra_keys: bool = False,
 ) -> None:
-    """Wrapper of check_dict, but it raises first error.
+    """Wrapper of check_dict, which raises once an error is generated.
 
     Check type of a dict accord TypedDict.
 
@@ -412,21 +427,7 @@ def assert_dict(
         dict_obj: The dict to be checked.
         structure: Expected type.
         name: Name of the dict.
-        allow_extra_keys: Allow extra keys in dict_obj. Example::
-            class AType(TypedDict):
-                a: int
-            check_dict(
-                { "a": 114514 }, AType,
-                allow_extra_keys=False
-            ) # Okay
-            check_dict(
-                { "a": 114514, "b": 1919810 }, AType,
-                allow_extra_keys=True
-            ) # Okay
-            check_dict(
-                { "a": 114514, "b": 1919810 }, AType,
-                allow_extra_keys=False
-            ) # Not okay
+        allow_extra_keys: Allow extra keys in dict_obj or not.
 
     Raises:
         VerifyTypeError: When found type error.

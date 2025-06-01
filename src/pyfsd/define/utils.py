@@ -204,13 +204,13 @@ P = ParamSpec("P")
 def asyncify(func: Callable[P, T]) -> Callable[P, Awaitable[T]]:
     """Decorator to patch a sync function to become async by execute it in thread.
 
-    Example::
-        @asyncify
-        def blocking_func():
-            sleep(100) # Blocking call
-
-        async def another_func():
-            await blocking_func()  # Not blocking anymore
+    Examples:
+        >>> @asyncify
+        >>> def blocking_func():
+        ...     sleep(100) # Blocking call
+        ...
+        >>> async def another_func():
+        ...     await blocking_func()  # Not blocking anymore
     """
 
     @wraps(func)

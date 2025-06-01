@@ -94,9 +94,6 @@ def check_packet(
                          [0, cs] [1    ] [2            ] => parts[0] contains callsign.
         need_login: Need self.client is not None (logined) or not.
         check_callsign: Check packet[callsign_position] == self.client.callsign or not.
-
-    Example:
-        @check_packet
     """
 
     def decorator(

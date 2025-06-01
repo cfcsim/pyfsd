@@ -34,14 +34,14 @@ class CompatibleString:
 
     Too hard to describe, please see examples section.
 
-    Examples::
-        str1 = CompatibleString("1234")
-        assert str1 + "test" == "1234test"
-        assert str1 + b"test" == b"1234test"
-        assert str1 + CompatibleString("test") == CompatibleString("1234test")
-        assert "1" in str1
-        assert b"2" in str1
-        assert CompatibleString("3") in str1
+    Examples:
+        >>> str1 = CompatibleString("1234")
+        >>> assert str1 + "test" == "1234test"
+        >>> assert str1 + b"test" == b"1234test"
+        >>> assert str1 + CompatibleString("test") == CompatibleString("1234test")
+        >>> assert "1" in str1
+        >>> assert b"2" in str1
+        >>> assert CompatibleString("3") in str1
 
     Attributes:
         string: The original ascii-only str.
